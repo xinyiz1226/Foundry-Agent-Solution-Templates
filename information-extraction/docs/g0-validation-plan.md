@@ -6,12 +6,35 @@ Prove that a small authenticated browser workbench can start, observe, and
 explicitly resume a durable Foundry-hosted extraction job without making the
 UI or a conversational model responsible for batch progression.
 
-This document is a proposed validation plan. No G0 probe has been executed,
-no hosting service selected, and no Azure resources deployed as part of this
-documentation change. Maintainer alignment is also still pending.
+This document defines the complete G0 validation plan. The local execution
+subset now has synthetic evidence, as recorded below; the full G0 gate has not
+passed. No hosting service has been selected or Azure resources deployed.
+Maintainer alignment is also still pending.
 
 Read alongside the [implementation plan](implementation-plan.md) and
 [source migration inventory](migration-inventory.md).
+
+### Local execution evidence: September 14, 2026
+
+The [offline execution core](../README.md) is a new, standard-library Python
+implementation using a real local SQLite ledger and an injected synthetic
+model. It does not yet use Agent Framework, Invocations, Blob, or a live model.
+
+The suite covers one-attempt commits, two explicitly advanced chunks,
+historical request replay, independent connection ownership, subprocess
+restoration, handled failure/resume, process exit, and publication rollback.
+It also checks input/model identity, stale revisions, payload digest
+corruption, source evidence resolution, and unknown versus observed usage.
+
+| Probes | Current evidence | Remaining scope |
+| --- | --- | --- |
+| G0-01 | Source imports succeed in local Python 3.13.15. | Clean package build, hosted startup and readiness remain unverified. |
+| G0-02 through G0-06 | Local execution equivalents exercised with a synthetic model and SQLite, including real subprocesses. | Repeat with the actual hosted workflow and Azure persistence; not a Foundry runtime validation. |
+| G0-07 | Identity, revision and local payload digest checks exercised. | Blob artifact/length and hosted restoration contracts remain unverified. |
+| G0-08 through G0-12 | Not run. | No batch driver, browser, authentication, deployment, cloud lifecycle, or cloud cleanup proof yet. |
+
+Run the exact local command from the README to reproduce the suite. The
+evidence does not establish cloud durability or exactly-once model execution.
 
 ## 1. Smallest demonstration
 

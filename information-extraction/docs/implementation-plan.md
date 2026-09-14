@@ -3,8 +3,9 @@
 ## Status and purpose
 
 This plan records the scope agreed on September 14, 2026. It is a planning
-artifact, not a claim that the capabilities described below already exist.
-This change does not begin implementation or deploy infrastructure.
+artifact, not a claim that all capabilities described below already exist.
+A preliminary [offline execution core](../README.md) is now implemented;
+the cloud workflow, workbench, and complete G0 gate remain outstanding.
 
 Execution planning is detailed in the [minimal migration inventory](migration-inventory.md)
 and [G0 technical validation plan](g0-validation-plan.md). These documents
