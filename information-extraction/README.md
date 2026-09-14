@@ -11,10 +11,11 @@ adapter** can invoke an explicitly selected deployment. The core has no runtime
 dependencies outside Python's standard library. No Azure hosting or storage is
 provided.
 
-A [bounded live model smoke](docs/model-smoke-results.md) exercised an existing
-DeepSeek deployment: one chunk succeeded after an explicit prompt revision,
-and the next timed out. This is partial model integration evidence, not a
-completed batch or cloud-hosting validation.
+A [bounded live model smoke](docs/model-smoke-results.md) completed both
+synthetic chunks on an existing DeepSeek deployment after an explicit prompt
+revision and a later, separately authorized timeout resume. First-chunk
+progress was preserved. This is local execution with real model calls, not
+cloud-hosting or automatic batch-progression validation.
 
 ## Run the offline checks
 
@@ -288,7 +289,7 @@ against a fake HTTP transport. They do **not** verify live identity/RBAC,
 deployment capabilities/version, service billing, or extraction accuracy.
 The separate [live smoke record](docs/model-smoke-results.md) documents the
 limited observed outcome. No semantic validation, approval, full G0 pass,
-or completed live batch is claimed.
+or hosted background batch execution is claimed.
 
 ## Storage and scope limitations
 

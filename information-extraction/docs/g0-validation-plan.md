@@ -21,9 +21,11 @@ implementation using a real local SQLite ledger and an injected synthetic
 model. It does not yet use Agent Framework, Invocations, Blob, or a live model.
 
 Separately, the optional Responses model adapter has
-[partial live evidence](model-smoke-results.md): one synthetic chunk succeeded
-after a prompt revision, while the second timed out with prior progress
-preserved. Persistence and execution were still local, not Foundry-hosted.
+[bounded live evidence](model-smoke-results.md): both synthetic chunks
+completed after a prompt revision and a later explicitly authorized resume
+of the second chunk's timeout. The first candidate was unchanged, and saved
+resume replay made no model call. Persistence and execution were still local,
+not Foundry-hosted.
 
 The suite covers one-attempt commits, two explicitly advanced chunks,
 historical request replay, independent connection ownership, subprocess

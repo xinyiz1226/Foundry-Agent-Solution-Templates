@@ -17,7 +17,7 @@ The ledger remained local SQLite. Private endpoints, tenant identifiers,
 credentials, provider request identifiers, and raw operational logs are not
 part of this document or its regression fixtures.
 
-## Observed attempts
+## Initial rounds
 
 The original two-call allowance was followed by an explicitly approved
 two-call allowance for the revised prompt. SDK model retries were disabled
@@ -36,7 +36,8 @@ There were four application-level model attempts. Known usage totals are
 attempt. These are not an invoice or a total-cost guarantee; a timeout does
 not prove that the provider performed no work.
 
-No further inference was attempted after the final timeout.
+No further inference was attempted in those rounds after the timeout. A
+separately authorized follow-up round is recorded below.
 
 ## Root cause of the captured format failure
 
@@ -59,19 +60,54 @@ synthetic HTTP responses. They verify that the observed spaced unit still
 fails, the exact enum succeeds, usage survives rejection, and the schema in
 the instructions matches the response-format schema.
 
-## Final state and limitations
+## State after the initial rounds
 
-The revised job is at revision 2 with one of two chunks committed successfully,
+The revised job stopped at revision 2 with one of two chunks committed successfully,
 one pending-review candidate, and one committed timeout failure. The valid
 candidate is revenue of 120 `USD_millions`, linked to its original fictional
 source block. It is not a human-approved record.
 
-The timeout's provider-side cause is unverified. The client observed no usage
-for that attempt. A future explicitly approved resume could incur additional
-work or cost; it must not be treated as an automatic retry.
+## Explicit resume: follow-up round
 
-This run demonstrates a successful small model request and durable failure
-accounting in the local execution module. It does not establish full-batch
-success, extraction accuracy, cross-domain reuse, bounded background
-progression, Blob persistence, hosted-agent recovery, browser authentication,
-or complete G0 acceptance.
+The operator authorized a new validation round with a maximum of five model
+calls, including diagnostics, failures, and retries. The round used one call.
+The model, prompt, timeout, and schema checks were unchanged.
+
+An explicit resume processed only the second chunk. It completed in
+approximately 14.12 seconds including local startup/authentication, with
+366 observed input tokens and 33 output tokens. The job advanced to revision
+3 and `completed`, retaining the previous successful candidate and the failed
+timeout attempt.
+
+| Final candidate | Value | Unit | Original evidence |
+| --- | --- | --- | --- |
+| `revenue` | 120 | `USD_millions` | First chunk, first source block |
+| `operating_income` | 18 | `USD_millions` | Second chunk, first source block |
+
+A separate local process read the persisted job and replayed the saved resume
+request using an adapter that would raise if model execution were attempted.
+Replay returned the same completed snapshot. The first candidate exactly
+matched its earlier committed version; the two candidate identifiers were
+unique. Attempt history showed one first-chunk attempt and two second-chunk
+attempts, including the original timeout.
+
+The completed v2 job has 730 known input tokens and 64 known output tokens,
+plus one attempt with unknown usage. Across both prompt versions and the
+follow-up, five application-level attempts have 1,144 known input tokens and
+147 known output tokens, excluding the timed-out attempt. The five-call
+authorization limit applies per validation round, not over the job lifetime.
+
+## Conclusions and remaining limits
+
+The two-chunk synthetic model smoke is complete, with an explicit timeout
+resume and preserved first-chunk progress. Both candidates remain pending
+human review; completion is not approval or a quality score.
+
+The original timeout's provider-side cause is still unverified. A later
+success does not establish that the provider performed no work during the
+timeout, and its usage must remain unknown.
+
+This evidence concerns local execution and SQLite persistence with a real
+Foundry model. It does not establish extraction accuracy, cross-domain reuse,
+bounded background progression, Blob persistence, hosted-agent recovery,
+browser authentication, or complete G0 acceptance.
