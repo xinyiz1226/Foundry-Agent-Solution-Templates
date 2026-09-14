@@ -1,4 +1,4 @@
-# Information extraction: offline G0 execution core
+# Information extraction: local G0 core and optional Foundry model
 
 This is a **new local implementation** of the execution invariants described in
 the [migration inventory](docs/migration-inventory.md), not a copy of DataFlowMVP
@@ -6,8 +6,10 @@ or a Blob/SDK-compatible adapter. It is one preliminary step toward the
 [implementation plan](docs/implementation-plan.md). **G0 is not complete.**
 
 The core uses real transactional SQLite persistence and an injected model
-adapter. Only the tests provide a synthetic model. There are no runtime
-dependencies outside Python's standard library.
+adapter. Tests provide a synthetic model; an **optional Foundry Responses
+adapter** can invoke an explicitly selected deployment. The core has no runtime
+dependencies outside Python's standard library. No Azure hosting or storage is
+provided.
 
 ## Run the offline checks
 
@@ -37,8 +39,10 @@ Optional editable installation, from the same directory:
 ```
 
 Editable installation may download the setuptools build backend; it is not
-needed for the offline checks. The packaging route has not been verified by
-the offline execution tests.
+needed for the offline checks. With the Azure extra installed, additional tests
+exercise real SDK response deserialization against `httpx.MockTransport`, not
+Azure. Without the extra, those tests skip; core and read-only smoke tests still
+run.
 
 ## Small execution interface
 
@@ -54,9 +58,11 @@ Library usage with your adapter (not a configured live-model example):
 ```python
 from information_extraction import Action, Execution, SQLiteStore
 from information_extraction.sample import synthetic_plan
+from dataclasses import replace
 
 execution = Execution(SQLiteStore("ledger.sqlite3"), model_adapter)
-created = execution.create("job-1", synthetic_plan(), "create-1")
+plan = replace(synthetic_plan(), model_binding=model_adapter.binding)
+created = execution.create("job-1", plan, "create-1")
 current = execution.read("job-1")  # Always read-only.
 first = execution.advance("job-1", 0, "advance-1")
 second = execution.advance("job-1", 1, "advance-2")
@@ -161,6 +167,116 @@ Candidates carry job/revision/plan metadata, `review_status=pending`, and
 validation, human approval, or measured accuracy. A zero-candidate chunk is
 not evidence that a reviewer found no relevant facts.
 
+## Optional Azure Foundry model adapter
+
+Install the optional SDKs into your own environment, from this directory:
+
+```powershell
+& .\.venv\Scripts\python.exe -m pip install -e '.[azure]'
+& .\.venv\Scripts\python.exe -m unittest discover -v
+```
+
+Import `FoundrySettings`, `FoundryModel`, and `open_foundry_model` explicitly from
+`information_extraction.foundry_model`; the base package never imports this
+module. `FoundryModel(settings, openai_client)` accepts a caller-owned actual
+`openai.OpenAI` client. `open_foundry_model(settings, credential)` is a context
+manager owning the `AIProjectClient`, OpenAI client, and HTTP transport; the
+credential remains caller-owned. It uses project-scoped bearer authentication,
+not API keys. Injected clients must target the configured project and must not
+add their own retries, redirects, or request-mutating middleware.
+
+Settings require an HTTPS project endpoint and deployment identifier.
+`max_output_tokens` is an integer from 1 to 32768 (default 2048), and `timeout`
+is finite and positive (default 180 seconds). These are request controls, not a
+total wall-clock deadline or cost budget. Optional `reasoning_effort` accepts
+`none`, `minimal`, `low`, `medium`, `high`, or `xhigh`; **support depends on the
+selected deployment**, and omission sends no reasoning setting. The adapter
+does not discover deployments or assume that every model supports strict
+structured output, Responses, or a particular reasoning setting.
+
+- The binding hashes the explicit endpoint, deployment, profile, schema,
+  prompt/version, and request settings. Only the hash enters the plan, not the
+  endpoint. A deployment identifier is **not proof of an underlying model
+  version**; a deployment can be changed outside this ledger.
+- Requests send only the current chunk's blocks and relevant profile/schema
+  fields, with source data separated from instructions. Strict JSON Schema
+  requests the fixed metrics structure without a `quote` field. No tools are
+  supplied, `store=False`, and SDK retries are disabled even for injected
+  clients. The factory disables HTTP redirects and environment-derived proxy
+  settings. `store=False` is not a claim about all provider retention policies.
+- Refusal, incomplete output, and malformed JSON become structural validation
+  failures, retaining reported usage. Duplicate keys, nonfinite numbers, and
+  trailing JSON are rejected. Missing/partial usage remains unknown.
+- Timeouts commit `model_timeout`; explicit rejection statuses
+  400/401/403/404/405/413/415/422/429 commit `model_rejected`. Neither causes
+  an automatic retry. Connection failures, server errors, redirects, and
+  unclassified statuses (including 408) raise the safe
+  `ProviderOutcomeUnknown("provider_outcome_unknown")` and leave the claim
+  unresolved. Other Python errors propagate unchanged. Never log raw unknown
+  exceptions or enable provider HTTP/debug logging around real requests.
+
+### Explicit developer smoke path
+
+This is an operator validation CLI, **not the final user's UI**, a batch driver,
+or a live-validation claim. It accepts only the two-chunk fictional fixture and
+refuses to print a ledger containing a different source plan. You must separately
+select and verify your Azure CLI identity, authorization, project, and deployment.
+The script uses only `AzureCliCredential`, never a default chain that silently
+switches identity. It does not install the CLI, log you in, discover models, or
+provision resources.
+
+Set `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL_DEPLOYMENT` privately in your
+operator environment, or pass `--project-endpoint` / `--deployment` explicitly.
+Prefer environment variables to keep resource names out of shell history.
+Do not commit their actual values. From `information-extraction`:
+
+```powershell
+$python = '.\.venv\Scripts\python.exe'
+$job = 'fictional-smoke-001'
+$modelOptions = @('--max-output-tokens', '2048', '--timeout', '180')
+# Only when the selected deployment supports it; use identical settings each time:
+# $modelOptions += @('--reasoning-effort', 'low')
+
+# Freezes the fixture and binding; no credential acquisition or inference.
+& $python .\scripts\model_smoke.py --action create --job-id $job --request-id create-001 @modelOptions
+
+# Read-only, no Azure extra, endpoint, deployment, or credentials required.
+& $python .\scripts\model_smoke.py --action inspect --job-id $job
+
+# Explicitly permits at most ONE current-chunk model attempt.
+& $python .\scripts\model_smoke.py --action advance --job-id $job --request-id advance-001 --expected-revision 0 @modelOptions
+& $python .\scripts\model_smoke.py --action inspect --job-id $job
+
+# Only after inspecting a committed FAILED revision and choosing another attempt:
+# & $python .\scripts\model_smoke.py --action resume --job-id $job --request-id resume-001 --expected-revision 1 @modelOptions
+```
+
+`--ledger` defaults to the ignored `.local-data/model-smoke.sqlite3`. Use the
+same ledger, settings, and durable request identifiers across restarts. Each
+invocation performs only its named action. A repeated consumed request returns
+the historical result without inference; a new request for an unresolved claim
+is blocked. **Never auto-resume an unresolved claim**, including after a timeout
+in the operator process. Inspect first. To finish the second chunk, separately
+choose `advance` at the newly inspected ready revision with a new request ID.
+
+Output contains only state/revision, safe failure codes, counts, known token
+totals with unknown/unresolved counts, and fictional candidate records/evidence.
+It omits endpoint, deployment, tenant, credentials, and raw provider errors.
+Exit codes: 0 ready/completed, 1 failed/unresolved snapshot, 2 safe domain or
+argument error, 3 local storage error requiring inspection, 130 interrupted.
+Before claiming an attempt, the script checks CLI token acquisition so a
+missing login does not strand a new claim. Authentication failure is explicit
+and does not print credential diagnostics. The CLI suppresses SDK logging and
+reports known domain/storage failures without raw exception details. Unexpected
+programming errors still propagate; inspect the ledger rather than assuming
+rollback, and do not share unsanitized tracebacks.
+
+Tests cover requests, SDK decoding, usage retention, no retries, safe failure
+classification, factory resource closure, and create/inspect/advance/replay/resume
+against a fake HTTP transport. They do **not** verify live identity/RBAC,
+deployment capabilities/version, service billing, or extraction accuracy.
+No semantic validation, approval, full G0 pass, or live-model success is claimed.
+
 ## Storage and scope limitations
 
 `Store` is the narrow internal storage seam; `SQLiteStore` is its sole concrete
@@ -180,7 +296,7 @@ power-loss behavior on particular storage hardware, and retention policies
 have not been validated. Remove only your own generated ledger after use.
 
 Not implemented: Foundry hosting, Agent Framework/Invocations integration,
-Azure/Blob adapters, managed identity, browser/UI/HTTP transport, a daemon or
+Azure/Blob storage adapters, managed-identity deployment, browser/UI/HTTP transport, a daemon or
 bounded batch driver, deadlines/budgets, input normalization, generalized
 schemas, evaluation, semantic validation, or review operations.
 
