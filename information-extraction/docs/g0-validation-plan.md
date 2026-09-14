@@ -1,0 +1,171 @@
+# G0 technical validation plan
+
+## Goal and current status
+
+Prove that a small authenticated browser workbench can start, observe, and
+explicitly resume a durable Foundry-hosted extraction job without making the
+UI or a conversational model responsible for batch progression.
+
+This document is a proposed validation plan. No G0 probe has been executed,
+no hosting service selected, and no Azure resources deployed as part of this
+documentation change. Maintainer alignment is also still pending.
+
+Read alongside the [implementation plan](implementation-plan.md) and
+[source migration inventory](migration-inventory.md).
+
+## 1. Smallest demonstration
+
+Use a pre-registered, approved sample, a fixed extraction configuration, and
+a deliberately small multi-chunk plan. Start with the existing supported
+document path; generic schemas and the second domain remain G1 work.
+
+The browser demonstration is:
+
+1. Sign in as the designated operator.
+2. Select the sample and fixed profile.
+3. Start one job and observe durable progress.
+4. Refresh or reconnect without starting additional work.
+5. Observe a controlled failure and explicitly resume when safe.
+6. Inspect candidate records with source evidence.
+
+Candidates remain unreviewed. G0 does not claim approved business results,
+complete review functionality, measured extraction accuracy, or full-document
+format coverage.
+
+Do not build schema generation, feedback editing, evaluation dashboards, a
+Responses wrapper, or a full deployment template merely to prove this path.
+
+## 2. Decisions to resolve before live execution
+
+| Decision | Candidate direction | Evidence needed before selection |
+| --- | --- | --- |
+| Web hosting | Evaluate an Azure-managed web host for the existing Streamlit process; App Service is a candidate, not a selection. | Startup/dependency support, interactive connection behavior, Entra integration, identity, restart behavior, costs, and cleanup |
+| Batch driver lifetime | Prefer deterministic bounded progression outside browser-request and page-rerun lifetimes. | A supported host lifecycle that survives client disconnect and has documented cancellation/deadline behavior |
+| Driver placement | First investigate whether the chosen Foundry hosting contract can own the required lifecycle. If not, assess a durable Azure orchestration module. | Real start/status/resume behavior and failure recovery; explicitly approve any additional infrastructure before adding it |
+| Deployment interface | Preserve the existing Invocations approach unless evidence requires a change. | Clean package readiness and a supported source deployment/invocation path; confirm what azd can express |
+| Identity | Entra operator access plus server-side managed identities. | Separate operator authorization and downstream resource roles; do not assume login alone grants mutation permission |
+
+An in-memory background task, a thread launched from Streamlit, or a longer
+HTTP timeout is not evidence of durable batch execution. If the hosting
+contract cannot meet the lifecycle requirement, report G0 as blocked and
+revise the design instead of silently introducing a UI-driven loop.
+
+No live subscription, region, model deployment, cost ceiling, or operator
+identity is selected by this plan. Obtain those inputs and explicit deployment
+approval before incurring cloud costs.
+
+## 3. Proposed execution interface
+
+The following operations describe desired caller behavior, not methods that
+already exist in DataFlowMVP:
+
+| Operation | Inputs | Required behavior |
+| --- | --- | --- |
+| Start | Registered sample/profile version, durable request identifier, processing limits | Create or return the same job for a compatible repeated request; reject conflicting reuse |
+| Inspect | Job identifier | Return durable progress, last committed revision, safe next action, and candidate/artifact availability; never trigger inference |
+| Resume | Job identifier, expected revision, explicit request identifier | Advance only a safely resumable job with unchanged execution identity; reject stale or incompatible requests |
+| Read candidates | Job identifier and committed result version | Retrieve verified artifacts server-side and return sanitized candidate/evidence views |
+
+Persist request identity before scheduling work. An operator must be able to
+rediscover the active job after browser state is lost; deduplication cannot
+depend on a token that exists only in `st.session_state`.
+
+Keep source/configuration/model/parser bindings stable during resume. A changed
+binding requires a new job or an explicit future migration design, not a
+silent continuation.
+
+The existing `result` action can supply the initial inspect implementation.
+The existing immutable revision contract can underpin resume. Start-once
+progression and the workbench-facing projection are new work.
+
+### Durable outcomes
+
+Distinguish at least: queued/advancing work, partial committed progress,
+completed selected plan, paused at a limit, committed handled failure, and
+unresolved interruption. These are proposed display semantics, not a promise
+to reuse the source's status strings unchanged.
+
+Unknown model completion and incomplete checkpoint publication must not look
+like either success or an automatically safe retry. No automatic claim
+deletion, timeout takeover, or inference replay should be added to make a
+demonstration pass.
+
+### Bounded progression
+
+The driver should sequence one-attempt commits and check limits before
+scheduling another attempt. Define maximum attempts, elapsed time, and token
+reservations for the experiment. Record usage when available.
+
+Distinguish observed usage from estimates. A response timeout may leave model
+usage unknown; a deadline is not a guarantee of provider-side cancellation or
+an exact monetary cap. Pause and expose uncertainty rather than accounting
+unknown usage as zero.
+
+## 4. Probe sequence and acceptance matrix
+
+Begin offline with synthetic inputs, a deterministic model adapter, and a
+storage test adapter. Use the real workflow/execution module rather than a
+fake UI demo. Move to live probes only after authorization and infrastructure
+choices are recorded.
+
+| ID | Probe | Required evidence and pass condition |
+| --- | --- | --- |
+| G0-01 | Package and startup | Build only explicitly allowed files. Clean runtime imports and readiness succeed using the deployed dependency manifest; record resolved versions and artifact hash. |
+| G0-02 | One revision | One request produces at most one model attempt, preserves the remaining plan, and commits verified artifacts before its checkpoint. |
+| G0-03 | Fresh execution process | Discard local working files and recreate clients. Inspect the same durable result, then advance from restored state without redoing a committed chunk. |
+| G0-04 | Duplicate and concurrent mutation | Repeat a committed request and race two requests for one expected revision. One owner advances; duplicates return saved results or an explicit conflict, never another successful competing attempt. |
+| G0-05 | Handled failure | Inject an explicit model/validation failure. Persist failure accounting, stop automatic progression, and verify explicit resume preserves completed work. |
+| G0-06 | Unknown interruption | Interrupt execution or publication before commit. Show unresolved ownership and refuse blind replay; retain sufficient evidence for reconciliation. This passes by blocking safely, not by auto-recovering. |
+| G0-07 | Integrity and stale state | Alter an input, configuration binding, artifact hash/length, or expected revision. Reject invalid restoration/continuation with a visible reason. |
+| G0-08 | Bounded backend batch | One start advances at least two chunk revisions without browser-driven mutation. Stop at a configured limit or failure. A refreshed page cannot advance the job. |
+| G0-09 | Browser reconnect | Close/reopen the browser connection while work is active. Rediscover the job, observe durable progress, and inspect evidence without leaking internal deployment metadata. |
+| G0-10 | Operator and downstream access | The designated operator can mutate; unauthenticated and unauthorized users cannot. Server-side identity can perform only the required Foundry/Blob operations. |
+| G0-11 | Live lifecycle and limits | Observe actual host deadline/cancellation/session behavior, process restart, pacing, and managed-identity calls. Confirm the chosen lifecycle supports G0-08/09; record unknown model outcomes explicitly. |
+| G0-12 | Cleanup | Remove only experiment-owned resources and generated local artifacts. Retain sanitized findings; verify no continuing driver or recurring cost was unintentionally left behind. |
+
+For a controlled two-chunk success fixture, require two committed chunk
+attempts, expected block coverage, and no increase in model-call count after
+duplicate inspect/start/revision requests. Count calls at the test adapter;
+in live execution reconcile application attempts with available provider
+observations rather than claiming exactly-once inference.
+
+Run the smallest relevant migrated tests first. Existing source regression
+anchors are listed in the migration inventory; their existence is not proof
+that newly extracted code passes.
+
+## 5. Evidence to record
+
+Each executed probe should record its status as passed, failed, blocked, or
+not run, with:
+
+- Source/configuration versions, environment category, and execution time.
+- Expected versus observed state, revision/attempt counts, and coverage.
+- A sanitized failure explanation and any unresolved lifecycle assumptions.
+- Whether observations came from a fake adapter, local real runtime, or Azure.
+- Resource/cost observations and cleanup outcome for live probes.
+
+Keep detailed operational identifiers and raw logs in an approved local or
+private location, not the public template. Commit only sanitized reusable
+findings, public/synthetic fixtures, and reproducible verification instructions.
+Do not record a credentials-bearing URL as a convenient reproduction link.
+
+## 6. Stop conditions and G0 exit
+
+Stop and revisit the design if:
+
+- Progress depends on a live browser connection or Streamlit rerun.
+- Unknown interruption is treated as an automatically safe retry.
+- A generic input is made to pass by pretending it has a financial identity.
+- Authentication cannot restrict job mutation to the designated operator.
+- A new hosting/coordination resource is required but not approved.
+- Maintainers reject the intended scope.
+
+G0 is complete only when contribution fit and technical feasibility are both
+established. Technical exploration can proceed independently, but do not
+claim maintainer acceptance or migrate a finished product before that
+conversation occurs.
+
+The exit deliverable is a small proven browser-to-cloud path, its actual
+hosting/driver choices, a bounded execution contract, and evidence for the
+probe matrix. It is not the full workbench. G1 then generalizes document and
+schema handling and proves reuse with the second domain.

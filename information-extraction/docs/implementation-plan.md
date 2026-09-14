@@ -6,6 +6,11 @@ This plan records the scope agreed on September 14, 2026. It is a planning
 artifact, not a claim that the capabilities described below already exist.
 This change does not begin implementation or deploy infrastructure.
 
+Execution planning is detailed in the [minimal migration inventory](migration-inventory.md)
+and [G0 technical validation plan](g0-validation-plan.md). These documents
+distinguish inspected source behavior from proposed work and unverified cloud
+capabilities.
+
 The goal is to contribute a standalone Microsoft Foundry solution template
 for an intelligent document extraction workbench. All code and documentation
 for this contribution will live under `information-extraction`.
@@ -226,12 +231,18 @@ added if a concrete use case requires it.
 
 ### Deterministic cloud execution
 
-Retain a deterministic Foundry-hosted workflow and block-level checkpoints.
+Retain a deterministic Foundry-hosted workflow and chunk/attempt-level
+checkpoints, with source-block coverage recorded inside each committed chunk.
 A single start action should trigger bounded backend progression rather than
 requiring the user to issue a command for every block.
 
 Pause when an error occurs or a configured processing limit is reached.
 Resume must be explicit and operate from durable state.
+
+The existing implementation can resume committed, handled failures, but an
+unknown interruption may leave an unresolved execution claim. Such a job must
+remain visibly blocked pending reconciliation; do not promise automatic
+recovery or exactly-once model inference.
 
 Do not depend on a conversational model to repeatedly invoke tools until a
 batch finishes. Do not assume that a single HTTP request can process an entire
