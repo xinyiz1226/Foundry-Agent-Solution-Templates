@@ -8,7 +8,7 @@ This change does not begin implementation or deploy infrastructure.
 
 The goal is to contribute a standalone Microsoft Foundry solution template
 for an intelligent document extraction workbench. All code and documentation
-for this contribution will live under `Information-extraction`.
+for this contribution will live under `information-extraction`.
 
 The workbench will turn supported unstructured documents into configurable,
 evidence-linked structured records. It will demonstrate the complete lifecycle
