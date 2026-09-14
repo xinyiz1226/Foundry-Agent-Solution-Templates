@@ -7,9 +7,10 @@ explicitly resume a durable Foundry-hosted extraction job without making the
 UI or a conversational model responsible for batch progression.
 
 This document defines the complete G0 validation plan. The local execution
-subset now has synthetic evidence, as recorded below; the full G0 gate has not
-passed. No hosting service has been selected or Azure resources deployed.
-Maintainer alignment is also still pending.
+subset now has synthetic evidence, alongside separate live model and Azure
+Blob probes, as recorded below; the full G0 gate has not passed. A dedicated
+storage slice has been deployed. No workflow/web hosting service has been
+selected. Maintainer alignment is also still pending.
 
 Read alongside the [implementation plan](implementation-plan.md) and
 [source migration inventory](migration-inventory.md).
@@ -18,7 +19,9 @@ Read alongside the [implementation plan](implementation-plan.md) and
 
 The [offline execution core](../README.md) is a new, standard-library Python
 implementation using a real local SQLite ledger and an injected synthetic
-model. It does not yet use Agent Framework, Invocations, Blob, or a live model.
+model. The base offline path does not use Azure; optional model and Blob
+adapters are exercised separately. There is no Agent Framework or Invocations
+integration yet.
 
 Separately, the optional Responses model adapter has
 [bounded live evidence](model-smoke-results.md): both synthetic chunks
@@ -26,6 +29,14 @@ completed after a prompt revision and a later explicitly authorized resume
 of the second chunk's timeout. The first candidate was unchanged, and saved
 resume replay made no model call. Persistence and execution were still local,
 not Foundry-hosted.
+
+The optional Blob adapter also has [live storage evidence](blob-store.md#observed-live-storage-evidence):
+separate processes created and advanced the fixture, committed a controlled
+failure, resumed to revision 3, and replayed all saved requests with no new
+model work. This used real Azure Blob storage and a synthetic model, not the
+real Foundry model. The [storage deployment](storage-deployment.md) confirmed
+Entra operator access and anonymous denial; managed identities and hosted
+operator authorization remain unverified.
 
 The suite covers one-attempt commits, two explicitly advanced chunks,
 historical request replay, independent connection ownership, subprocess
@@ -36,12 +47,15 @@ corruption, source evidence resolution, and unknown versus observed usage.
 | Probes | Current evidence | Remaining scope |
 | --- | --- | --- |
 | G0-01 | Source imports succeed in local Python 3.13.15. | Clean package build, hosted startup and readiness remain unverified. |
-| G0-02 through G0-06 | Local execution equivalents exercised with a synthetic model and SQLite, including real subprocesses. | Repeat with the actual hosted workflow and Azure persistence; not a Foundry runtime validation. |
-| G0-07 | Identity, revision and local payload digest checks exercised. | Blob artifact/length and hosted restoration contracts remain unverified. |
-| G0-08 through G0-12 | Not run. | No batch driver, browser, authentication, deployment, cloud lifecycle, or cloud cleanup proof yet. |
+| G0-02 through G0-06 | Offline SQLite/Blob contract tests cover ownership, replay, failure and interruption. Live Blob smoke covers commits, fresh processes, historical replay and handled failure/resume. | Live concurrency/unknown-interruption injection and actual hosted workflow recovery remain unverified. |
+| G0-07 | Offline identity/revision and Blob digest/length/ETag checks exercised; valid live Blob history restored successfully. | No live corruption injection or hosted restoration proof. |
+| G0-08/09/11 | Not run. | No durable batch driver, browser, or hosted lifecycle proof. |
+| G0-10 | Storage controls, Entra CLI operator access, and unauthenticated data-plane denial verified. | Designated web-operator authorization and downstream managed identities remain unverified. |
+| G0-12 | Storage ownership and costs documented; account and synthetic prefix intentionally retained. | Cloud cleanup has not been exercised. |
 
 Run the exact local command from the README to reproduce the suite. The
-evidence does not establish cloud durability or exactly-once model execution.
+offline evidence alone does not establish Azure behavior; the live probes
+cover only their stated paths. Neither establishes exactly-once model execution.
 
 ## 1. Smallest demonstration
 
@@ -80,9 +94,10 @@ HTTP timeout is not evidence of durable batch execution. If the hosting
 contract cannot meet the lifecycle requirement, report G0 as blocked and
 revise the design instead of silently introducing a UI-driven loop.
 
-No live subscription, region, model deployment, cost ceiling, or operator
-identity is selected by this plan. Obtain those inputs and explicit deployment
-approval before incurring cloud costs.
+The live model and storage probes used separately approved environment
+settings kept outside the repository. Those approvals do not select a
+workflow/web host or authorize new recurring compute. Obtain the remaining
+hosting choices, limits, and explicit approval before adding cloud resources.
 
 ## 3. Proposed execution interface
 

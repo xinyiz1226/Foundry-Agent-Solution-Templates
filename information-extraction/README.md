@@ -1,21 +1,28 @@
-# Information extraction: local G0 core and optional Foundry model
+# Information extraction: G0 execution core and optional Azure adapters
 
 This is a **new local implementation** of the execution invariants described in
 the [migration inventory](docs/migration-inventory.md), not a copy of DataFlowMVP
-or a Blob/SDK-compatible adapter. It is one preliminary step toward the
+or a drop-in replacement for its hosted SDK interface. It is one step toward the
 [implementation plan](docs/implementation-plan.md). **G0 is not complete.**
 
-The core uses real transactional SQLite persistence and an injected model
-adapter. Tests provide a synthetic model; an **optional Foundry Responses
-adapter** can invoke an explicitly selected deployment. The core has no runtime
-dependencies outside Python's standard library. No Azure hosting or storage is
-provided.
+The core uses an injected storage and model interface. Transactional SQLite
+is the standard-library local implementation; an optional **Azure Blob ledger**
+provides create-only cloud persistence. An optional **Foundry Responses adapter**
+can invoke an explicitly selected deployment. Azure SDKs are opt-in. A
+[storage-only Bicep template](docs/storage-deployment.md) is available, but
+there is no hosted workflow or workbench deployment yet.
 
 A [bounded live model smoke](docs/model-smoke-results.md) completed both
 synthetic chunks on an existing DeepSeek deployment after an explicit prompt
 revision and a later, separately authorized timeout resume. First-chunk
 progress was preserved. This is local execution with real model calls, not
 cloud-hosting or automatic batch-progression validation.
+
+A separate [live Blob smoke](docs/blob-store.md#observed-live-storage-evidence)
+used a synthetic model with real Azure persistence. Fresh processes restored
+committed progress, resumed a handled failure, and replayed saved requests
+without repeating model work. Real Foundry calls and Blob persistence have
+not yet been exercised together.
 
 ## Run the offline checks
 
@@ -87,6 +94,10 @@ of that process.
 
 ### Identity, replay, and ownership
 
+Identity and replay rules apply to both stores. The transaction details below
+describe SQLite; the [Blob protocol](docs/blob-store.md) instead publishes
+immutable objects with a final checkpoint commit marker.
+
 - `create` freezes the entire pre-normalized source plan before inference.
   Identity hashes bind document/chunk/block identifiers, text, source
   locations, ordering, fixed schema version, profile version, parser version,
@@ -129,7 +140,7 @@ Malformed response structure, evidence, or token usage commits a
 `ValidationFailure` code. Unknown usage is `None`, never assumed to be zero.
 Valid usage received alongside invalid record content is retained.
 
-Other exceptions, cancellation, and SQLite publication errors **propagate**.
+Other exceptions, cancellation, and storage publication errors **propagate**.
 The durable claim remains unresolved, even when the model may have finished.
 There is no claim expiry, takeover, automatic replay, or reconciliation
 operation. An active and an interrupted process intentionally have the same
@@ -293,14 +304,14 @@ or hosted background batch execution is claimed.
 
 ## Storage and scope limitations
 
-`Store` is the narrow internal storage seam; `SQLiteStore` is its sole concrete
-adapter. Its contracts concern transactional create/read/claim/publish, not
-Blob object names or hosted SDK sessions. SQLite uses a local file, fresh
+`Store` is the narrow internal storage seam implemented by `SQLiteStore` and
+the optional `BlobStore`. Its contracts concern create/read/claim/publish,
+not hosted SDK sessions. SQLite uses a local file, fresh
 connections, full synchronous commits, and digest-checked plan/checkpoint
 payloads. Digests detect accidental payload changes, **not malicious tampering
 by someone who can rewrite the database and hashes**.
 
-The ledger contains plaintext source text, evidence, configuration, and
+The SQLite ledger contains plaintext source text, evidence, configuration, and
 historical snapshots. **It is not encrypted and has no application-level
 authentication or authorization.** Keep it on a trusted local filesystem with
 appropriate OS permissions; do not commit or expose it. Do not supply secrets
@@ -309,13 +320,22 @@ distributed/cloud coordination. Large-document scale, backup/migration,
 power-loss behavior on particular storage hardware, and retention policies
 have not been validated. Remove only your own generated ledger after use.
 
+The Blob adapter stores the same sensitive content in Azure and relies on
+separately configured storage access controls. The provided storage slice uses
+Entra authorization, disables anonymous/Shared Key access, and enables
+Microsoft-managed encryption. It does not add application-level user
+authorization. Blob payloads are capped at 8 MiB per encoded object, snapshots
+are cumulative, and reads verify full history: this is a bounded G0 ledger,
+not a large-document storage design. See [Blob contracts and smoke commands](docs/blob-store.md)
+for ambiguous-write handling, integrity checks, and retention limitations.
+
 Not implemented: Foundry hosting, Agent Framework/Invocations integration,
-Azure/Blob storage adapters, managed-identity deployment, browser/UI/HTTP transport, a daemon or
+managed-identity deployment, browser/UI/HTTP transport, a daemon or
 bounded batch driver, deadlines/budgets, input normalization, generalized
 schemas, evaluation, semantic validation, or review operations.
 
-The stdlib suite provides local synthetic evidence relevant to G0-02 through
-G0-06 and the identity/staleness portion of G0-07. It does **not** pass the full
-[G0 validation gate](docs/g0-validation-plan.md), package/deployed startup,
-Blob artifact integrity, or any cloud, browser, authentication, lifecycle,
-cost, maintainer-alignment, or cleanup-of-cloud-resources probe.
+The offline suites and separate live model/storage probes provide partial
+evidence for G0-02 through G0-07 and storage access controls. They do **not**
+pass the full [G0 validation gate](docs/g0-validation-plan.md), hosted startup,
+browser/operator authorization, managed-identity lifecycle, cost limits,
+maintainer alignment, or cleanup of cloud resources.

@@ -13,6 +13,7 @@ dependencies = []
 azure = [
     "azure-ai-projects>=2.3.0,<3",
     "azure-identity>=1.25.0,<2",
+    "azure-storage-blob>=12.30,<13",
     "openai>=2.54.0,<3",
 ]
 

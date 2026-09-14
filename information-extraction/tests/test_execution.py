@@ -57,12 +57,15 @@ class SyntheticModel:
 
 
 class ExecutionTests(unittest.TestCase):
+    def make_store(self):
+        return SQLiteStore(self.database)
+
     def setUp(self):
         self.directory = Path(".test-data") / uuid.uuid4().hex
         self.directory.mkdir(parents=True)
         self.database = self.directory / "ledger.sqlite3"
         self.model = SyntheticModel()
-        self.execution = Execution(SQLiteStore(self.database), self.model)
+        self.execution = Execution(self.make_store(), self.model)
 
     def tearDown(self):
         shutil.rmtree(self.directory)
@@ -134,7 +137,7 @@ class ExecutionTests(unittest.TestCase):
         self.assertEqual(len(finished.candidates), 2)
         self.assertEqual(len(finished.attempts), 3)
         self.assertEqual(finished.candidates[0], first.candidates[0])
-        self.execution = Execution(SQLiteStore(self.database), self.model)
+        self.execution = Execution(self.make_store(), self.model)
         self.assertEqual(self.execution.advance("job-1", 1, "failure-1"), failed)
         self.assertEqual(self.execution.advance("job-1", 0, "advance-1"), first)
         self.assertEqual(self.execution.create("job-1", synthetic_plan(), "start-1"), initial)
@@ -420,8 +423,8 @@ print(json.dumps({
 
         self.model.complete = slow
         workers = [
-            Execution(SQLiteStore(self.database), self.model),
-            Execution(SQLiteStore(self.database), self.model),
+            Execution(self.make_store(), self.model),
+            Execution(self.make_store(), self.model),
         ]
 
         def advance(index):
@@ -467,7 +470,7 @@ print(json.dumps({
                 self.model.complete = interrupt
                 with self.assertRaises(type(error)):
                     self.execution.advance(job_id, 0, f"interrupt-{index}")
-                restored = Execution(SQLiteStore(self.database), self.model)
+                restored = Execution(self.make_store(), self.model)
                 state = restored.read(job_id)
                 self.assertEqual((state.revision, state.status), (0, Status.IN_PROGRESS))
                 self.assertEqual(state.claim.request_id, f"interrupt-{index}")
