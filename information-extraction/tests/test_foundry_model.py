@@ -126,6 +126,48 @@ class FoundryModelTests(unittest.TestCase):
                 self.assertEqual(result.attempts[0].usage, TokenUsage(17, 9))
                 self.assertEqual(result.candidates, ())
 
+    def test_schema_is_explicit_in_instructions_as_well_as_response_format(self):
+        captured = []
+
+        def handler(request):
+            captured.append(json.loads(request.content))
+            return httpx.Response(200, json=provider_response())
+
+        model = self.adapter(handler)
+        model.complete(self.request(model))
+        body = captured[0]
+        marker = "\nRequired output JSON Schema:\n"
+        self.assertIn(marker, body["instructions"])
+        instruction_schema = json.loads(body["instructions"].split(marker, 1)[1])
+        self.assertEqual(instruction_schema, body["text"]["format"]["schema"])
+        self.assertEqual(
+            instruction_schema["properties"]["records"]["items"]["properties"]["unit"]["enum"],
+            ["USD_millions"],
+        )
+        self.assertTrue(body["text"]["format"]["strict"])
+
+    def test_observed_deepseek_unit_mismatch_is_rejected_without_normalization(self):
+        for unit, expected_status in (
+            ("USD millions", Status.FAILED), ("USD_millions", Status.READY),
+        ):
+            with self.subTest(unit=unit):
+                body = provider_response(
+                    json.dumps({"records": [{
+                        "metric": "revenue", "value": 120, "unit": unit,
+                        "block_ids": ["block-1"],
+                    }]}),
+                    usage={"input_tokens": 207, "output_tokens": 36, "total_tokens": 243},
+                )
+                model = self.adapter(lambda _: httpx.Response(200, json=body))
+                result = self.execution(model).advance("job-1", 0, "attempt-1")
+                self.assertEqual(result.status, expected_status)
+                self.assertEqual(result.attempts[0].usage, TokenUsage(207, 36))
+                if expected_status == Status.FAILED:
+                    self.assertEqual(result.attempts[0].failure_code, FailureCode.MALFORMED_OUTPUT)
+                    self.assertEqual(result.candidates, ())
+                else:
+                    self.assertEqual(result.candidates[0].record.unit, "USD_millions")
+
     def test_unknown_usage_is_not_assumed_zero(self):
         for usage in (None, {}, {"input_tokens": 17}):
             with self.subTest(usage=usage):

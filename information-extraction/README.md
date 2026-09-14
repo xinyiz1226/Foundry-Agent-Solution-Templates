@@ -11,6 +11,11 @@ adapter** can invoke an explicitly selected deployment. The core has no runtime
 dependencies outside Python's standard library. No Azure hosting or storage is
 provided.
 
+A [bounded live model smoke](docs/model-smoke-results.md) exercised an existing
+DeepSeek deployment: one chunk succeeded after an explicit prompt revision,
+and the next timed out. This is partial model integration evidence, not a
+completed batch or cloud-hosting validation.
+
 ## Run the offline checks
 
 Prerequisite: Python **3.13 or newer**. From the repository root, in PowerShell:
@@ -194,6 +199,12 @@ selected deployment**, and omission sends no reasoning setting. The adapter
 does not discover deployments or assume that every model supports strict
 structured output, Responses, or a particular reasoning setting.
 
+Prompt version `financial-extraction-v2` includes the same output schema in the
+instructions as in the strict response-format request, with explicit enum
+spelling. This improves guidance; it does not substitute for local validation
+or prove provider-side schema enforcement. Invalid values are never silently
+normalized. Changing the prompt changes the binding and requires a new job.
+
 - The binding hashes the explicit endpoint, deployment, profile, schema,
   prompt/version, and request settings. Only the hash enters the plan, not the
   endpoint. A deployment identifier is **not proof of an underlying model
@@ -275,7 +286,9 @@ Tests cover requests, SDK decoding, usage retention, no retries, safe failure
 classification, factory resource closure, and create/inspect/advance/replay/resume
 against a fake HTTP transport. They do **not** verify live identity/RBAC,
 deployment capabilities/version, service billing, or extraction accuracy.
-No semantic validation, approval, full G0 pass, or live-model success is claimed.
+The separate [live smoke record](docs/model-smoke-results.md) documents the
+limited observed outcome. No semantic validation, approval, full G0 pass,
+or completed live batch is claimed.
 
 ## Storage and scope limitations
 

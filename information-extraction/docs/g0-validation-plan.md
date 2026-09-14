@@ -20,6 +20,11 @@ The [offline execution core](../README.md) is a new, standard-library Python
 implementation using a real local SQLite ledger and an injected synthetic
 model. It does not yet use Agent Framework, Invocations, Blob, or a live model.
 
+Separately, the optional Responses model adapter has
+[partial live evidence](model-smoke-results.md): one synthetic chunk succeeded
+after a prompt revision, while the second timed out with prior progress
+preserved. Persistence and execution were still local, not Foundry-hosted.
+
 The suite covers one-attempt commits, two explicitly advanced chunks,
 historical request replay, independent connection ownership, subprocess
 restoration, handled failure/resume, process exit, and publication rollback.
