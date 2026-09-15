@@ -11,7 +11,7 @@ provides create-only cloud persistence. An optional **Foundry Responses adapter*
 can invoke an explicitly selected deployment. Azure SDKs are opt-in. A
 [storage-only Bicep template](docs/storage-deployment.md) and a
 [synthetic hosted source-deployment path](docs/hosted-deployment.md) are
-available. The full workbench deployment is not implemented.
+available. A repeatable full-workbench deployment template is not implemented.
 
 A [bounded live model smoke](docs/model-smoke-results.md) completed both
 synthetic chunks on an existing DeepSeek deployment after an explicit prompt
@@ -66,23 +66,25 @@ The next cloud slice is scoped in the
 selected architecture and resource/permission checklist, not approval to
 create resources. A separate [cloud entry point and authorization/client
 implementation](docs/cloud-workbench.md) now has local signed-token,
-HTTP, and UI-fixture coverage; it has not been deployed or validated against
-live Easy Auth, WebSockets, or effective Foundry access. The
+HTTP, and UI-fixture coverage; its subsequent private source deployment
+has not been validated against live Easy Auth, WebSockets, or effective
+Foundry access. The
 [read-only preflight](docs/workbench-hosting-preflight.md) records the runtime,
 scoped resource/role inventory and indicative B1 price. An
 [empty web-host slice](docs/web-host-deployment.md) was created in approved
 West US 2 after East US quota rejection, in the same existing resource group.
-The empty site is stopped with public access disabled; its retained B1 plan
+The site remains stopped with public access disabled; its retained B1 plan
 continues billing. A subsequent [approved identity slice](docs/web-identity-configuration.md)
 configured single-operator Easy Auth, its protected login credential, and an
 agent-scoped web managed identity. Application deployment and live
 authorization checks remain separate gates. A [guarded deployment slice](docs/guarded-deployment.md)
 added distinct web packaging and created backend version 2 with the
 `current` interface and an explicit Invocations `2.0.0` declaration, while
-keeping its endpoint disabled. The web ZIP is prepared but not uploaded:
-an isolated private deployment container and any necessary operator upload
-grant still need approval. No version-2 runtime or browser acceptance is
-claimed. Protecting only
+keeping its endpoint disabled. After explicit private-staging approval, the
+web ZIP completed remote Oryx build and ARM OneDeploy deployment through a
+dedicated private container and container-scoped operator grant. The web
+app remains stopped/public-access-disabled. No version-2 runtime or
+browser acceptance is claimed. Protecting only
 the web login does not protect a separately callable Foundry endpoint.
 
 ## Run the offline checks

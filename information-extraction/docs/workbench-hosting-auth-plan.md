@@ -12,13 +12,15 @@ register directory applications, enable an endpoint, or incur recurring
 hosting charges. The [read-only preflight](workbench-hosting-preflight.md)
 records the observed prerequisites and remaining approvals.
 [Authorization and a separate cloud client](cloud-workbench.md) now have
-local signed-token/HTTP/UI-fixture coverage. They have not been deployed or
-validated against Azure ingress, browser WebSockets, or effective permissions.
+local signed-token/HTTP/UI-fixture coverage and a subsequent
+[private source deployment](guarded-deployment.md). They have not been
+runtime-validated against Azure ingress, browser WebSockets, or effective
+permissions.
 
 The operator subsequently approved one empty B1 plan/site in the same
 resource group as the Foundry project. After an East US quota rejection,
 the operator selected West US 2, where
-[resource creation succeeded](web-host-deployment.md). The empty app is
+[resource creation succeeded](web-host-deployment.md). The app remains
 stopped with public access disabled; its retained B1 plan continues billing.
 Directory/role changes, application deployment and agent enablement remain
 outside that approval.
@@ -28,8 +30,10 @@ The operator subsequently approved the identity-only step.
 single-tenant registration, operator assignment, OIDC-only consent, protected
 login credential, mandatory Easy Auth, system-assigned web identity and
 agent-scoped Consumer grant. The app is still stopped/public-access-disabled,
-the agent is still disabled, and no code was deployed. Live caller isolation
-and WebSocket behavior remain unverified.
+the agent is still disabled, and that identity-only step deployed no code.
+Later explicit approval enabled private artifact staging and source
+deployment, not site start or public access. Live caller isolation and
+WebSocket behavior remain unverified.
 
 The first release remains a **single-operator** reference workbench, as
 agreed in the [implementation plan](implementation-plan.md). The next cloud
@@ -211,9 +215,10 @@ Steps 2-3 now have code and local fixture evidence. A separately approved
 identity slice configured the existing resources, with readback evidence.
 The subsequent [guarded deployment slice](guarded-deployment.md) added web
 packaging and created backend version 2 without enabling or invoking it.
-Repeatable deployment definitions, private web upload/build/startup, and
-the live acceptance matrix remain unfinished. A separate trusted artifact
-container and any necessary upload grant require approval; the web host
+A further explicit approval enabled a separate trusted artifact container,
+an operator-only container upload grant, remote web build/deployment and
+startup configuration. Repeatable deployment definitions, actual web
+startup and the live acceptance matrix remain unfinished; the web host
 remains stopped/public-access-disabled.
 
 Cloud transport must distinguish a durable job ID from the gateway's

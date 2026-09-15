@@ -1,13 +1,14 @@
 # Cloud workbench code: authorization and transport
 
-This is **locally tested code, not a deployed or live-validated application**.
+This is **source-deployed code, not a running or live-validated application**.
 The code-only slice did not create directory registrations, credentials,
 identities or grants. A subsequent, separately approved
 [identity-configuration slice](web-identity-configuration.md) configured
-those controls on the existing App Service. The app remains
-stopped/public-access-disabled without deployed application code; its B1
-plan still bills. No agent was enabled or real model called. **G0 remains
-incomplete.**
+those controls on the existing App Service. A subsequent
+[approved private deployment](guarded-deployment.md#private-web-deployment-approved-and-completed)
+completed source upload, remote Oryx build and deployment. The app remains
+stopped/public-access-disabled; its B1 plan still bills. No agent was
+enabled or real model called. **G0 remains incomplete.**
 
 ## Entry points and public interfaces
 
@@ -153,10 +154,11 @@ CORS/XSRF settings. It must not run the local launcher or hosted `main.py`.
 The [separate web source target](guarded-deployment.md#separate-source-artifacts)
 is available through `scripts/package_source.py --target web --check`.
 It maps `requirements-web.txt` to the ZIP root `requirements.txt`; the
-hosted target and its 14-file allowlist are unchanged. Web upload, remote
-build/startup wiring, and repeatable identity resource definitions remain
-separate work. The same guarded slice created backend version 2 without
-enabling or invoking it.
+hosted target and its 14-file allowlist are unchanged. Private web upload,
+remote build and startup configuration are now recorded in the approved
+deployment; actual startup/browser acceptance and repeatable identity
+resource definitions remain separate work. The guarded slice also created
+backend version 2 without enabling or invoking it.
 
 ## Reproduce the local checks
 

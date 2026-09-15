@@ -161,11 +161,12 @@ endpoint disablement. Its four historical sessions still report `idle`.
 No version-2 invocation or real-model call was made.
 
 The web host has its separately configured identity/login controls but
-remains stopped/public-access-disabled without application code. Private
-web deployment needs approval for a trusted artifact container and any
-necessary upload grant. Protocol-2 runtime behavior, negative caller
-tests, web startup and browser acceptance remain open; provisioning
-status and local packaging checks do not close G0-10.
+remains stopped/public-access-disabled. After explicit approval, a separate
+trusted artifact container and operator-only upload grant enabled private
+ARM OneDeploy delivery with successful Oryx build. Protocol-2 runtime
+behavior, negative caller tests, actual web startup and browser acceptance
+remain open; deployment success and local packaging checks do not close
+G0-10.
 
 ## 1. Smallest demonstration
 
@@ -193,7 +194,7 @@ Responses wrapper, or a full deployment template merely to prove this path.
 
 | Decision | Candidate direction | Evidence needed before selection |
 | --- | --- | --- |
-| Web hosting | A Linux B1 plan and site were created in operator-selected West US 2 after East US quota rejection. Python 3.13, Easy Auth and a web managed identity are configured; the site is stopped/public-access-disabled without application code. | Approved private artifact staging, application/dependency startup, live Entra/identity behavior, interactive connections, restart behavior, and cleanup |
+| Web hosting | Linux B1 in operator-selected West US 2; Python 3.13, Easy Auth and a web managed identity configured. Approved private source deployment and Oryx build succeeded; site remains stopped/public-access-disabled. | Actual application/dependency startup, live Entra/identity behavior, interactive connections, restart behavior, and cleanup |
 | Batch driver lifetime | Prefer deterministic bounded progression outside browser-request and page-rerun lifetimes. | A supported host lifecycle that survives client disconnect and has documented cancellation/deadline behavior |
 | Driver placement | Operator selected Foundry native resilient tasks Preview for model-free feasibility; Durable Functions remains a fallback, not an approved deployment. | Real SDK compatibility, persisted application limits, and later hosted start/status/resume and process recovery; approve resource changes separately |
 | Deployment interface | Preserve the existing Invocations approach unless evidence requires a change. | Clean package readiness and a supported source deployment/invocation path; confirm what azd can express |

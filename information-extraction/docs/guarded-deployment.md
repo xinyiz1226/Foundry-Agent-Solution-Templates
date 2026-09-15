@@ -3,12 +3,15 @@
 **Observed:** September 15, 2026. The existing synthetic backend now has
 version **2**, with the current-job discovery and lifecycle fixes. Foundry
 reports that version as `active`, but the agent endpoint remains
-**disabled**. The web application is **not deployed**. Its existing Linux
-App Service remains stopped with public access disabled. **G0 is incomplete.**
+**disabled**. After a subsequent explicit approval, the web ZIP completed
+remote Oryx build and deployment. Its existing Linux App Service remains
+**stopped with public access disabled**; runtime and browser acceptance have
+not been exercised. **G0 is incomplete.**
 
-This slice did not enable either endpoint, invoke a hosted session, call a
-real model, change directory configuration, or add storage resources or
-role assignments. The retained B1 plan continues billing.
+Neither slice enabled an endpoint, invoked a hosted session, called a real
+model, or changed directory configuration. The later approval added only
+the dedicated deployment container and its operator upload grant, as
+recorded below. The retained B1 plan continues billing.
 
 ## Separate source artifacts
 
@@ -98,7 +101,7 @@ propagation. Historical version-1 smoke results are not version-2 runtime
 evidence. A future bounded probe must verify its actual version/routing and
 the runtime contract before claiming those gates passed.
 
-## Web deployment blocker and next boundary
+## Private web deployment: approved and completed
 
 The existing App Service has public access disabled. Do not enable public
 SCM access simply to push a ZIP. Microsoft documents remotely hosted
@@ -108,7 +111,7 @@ approved remote-build configuration, including
 `SCM_DO_BUILD_DURING_DEPLOYMENT=true`, and a Streamlit startup command for
 `cloud_workbench.py`, not the local launcher or hosted entry point.
 
-The proposed staging location is a **separate private deployment container
+The staging location is a **separate private deployment container
 in the existing storage account**. The synthetic agent can write its ledger
 container, so that container is not a trusted location for web code.
 Do not grant the agent or web runtime deployment-artifact write access.
@@ -116,16 +119,50 @@ Use only approved deployment-operator permissions and a short-lived,
 read-only, single-blob user-delegation SAS for the pull. Keep its URI in
 memory; never print or commit it.
 
-Approval was requested for the separate container and any necessary
-container-scoped operator upload grant, but no answer was received. No
-container, grant, SAS, package upload, OneDeploy request, remote-build
-setting, or startup change was made. Inspect existing user-delegation-key
-permissions before requesting any additional role; do not add an
-account/subscription-wide data role for convenience.
+The first preparation round stopped without creating those resources
+because approval had not been received. The operator subsequently approved
+private staging and necessary upload permissions on September 15, 2026.
+The following operations then completed without opening ingress or
+starting the web application:
 
-After that infrastructure approval, deployment still must preserve the
-login secret and Easy Auth settings, explicitly control restart behavior,
-and verify remote build and startup. Public access/start and agent
+| Surface | Observed result |
+| --- | --- |
+| Private container | `workbench-deployments-8d99d29b` in the existing storage account, `publicAccess: None`, with an explicit deployment-ownership marker |
+| Operator grant | Storage Blob Data Contributor at that container only; no new account/subscription-wide data role |
+| Delegation key | Existing effective control permission was checked, then actual short-lived key issuance succeeded; no additional Delegator role was needed |
+| Source blob | Digest-named ZIP, create-only upload, ownership/source metadata, and full download SHA-256 verification against the web digest above |
+| Deployment credential | User-delegation SAS for one blob, read-only, HTTPS-only, 30-minute lifetime; no token or package URI printed or written to local files/Git |
+| App settings | `SCM_DO_BUILD_DURING_DEPLOYMENT=true`; Streamlit usage telemetry disabled; existing settings and login secret preserved by protected readback comparison |
+| Startup | Python 3.13 running only the cloud Streamlit entry, on `0.0.0.0:8000`, headless, with CORS/XSRF protections enabled and the configured browser hostname/HTTPS port |
+| Submission | One ARM OneDeploy request with `type: zip`, `clean: true`, `restart: false`; HTTP 202 was treated as acknowledgment, not completion |
+| Completion | Deployment `35ae2a6eadf9420ab0f3d0bb6a0ed14f` reached `status: 4`, `complete: true`, `active: true`; ended at `2026-09-15T08:45:23.7950097Z` |
+| Build evidence | ARM deployment logs include an Oryx build and a deployment-success message |
+| Final boundaries | Site `Stopped`, public access `Disabled`, existing Easy Auth and slot-sticky secret retained; agent endpoint still disabled |
+
+The source artifact is the unchanged 84,879-byte web ZIP built from
+`91725b68baf224eabcaf1dc6df961bdc25a79dd0`. The source hash is an artifact
+identity, not a hash of the expanded remote installation or a lock on
+remotely resolved dependency versions.
+
+Deployment used the documented ARM request directly. The installed CLI's
+`--src-url` path logs its package URL, so it was not used with a SAS on the
+command line. Polling used ARM rather than opening public SCM access.
+The supplied deployment tag was not retained by the service. The sole
+non-temporary deployment on this previously empty owned site was correlated
+with the acknowledged submission and observed first building, then
+successful. Subsequent verification pinned that deployment ID rather than
+following an arbitrary later `latest` deployment.
+
+Independent subscription-scoped reads still returned exactly one direct
+assignment for each runtime identity: the web identity's agent-scoped
+Foundry Agent Consumer, and the agent identity's original ledger-container
+Blob contributor. Neither received a deployment-container grant. This
+does not replace the separate inherited-group/effective-caller audit.
+
+The approved operator grant and source blob remain for subsequent
+deployments; SAS expiry is not resource cleanup or revocation of that role.
+The deployed application has **not been started or browser-tested**.
+Public access/start and agent
 enablement require the finite synthetic probe boundary, including a real
 unapproved non-administrator test identity, direct/alternate-route access
 checks, WebSocket expiry/reconnect, and owned-session stop conditions.
@@ -134,6 +171,8 @@ No real-model invocation is authorized by this slice.
 Sources: [network-secured ZIP deployment](https://learn.microsoft.com/en-us/azure/app-service/deploy-zip#deploy-to-network-secured-apps),
 [Python build automation](https://learn.microsoft.com/en-us/azure/app-service/configure-language-python#customize-build-automation),
 and [user-delegation SAS permissions](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-user-delegation-sas-create-cli).
+ARM status and build evidence used [OneDeploy status](https://learn.microsoft.com/en-us/rest/api/appservice/web-apps/get-one-deploy-status?view=rest-appservice-2024-11-01)
+and [deployment logs](https://learn.microsoft.com/en-us/rest/api/appservice/web-apps/list-deployment-log?view=rest-appservice-2024-11-01).
 
 ## Local verification
 

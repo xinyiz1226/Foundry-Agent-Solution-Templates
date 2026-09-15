@@ -141,8 +141,10 @@ interface.** No agent version was changed in this identity slice.
 
 The subsequent [guarded deployment slice](guarded-deployment.md) completed
 item 1 below and uploaded backend version 2 without enabling or invoking it.
-Web deployment remains blocked on approval for trusted private artifact
-staging. The following gates were recorded at the identity handoff:
+Further explicit approval then enabled trusted private artifact staging
+and web source deployment, while preserving the stopped/public-disabled
+site. Runtime/browser acceptance remains outstanding. The following gates
+were recorded at the identity handoff:
 
 1. Reconcile the hosted protocol declaration and prepare distinct,
    allowlisted web and updated backend artifacts. Do not substitute the

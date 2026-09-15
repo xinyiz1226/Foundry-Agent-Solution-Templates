@@ -37,8 +37,10 @@ plan's charges.
 
 The creation/readback below records the original empty-host slice.
 Subsequent [separately approved identity configuration](web-identity-configuration.md)
-added login settings and a narrowly scoped managed identity. The app still
-has no deployed workbench code and remains stopped/public-access-disabled.
+added login settings and a narrowly scoped managed identity. Later
+[approved private source deployment](guarded-deployment.md) completed
+Oryx build and web deployment; the app remains stopped/public-access-disabled.
+The empty-host template below does not model those subsequent changes.
 
 On September 15, 2026, the operator approved changing only the new web
 resources' region to **West US 2**, keeping the existing Foundry resource
