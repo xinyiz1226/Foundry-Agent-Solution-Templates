@@ -201,7 +201,7 @@ function Invoke-BpiCleanupMutation {
         if ($WhatIfPreference) { return $false }
         throw "Cleanup stopped: $Action was not confirmed."
     }
-    Get-BpiCleanupInventory | Out-Null
+    $inventory = @(Get-BpiCleanupInventory)
     if ($script:CleanupAccountId) {
         $active = Get-BpiCleanupResource $script:CleanupAccountId
         if ($null -ne $active) { Assert-BpiCleanupAccount $active }
@@ -213,6 +213,10 @@ function Invoke-BpiCleanupMutation {
         if ($null -eq $initializer) { return $true }
         Assert-BpiCleanupInitializerWorkStopped
         if ((Get-BpiCleanupProvisioningState $initializer) -eq 'Deleting') { return $true }
+    }
+    if ($Target -ieq $script:CleanupGroupId -or
+        $Target -imatch '/providers/Microsoft.Network/(virtualNetworks|natGateways)/') {
+        Wait-BpiCleanupNetwork @($inventory | Where-Object { $_.type -ieq 'Microsoft.Network/virtualNetworks' })
     }
     Save-BpiCleanupProgress "$Action about to be requested: $Target"
     Invoke-BpiCleanupAz $Arguments -Mutation -AllowAbsent | Out-Null
@@ -409,13 +413,65 @@ function Assert-BpiCleanupNetwork {
     }
 }
 
+function Get-BpiCleanupSubnetAssociations {
+    param([hashtable]$Subnet, [string]$Name)
+    if (-not $Subnet.properties.ContainsKey($Name) -or $null -eq $Subnet.properties[$Name]) {
+        return @()
+    }
+    if ($Subnet.properties[$Name] -isnot [array]) { throw "Malformed subnet $Name metadata." }
+    return $Subnet.properties[$Name]
+}
+
+function Test-BpiCleanupDeletableInitializerSal {
+    param([hashtable]$Vnet, [hashtable]$Subnet, [object[]]$Links)
+    if ($Subnet.name -cne 'initializer' -or $Links.Count -ne 1 -or
+        $Links[0] -isnot [hashtable]) { return $false }
+    $sal = $Links[0]
+    if ($sal['id'] -ine "$($Subnet.id)/serviceAssociationLinks/acisal" -or
+        $sal['name'] -cne 'acisal' -or
+        $sal['type'] -ine 'Microsoft.Network/virtualNetworks/subnets/serviceAssociationLinks' -or
+        $sal['properties'] -isnot [hashtable]) { return $false }
+    $properties = $sal.properties
+    if ($properties['allowDelete'] -isnot [bool] -or $properties.allowDelete -cne $true -or
+        $properties['linkedResourceType'] -ine 'Microsoft.ContainerInstance/containerGroups' -or
+        $properties['provisioningState'] -cne 'Succeeded') { return $false }
+    $plan = Get-BpiCleanupInitializerPlan
+    if ($Subnet.id -ine $plan.subnetId -or "$($Vnet.id)/subnets/initializer" -ine $plan.subnetId) {
+        throw 'Residual ACI SAL is not on the recorded, planned initializer subnet.'
+    }
+    foreach ($name in @('ipConfigurations', 'resourceNavigationLinks', 'privateEndpoints',
+            'ipAllocations', 'applicationGatewayIPConfigurations', 'serviceEndpointPolicies', 'serviceEndpoints')) {
+        if (@(Get-BpiCleanupSubnetAssociations $Subnet $name).Count) { return $false }
+    }
+    foreach ($name in @('networkSecurityGroup', 'routeTable')) {
+        if ($Subnet.properties.ContainsKey($name) -and $null -ne $Subnet.properties[$name]) { return $false }
+    }
+    $delegations = @(Get-BpiCleanupSubnetAssociations $Subnet 'delegations')
+    if ($delegations.Count -ne 1 -or $delegations[0] -isnot [hashtable] -or
+        $delegations[0]['name'] -cne 'initializer-containers' -or
+        $delegations[0]['properties'] -isnot [hashtable] -or
+        $delegations[0].properties['serviceName'] -ine 'Microsoft.ContainerInstance/containerGroups') {
+        return $false
+    }
+    if ($properties.ContainsKey('link') -and $properties.link -and $properties.link -ine $plan.id) {
+        return $false
+    }
+    # allowDelete permits an ordinary Azure deletion attempt, not a guarantee of
+    # parent deletion or permission to modify a SAL/delegation. Azure remains authoritative.
+    if ($null -ne (Get-BpiCleanupResource $plan.id '2023-05-01')) { return $false }
+    Write-Host "Only the exact deletable initializer acisal remains on $($Subnet.id); ordinary owned network deletion may be attempted. SAL and ACI delegation will not be modified directly."
+    return $true
+}
+
 function Wait-BpiCleanupNetwork {
     param([object[]]$Vnets)
     Wait-BpiCleanup 'SAL release and no remaining initializer work (retained soft account may require service support)' {
         $ready = $true
         $inventory = @(Get-BpiCleanupInventory)
         foreach ($item in $inventory) {
-            if ($item.type -ieq 'Microsoft.ContainerInstance/containerGroups') { $ready = $false }
+            if ($item.type -in @('Microsoft.ContainerInstance/containerGroups', 'Microsoft.Network/networkProfiles')) {
+                $ready = $false
+            }
             if ($item.type -ieq 'Microsoft.Resources/deploymentScripts') {
                 $job = Get-BpiCleanupResource $item.id '2023-08-01'
                 if ($null -ne $job -and (Get-BpiCleanupProvisioningState $job) -notin @('Succeeded', 'Failed', 'Canceled')) {
@@ -423,19 +479,20 @@ function Wait-BpiCleanupNetwork {
                 }
             }
         }
+        $workStopped = $ready
         foreach ($item in $Vnets) {
             $vnet = Get-BpiCleanupResource $item.id '2024-07-01'
             if ($null -eq $vnet) { continue }
             Assert-BpiCleanupNetwork $vnet
             foreach ($subnet in $vnet.properties.subnets) {
-                foreach ($key in @('serviceAssociationLinks', 'ipConfigurations', 'resourceNavigationLinks')) {
-                    if ($subnet.properties.ContainsKey($key)) {
-                        if ($null -eq $subnet.properties[$key] -or $subnet.properties[$key] -isnot [array]) {
-                            throw "Malformed subnet $key metadata."
-                        }
-                        if (($key -eq 'serviceAssociationLinks' -or $subnet.name -eq 'initializer') -and
-                            $subnet.properties[$key].Count -gt 0) { $ready = $false }
-                    }
+                $links = @(Get-BpiCleanupSubnetAssociations $subnet 'serviceAssociationLinks')
+                if ($links.Count -and (-not $workStopped -or
+                    -not (Test-BpiCleanupDeletableInitializerSal $vnet $subnet $links))) {
+                    $ready = $false
+                }
+                foreach ($key in @('ipConfigurations', 'resourceNavigationLinks')) {
+                    $associations = @(Get-BpiCleanupSubnetAssociations $subnet $key)
+                    if ($subnet.name -eq 'initializer' -and $associations.Count) { $ready = $false }
                 }
             }
         }
@@ -443,8 +500,7 @@ function Wait-BpiCleanupNetwork {
     }
 }
 
-function Get-BpiCleanupInitializer {
-    param([string]$Id)
+function Get-BpiCleanupInitializerPlan {
     $identityId = [string](Get-BpiOutput $state 'INITIALIZER_ID')
     $identityPrefix = "$script:CleanupGroupId/providers/Microsoft.ManagedIdentity/userAssignedIdentities/"
     if ($identityId -inotmatch "^$([regex]::Escape($identityPrefix))(bpi-[a-z0-9]+)-initializer$" -or
@@ -454,17 +510,26 @@ function Get-BpiCleanupInitializer {
     $stem = $Matches[1]
     $expectedSubnet = "$script:CleanupGroupId/providers/Microsoft.Network/virtualNetworks/$stem-vnet/subnets/initializer"
     $expectedId = "$script:CleanupGroupId/providers/Microsoft.ContainerInstance/containerGroups/$stem-bootstrap-aci"
-    if ($Id -ine $expectedId -or $Id -notin $state.resourceIds -or
+    if ($expectedId -notin $state.resourceIds -or
         (Get-BpiOutput $state 'initializerSubnetId') -ine $expectedSubnet -or
         ($expectedSubnet -replace '/subnets/initializer$', '') -notin $state.resourceIds) {
         throw 'Initializer container or subnet is not the exact recorded, planned owned target.'
+    }
+    return @{ id = $expectedId; name = "$stem-bootstrap-aci"; subnetId = $expectedSubnet }
+}
+
+function Get-BpiCleanupInitializer {
+    param([string]$Id)
+    $plan = Get-BpiCleanupInitializerPlan
+    if ($Id -ine $plan.id) {
+        throw 'Initializer container is not the exact recorded, planned owned target.'
     }
     $active = Get-BpiCleanupResource $Id '2023-05-01'
     if ($null -eq $active) { return $null }
     Assert-BpiCleanupTags $active
     # Reuse deployment's independent CLI validation of tags, exact identity and
     # subnet, single named container, and the pinned Microsoft image.
-    $container = Get-BpiPrivateInitializer $config $state "$stem-bootstrap-aci"
+    $container = Get-BpiPrivateInitializer $config $state $plan.name
     if (-not $container.ContainsKey('restartPolicy') -or $container.restartPolicy -cne 'Never' -or
         -not $container.ContainsKey('osType') -or $container.osType -cne 'Linux' -or
         ($container.ContainsKey('ipAddress') -and $null -ne $container.ipAddress -and

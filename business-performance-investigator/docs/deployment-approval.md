@@ -182,8 +182,12 @@ revoked and its absence verified; no pre-existing assignment was removed.
 
 Active-resource cleanup is pending at this checkpoint, with the 24-hour
 fallback retained. No purge has been performed and final billing is unknown.
-The project and active account have been confirmed absent; the remaining
-dependency is service-managed subnet-link release before final group deletion.
+The project and active account have been confirmed absent. The 30-minute
+network wait subsequently timed out; inspection found no Foundry SAL, only
+the initializer's explicitly deletable ACI `acisal`. The corrected cleanup
+guard distinguishes this exact residual from blocking links. A guarded retry
+is performing normal owned-resource deletion; completion must be verified.
+No direct SAL mutation or account purge is authorized.
 An unexpected capability-host 404 envelope was corroborated by a successful
 empty parent list before resuming. Cleanup now handles that precise case
 without interpreting arbitrary `UserError` responses as absence.
@@ -228,7 +232,7 @@ removes retained soft-deleted resources.
 Do not claim complete teardown while residual Foundry resources or links
 remain; retain the evidence and escalate stalled platform cleanup.
 
-Only after active Foundry accounts and subnet service associations are absent
+Only after active Foundry accounts and blocking subnet service associations are absent
 can `cleanup.ps1` delete the remaining owned group. It checks each stage,
 observes already-`Deleting` resources, and bounds waits with visible progress.
 The timeout is per wait operation, not an overall experiment deadline;
@@ -237,8 +241,14 @@ The initializer NAT association is removed only after verifying its exact
 owned subnet/NAT IDs and that no initializer work remains.
 For direct ACI, cleanup verifies the recorded/planned ID, ownership, identity,
 subnet, image, private topology and terminal state before requesting deletion.
-It confirms both container absence and subnet release before detaching NAT;
+It confirms both container absence and safe subnet teardown before detaching NAT;
 active, unknown or mismatched execution is not treated as safe to remove.
+The sole allowed residual is the exact owned initializer ACI `acisal` with
+Boolean `allowDelete: true`, matching linked service and successful state,
+expected delegation, and no containers, active work, network profiles, IP
+configurations or other initializer associations. Checks repeat immediately
+before mutations. This permits an ordinary platform-enforced deletion attempt,
+not direct SAL/delegation editing or a claim that deletion must succeed.
 
 `-WhatIf` is read-only for Azure and local ownership state. The absent-group
 path reports residual soft-deleted accounts explicitly. No shared-model

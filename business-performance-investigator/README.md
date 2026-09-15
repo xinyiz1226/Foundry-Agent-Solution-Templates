@@ -285,9 +285,14 @@ The direct initializer stops after completion but remains an owned container
 resource until cleanup. Its supporting NAT/IP and private-network resources,
 plus any legacy deployment-script/storage resources, also need cleanup.
 Ordered cleanup validates the exact terminal initializer before deleting it,
-then waits for container absence and subnet release before detaching NAT.
+then waits for container absence and safe subnet teardown before detaching NAT.
 Running, unknown or mismatched containers are rejected. A failed legacy
 Deployment Scripts resource is allowed only as terminal work, not bypassed.
+An exact owned initializer `acisal` may remain after ACI deletion. Only when
+its identity/type/state match, `allowDelete` is Boolean true, and no execution
+or other initializer associations remain may normal network/group deletion
+be attempted. All other SALs remain blockers. The script never directly edits
+SALs or removes the ACI delegation; Azure rejection still means incomplete cleanup.
 The script does not delete Entra directory objects or external role
 assignments. Soft-deleted accounts are retained by default. Permanent purge
 requires separate `-ApproveFoundryPurge` authorization and verified account

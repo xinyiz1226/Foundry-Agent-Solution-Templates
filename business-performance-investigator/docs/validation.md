@@ -213,6 +213,23 @@ The updated cleanup suite passed **56 focused tests**. A guarded resume
 confirmed deletion of the project and active account and is waiting for
 service-managed subnet-link release; soft-deleted-account retention is explicit.
 
+The subsequent 30-minute network wait exposed an overly strict cleanup guard,
+not a remaining Foundry link. A live VNet read confirmed no Foundry-subnet SAL,
+no initializer container or IP configuration, and only initializer `acisal`
+with `linkedResourceType: Microsoft.ContainerInstance/containerGroups`,
+`provisioningState: Succeeded` and boolean `allowDelete: true`.
+The [network API contract](https://learn.microsoft.com/en-us/rest/api/virtualnetwork/service-association-links/list?view=rest-virtualnetwork-2025-09-01)
+defines that flag as permitting deletion and uses this same ACI link shape in
+its example. Cleanup now distinguishes this exact deletable initializer
+residual from blocking/unknown links, with fresh ownership, topology and
+no-active-work checks before mutations. It never directly deletes or patches
+a SAL or removes delegation. The focused cleanup suite passed **64 tests**.
+The final guarded retry reached normal owned-network deletion; final group
+deletion remains unverified at this checkpoint.
+The final integrated run passed **159 tests** with Bicep compilation and no
+skips. Azure accepted the guarded group-deletion request and its resource
+inventory is decreasing; an accepted request is not proof of completion.
+
 The exact temporary shared-model role was revoked and its absence verified.
 Ordered resource cleanup remains pending at this checkpoint; no permanent
 purge is approved. The second scoped Cost Management query also returned

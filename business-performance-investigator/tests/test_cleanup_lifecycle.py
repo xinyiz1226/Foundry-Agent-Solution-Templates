@@ -139,6 +139,32 @@ def capability_host_not_found(host_id):
     return f"ERROR: CapabilityHost '{host_name}' not found in workspace 'bpi-test-(" + json.dumps(payload, separators=(",", ":")) + ")"
 
 
+def residual_aci_sal_fixture():
+    data = initializer_fixture()
+    for id_ in (ACI, LEGACY_JOB, ACCOUNT, PROJECT, PROJECT_HOST, ACCOUNT_HOST):
+        del data["resources"][id_]
+    subnet = data["resources"][VNET]["properties"]["subnets"][2]
+    subnet["properties"]["delegations"] = [{
+        "name": "initializer-containers",
+        "properties": {"serviceName": "Microsoft.ContainerInstance/containerGroups"},
+    }]
+    data["aciLinkReads"] = 0
+    data["staticSals"] = {
+        "foundry": None,
+        "initializer": [{
+            "id": f"{VNET}/subnets/initializer/serviceAssociationLinks/acisal",
+            "name": "acisal",
+            "type": "Microsoft.Network/virtualNetworks/subnets/serviceAssociationLinks",
+            "properties": {
+                "allowDelete": True,
+                "linkedResourceType": "Microsoft.ContainerInstance/containerGroups",
+                "provisioningState": "Succeeded",
+            },
+        }],
+    }
+    return data
+
+
 HARNESS = r"""
 $ErrorActionPreference = 'Stop'
 $global:f = Get-Content -LiteralPath '__FIXTURE__' -Raw | ConvertFrom-Json -AsHashtable
@@ -241,6 +267,16 @@ function az {
                     if (-not $aciExists -and $global:f.aciLinkReads -gt 0) { $global:f.aciLinkReads-- }
                 } else {
                     $result.properties.subnets[2].properties.ipConfigurations = @()
+                }
+            }
+            if ($id -match '/virtualNetworks/[^/]+$' -and $global:f.ContainsKey('staticSals')) {
+                foreach ($subnet in $result.properties.subnets) {
+                    if ($global:f.staticSals.ContainsKey($subnet.name)) {
+                        $subnet.properties.serviceAssociationLinks = $global:f.staticSals[$subnet.name]
+                    }
+                }
+                if ($global:f.ContainsKey('flipSalAt') -and $global:readCounts[$id] -ge $global:f.flipSalAt) {
+                    $result.properties.subnets[2].properties.serviceAssociationLinks[0].properties.allowDelete = $false
                 }
             }
             Emit $result
@@ -1003,6 +1039,135 @@ class CleanupLifecycleTests(unittest.TestCase):
         self.assert_ok(result)
         self.assertFalse(any(ACI in w for w in self.mutations(calls)))
         self.assertEqual(state["status"], "deleted")
+
+    def test_exact_deletable_residual_aci_sal_allows_only_normal_owned_deletion(self):
+        data = residual_aci_sal_fixture()
+        result, calls, state, _ = self.run_cleanup(data)
+        self.assert_ok(result)
+        writes = self.mutations(calls)
+        self.assertEqual(len(writes), 3)
+        self.assertIn("network vnet subnet update", writes[0])
+        self.assertIn(NAT, writes[1])
+        self.assertIn("group delete", writes[2])
+        self.assertNotIn("serviceAssociationLinks", "\n".join(writes))
+        self.assertNotIn("delegations", "\n".join(writes))
+        self.assertIn("ordinary owned network deletion may be attempted", result.stdout)
+        self.assertEqual(state["status"], "deleted")
+
+    def test_residual_aci_sal_whatif_never_mutates_state_or_azure(self):
+        result, calls, _, unchanged = self.run_cleanup(residual_aci_sal_fixture(), flags="-WhatIf")
+        self.assert_ok(result)
+        self.assertTrue(unchanged)
+        self.assertEqual(self.mutations(calls), [])
+
+    def test_residual_aci_sal_strict_boolean_and_exact_shape_required(self):
+        for mismatch in ("missing_allow", "false", "null", "string", "integer", "name", "id", "type",
+                         "linked_type", "provisioning", "second_link", "malformed_collection", "external_link"):
+            with self.subTest(mismatch=mismatch):
+                data = residual_aci_sal_fixture()
+                sal = data["staticSals"]["initializer"][0]
+                properties = sal["properties"]
+                if mismatch == "missing_allow":
+                    del properties["allowDelete"]
+                elif mismatch in ("false", "null", "string", "integer"):
+                    properties["allowDelete"] = {"false": False, "null": None, "string": "true", "integer": 1}[mismatch]
+                elif mismatch == "name":
+                    sal["name"] = "legionservicelink"
+                elif mismatch == "id":
+                    sal["id"] = f"{VNET}/subnets/foundry/serviceAssociationLinks/acisal"
+                elif mismatch == "type":
+                    sal["type"] = "Microsoft.Network/other"
+                elif mismatch == "linked_type":
+                    properties["linkedResourceType"] = "Microsoft.App/environments"
+                elif mismatch == "provisioning":
+                    properties["provisioningState"] = "Deleting"
+                elif mismatch == "second_link":
+                    data["staticSals"]["initializer"].append(copy.deepcopy(sal))
+                elif mismatch == "malformed_collection":
+                    data["staticSals"]["initializer"] = {}
+                elif mismatch == "external_link":
+                    properties["link"] = ACI.replace("rg-bpi-cleanup-test", "shared")
+                result, calls, state, _ = self.run_cleanup(data)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.mutations(calls), [])
+                self.assertNotEqual(state["status"], "deleted")
+
+    def test_aci_sal_exception_never_applies_to_other_subnets(self):
+        for name in ("foundry", "private-endpoints"):
+            with self.subTest(name=name):
+                data = residual_aci_sal_fixture()
+                sal = data["staticSals"]["initializer"].pop()
+                sal["id"] = f"{VNET}/subnets/{name}/serviceAssociationLinks/acisal"
+                data["staticSals"][name] = [sal]
+                result, calls, state, _ = self.run_cleanup(data)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.mutations(calls), [])
+                self.assertNotEqual(state["status"], "deleted")
+
+    def test_residual_aci_sal_needs_recorded_plan_and_owned_vnet(self):
+        for mismatch in ("tags", "outputs", "unrecorded_aci", "subnet"):
+            with self.subTest(mismatch=mismatch):
+                data = residual_aci_sal_fixture()
+                if mismatch == "tags":
+                    data["resources"][VNET]["tags"]["bpiDeploymentId"] = "not-owned"
+                elif mismatch == "outputs":
+                    data["state"]["outputs"] = {}
+                elif mismatch == "unrecorded_aci":
+                    data["state"]["resourceIds"].remove(ACI)
+                else:
+                    data["state"]["outputs"]["initializerSubnetId"]["value"] = f"{VNET}/subnets/foundry"
+                result, calls, _, _ = self.run_cleanup(data)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.mutations(calls), [])
+
+    def test_residual_aci_sal_does_not_bypass_work_or_other_associations(self):
+        for association in ("work", "container", "network_profile", "ipConfigurations",
+                            "resourceNavigationLinks", "privateEndpoints", "serviceEndpoints",
+                            "networkSecurityGroup", "routeTable", "wrong_delegation"):
+            with self.subTest(association=association):
+                data = residual_aci_sal_fixture()
+                props = data["resources"][VNET]["properties"]["subnets"][2]["properties"]
+                if association == "work":
+                    data["resources"][LEGACY_JOB] = resource(
+                        LEGACY_JOB, "Microsoft.Resources/deploymentScripts", provisioningState="Running",
+                    )
+                elif association == "container":
+                    data["resources"][ACI] = initializer_fixture()["resources"][ACI]
+                    data["resources"][ACI]["properties"]["containers"][0]["properties"]["instanceView"]["currentState"]["state"] = "Running"
+                elif association == "network_profile":
+                    profile_id = f"{GROUP}/providers/Microsoft.Network/networkProfiles/old-aci"
+                    data["resources"][profile_id] = resource(profile_id, "Microsoft.Network/networkProfiles")
+                    data["state"]["resourceIds"].append(profile_id)
+                elif association == "ipConfigurations":
+                    data["aciLinkReads"] = -1
+                elif association in ("networkSecurityGroup", "routeTable"):
+                    props[association] = {"id": "unexpected-association"}
+                elif association == "wrong_delegation":
+                    props["delegations"][0]["properties"]["serviceName"] = "Microsoft.App/environments"
+                else:
+                    props[association] = [{"id": "unexpected-association"}]
+                result, calls, state, _ = self.run_cleanup(data)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.mutations(calls), [])
+                self.assertNotEqual(state["status"], "deleted")
+
+    def test_residual_aci_sal_revalidated_before_network_mutation(self):
+        data = residual_aci_sal_fixture()
+        data["flipSalAt"] = 5
+        result, calls, state, _ = self.run_cleanup(data)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Timed out waiting for SAL release", result.stderr)
+        self.assertEqual(self.mutations(calls), [])
+        self.assertNotEqual(state["status"], "deleted")
+
+    def test_residual_aci_sal_never_turns_failed_parent_deletion_into_success(self):
+        data = residual_aci_sal_fixture()
+        data["noOpGroupDelete"] = True
+        result, calls, state, _ = self.run_cleanup(data)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Timed out waiting for resource group absence", result.stderr)
+        self.assertTrue(any("group delete" in w for w in self.mutations(calls)))
+        self.assertNotEqual(state["status"], "deleted")
 
 
 if __name__ == "__main__":
