@@ -10,6 +10,12 @@ completed source upload, remote Oryx build and deployment. The app remains
 stopped/public-access-disabled; its B1 plan still bills. No agent was
 enabled or real model called. **G0 remains incomplete.**
 
+A subsequent [direct caller probe](guarded-deployment.md#real-caller-access-positive-current-read-and-negative-direct-call)
+temporarily enabled the backend, verified an operator's `current` read
+and an unapproved user's HTTP 403, then disabled it and stopped the new
+session. Those callers used isolated CLI profiles, not the deployed web
+managed identity or browser ID-token flow.
+
 ## Entry points and public interfaces
 
 | Surface | Purpose |

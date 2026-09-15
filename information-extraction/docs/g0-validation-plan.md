@@ -61,7 +61,7 @@ corruption, source evidence resolution, and unknown versus observed usage.
 | G0-07 | Offline identity/revision and Blob integrity checks; valid history restored in a replacement hosted application. | No live corruption injection. |
 | G0-08 | Native hosted task reached a persisted limit; explicit resume completed the remaining chunk through real Blob persistence. | Two chunks from one uninterrupted cloud start and browser-disconnect timing remain unverified. |
 | G0-09 | Local Streamlit page/client recreation restores current progress and evidence; a separate native-task process and process restart preserve the job. | Hosted authenticated browser reconnect and live disconnect timing remain unverified. |
-| G0-10 | Scoped runtime-identity Blob grant followed by successful hosted Blob/task operations; authenticated gateway calls and unauthenticated HTTP 401. Local signed-token/client coverage plus actual web login/identity/grant configuration readback. | No live browser/operator-denial test, unauthorized signed-in-user direct-call test, or full effective-permissions audit. |
+| G0-10 | Scoped runtime-identity Blob grant and hosted operations; unauthenticated HTTP 401; local signed-token/client coverage and actual web identity/configuration. A later enabled-endpoint test returned operator HTTP 200 and unapproved signed-in-user HTTP 403 for the same read-only Invocations `current` request. | Browser/operator-denial, web-managed-identity integration, alternate-route coverage and the full effective-permissions audit remain open; directory PIM eligibility was not readable. |
 | G0-11 | Owned session stop, different hosted application UUID, unchanged durable status, explicit resume, and endpoint disable observed. | Unexpected in-flight crash/lease recovery, hard cancellation, and real-model lifecycle remain unverified. |
 | G0-12 | Probe endpoint disabled and four session stops acknowledged; records report `idle`. | Source version, role, sessions and storage intentionally retained; deletion and final billing are not verified. |
 
@@ -167,7 +167,12 @@ ARM OneDeploy delivery with successful Oryx build. A later bounded private
 probe confirmed platform startup and restored the stopped/private site
 and `Always On=false`. Protocol-2 runtime behavior, negative caller tests,
 Streamlit session behavior and browser acceptance remain open; platform
-startup and local packaging checks do not close G0-10.
+startup and local packaging checks do not close G0-10. A subsequent
+[real-caller probe](guarded-deployment.md#real-caller-access-positive-current-read-and-negative-direct-call)
+confirmed operator HTTP 200 and test-user HTTP 403 for the same version-2
+`current` route, then disabled the agent and stopped the one new session.
+That narrow result does not establish web-managed-identity or other-route
+authorization.
 
 ## 1. Smallest demonstration
 

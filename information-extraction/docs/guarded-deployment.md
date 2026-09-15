@@ -6,8 +6,10 @@ reports that version as `active`, but the agent endpoint remains
 **disabled**. After a subsequent explicit approval, the web ZIP completed
 remote Oryx build and deployment. Its existing Linux App Service remains
 **stopped with public access disabled**. A later bounded private probe
-confirmed platform startup, not Streamlit/browser or backend integration
-acceptance. **G0 is incomplete.**
+confirmed platform startup. A subsequent real-caller test verified an
+operator's read-only version-2 `current` request and an unapproved user's
+denial on that same route. Streamlit/browser and web-managed-identity
+integration remain unverified. **G0 is incomplete.**
 
 Neither slice enabled an endpoint, invoked a hosted session, called a real
 model, or changed directory configuration. The later approval added only
@@ -223,12 +225,72 @@ remained disabled and Easy Auth unchanged. The retained B1 plan still bills.
 session, operator login, expired/reconnected WebSocket, web-identity
 gateway call, or version-2 synthetic round was exercised. A same-tenant,
 non-administrator identity not assigned to the web application was
-requested for negative access tests, but was not supplied. That remains a
-live integration gate; do not replace it with an administrator test,
-invent a test identity, or infer isolation from the stopped/private site.
+requested for negative access tests, but was not supplied during that
+startup round. The later real-caller test below addresses that narrow
+direct-route gate. Do not replace it with an administrator test, invent a
+test identity, or infer isolation from the stopped/private site.
 
 Sources: [Always On platform requests](https://learn.microsoft.com/en-us/azure/app-service/configure-common#configure-general-settings)
 and [ARM container logs](https://learn.microsoft.com/en-us/rest/api/appservice/web-apps/get-web-site-container-logs?view=rest-appservice-2024-11-01).
+
+## Real caller access: positive current read and negative direct call
+
+The operator subsequently supplied a test user's object ID and completed
+interactive sign-in using a separate local Azure CLI profile. The profile
+did not replace the operator's credentials. Authenticated Graph `/me`
+confirmed the expected test identity; no password or token was requested
+in chat or committed.
+
+Read-only preflight found an enabled same-tenant Member with no transitive
+memberships, application assignments, active directory roles, or matching
+Azure role assignments in the inspected subscription and agent-ancestor
+scopes. The subscription resource-role eligibility query also returned no
+matching rows. **Directory PIM eligibility remains unverified:** Graph
+denied that query because the existing operator token lacked a suitable
+delegated read scope. No additional scope, role, or app assignment was
+granted to bypass that limitation.
+
+On September 15, 2026, from `13:12:19Z` to `13:12:58Z`, one bounded probe
+temporarily enabled the owned agent. It admitted only two requests, both
+with the identical body `{"action":"current"}`, to:
+
+```text
+POST <project-endpoint>/agents/information-extraction-g0/endpoint/protocols/invocations?api-version=v1
+```
+
+Before enabling, the probe verified the version-2 service source hash,
+runtime identity, active latest-version binding, disabled endpoint, and
+idle baseline sessions. Both callers' Foundry access tokens were checked
+cryptographically against the tenant's signing keys, expected issuer and
+audience, validity claims, tenant and object ID. The test token carried no
+directory-role `wids` claim. Actor credentials were never swapped into
+shared process environment variables or forwarded as body identity fields.
+
+| Caller | Observed result |
+| --- | --- |
+| Authorized operator, using its own CLI profile | HTTP **200**, `synthetic_only: true`, with `current` and `pending_request` fields and one session selector |
+| Unapproved test user, using its independently authenticated CLI profile | HTTP **403**, gateway code `UserError`, no synthetic application projection and no session selector |
+
+This was an actual unauthorized-user request to an **enabled** endpoint,
+paired with a working positive control, not a 403 caused by endpoint
+disablement. It establishes denial for this caller and this route only.
+It does not prove that every other user, inherited permission, alternate
+Responses/version/session route, or future published alias is isolated.
+The positive caller was the operator, **not the web managed identity**.
+
+No start/resume operation, extraction attempt, or real-model call was
+sent. There was no automatic invocation retry. The sole new session was
+matched to the positive response selector, explicitly stopped, and
+observed `idle`. The four baseline sessions were not stopped again.
+Cleanup disabled the agent; an independent read found all five retained
+sessions idle. The web app remained stopped/public-access-disabled with
+`Always On=false` and its authentication configuration intact.
+
+The remaining browser/Easy Auth, web-managed-identity gateway, WebSocket
+expiry/reconnect and bounded synthetic-round checks require a
+user-present test window. Readiness for a maximum ten-minute browser
+window was requested, but no answer was received; no public ingress was
+opened. CLI sign-in and this direct-route denial do not close those gates.
 
 ## Local verification
 
