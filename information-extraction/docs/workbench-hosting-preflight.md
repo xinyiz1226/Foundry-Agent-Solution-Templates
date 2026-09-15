@@ -88,6 +88,12 @@ existing shared hosting plan to control this experiment's cost.
 
 ## Next approval and remaining gates
 
+**Subsequent outcome:** the operator approved a new dedicated B1 plan/site
+in the existing resource group. Provider validation then reported zero B1
+worker quota and blocked both validation and what-if. No create request
+was submitted; see the [empty-host deployment record](web-host-deployment.md).
+The observations below describe the resource decision before that approval.
+
 Because the inspected resource group has no web app/plan, either approve a
 new dedicated Linux B1 plan and web app in the selected region, or identify
 a compatible existing plan outside the inspected scope for a separate

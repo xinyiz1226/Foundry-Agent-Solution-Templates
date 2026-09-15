@@ -13,6 +13,12 @@ hosting charges. The [read-only preflight](workbench-hosting-preflight.md)
 records the observed prerequisites and remaining approvals. Authentication
 is not yet implemented or deployed.
 
+The operator subsequently approved one empty B1 plan/site in the same
+resource group as the Foundry project. The
+[resource-creation attempt](web-host-deployment.md) is blocked before
+submission by a B1 worker quota of zero; no web resource was created.
+Directory/role changes and agent enablement remain outside that approval.
+
 The first release remains a **single-operator** reference workbench, as
 agreed in the [implementation plan](implementation-plan.md). The next cloud
 probe must still use the fixed synthetic sample. Real model integration,
