@@ -127,7 +127,7 @@ released the subnet association. Guarded deletion of the active resource group
 was confirmed at 2026-09-15 07:45:14 UTC. The new Foundry account remains
 soft-deleted; no permanent purge or external role changes were performed.
 Group deletion now refuses active Foundry accounts and service-managed subnet
-links; ordered teardown is a manual prerequisite.
+links. That initial safety guard preceded the ordered automation described below.
 
 The updated integrated offline suite passed **90 tests**, including compiled
 Bicep checks, JSON-persisted output casing, configured/default authentication
@@ -135,6 +135,20 @@ contexts, secret-safe error-code reporting, and teardown guards. The real
 default-context authentication failure is now caught by preflight before
 resource creation. A Cost Management query was throttled (HTTP 429); actual
 billed cost remains unknown.
+
+The follow-up authentication and teardown changes passed **126 integrated
+offline tests** with compiled Bicep checks. The opt-in isolated azd profile
+uses the same verified Azure CLI user, tenant and subscription; configured
+and default ARM/Foundry token checks and full read-only preflight passed.
+No global azd login or tenant policy was modified.
+
+Ordered cleanup now has entrypoint-level regression coverage for dependency
+order, partial/resumed deletion, explicit 404 versus permission errors,
+timeouts, ownership/incarnation mismatches, unexpected projects, unapproved
+purge, already-absent groups, and `-WhatIf`. A real read-only cleanup preview
+against the prior deleted experiment reported its exact retained soft-deleted
+account and confirmed that neither Azure nor local state was changed.
+No new deployment or destructive teardown was run for this follow-up.
 
 No hosted agents were invoked. Hosted Linux dependencies, real agent token
 identity/SID mapping, actual private routing, model access, private

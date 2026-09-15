@@ -376,9 +376,10 @@ while idle; stopping an application is not equivalent to deleting its plan.
 
 Do not equate the full-template scope with authorization to skip the early gates.
 Step 1 has local implementation evidence and the first approved Central US
-infrastructure deployment succeeded. Agent deployment is blocked on the
-effective azd login context; finish cleanup and resolve that context before
-another experiment. Do not skip the remaining runtime validation gates.
+infrastructure deployment succeeded. The subsequent isolated same-user azd
+profile passes authentication/preflight, and ordered cleanup is implemented.
+The prior active group is deleted. Review the retained soft-deleted account
+and next experiment scope before redeploying; runtime validation is still open.
 
 ### Published checkpoint and deployment blocker
 
@@ -430,14 +431,22 @@ SQL, private endpoints/DNS, initializer storage/identity and NAT/public IP have
 been removed. Azure subsequently completed account deletion and released the
 subnet link; active resource-group deletion was confirmed at
 2026-09-15 07:45:14 UTC. The new Foundry account remains soft-deleted, without
-approval to purge it. Group-deletion guards now require ordered Foundry teardown first,
-but automating that sequence remains unfinished. Do not repeat bulk group
-deletion or directly mutate the service-owned link. The integrated offline
-suite now passes 90 tests. Actual cost is not yet available: the Cost Management
+approval to purge it. The first safety-fix checkpoint passed 90 offline tests.
+Actual cost is not yet available: the Cost Management
 query was throttled, not a zero-cost result.
 
+The requested follow-up completed two prerequisites without redeployment:
+an explicit, project-isolated azd profile uses the same verified Azure CLI
+operator and passes configured/default ARM and Foundry token acquisition;
+ordered cleanup now handles capability hosts, project/account deletion,
+bounded service-link waits, owned initializer associations and final group
+deletion. Purge remains a separate opt-in guarded by incarnation evidence.
+The integrated suite passes 126 tests; a real cleanup `-WhatIf` against the
+previous experiment confirms read-only residual reporting. A fresh end-to-end
+deployment/runtime/teardown run has not been performed.
+
 See [deployment approval](docs/deployment-approval.md) for current evidence,
-manual teardown requirements and remaining blockers. Actual identifiers,
+teardown requirements and remaining gates. Actual identifiers,
 approval, logs and ownership state remain in ignored artifacts.
 
 ## Primary references

@@ -134,10 +134,54 @@ review in [deployment approval](docs/deployment-approval.md) is complete.**
 The `-ApproveAzureChanges` switch records operator intent; it is not a substitute
 for organizational authorization.
 
+Prepare local configuration before selecting authentication or deploying:
+
 ```powershell
 Copy-Item .\config.example.json .\config.local.json
 # For an existing model, copy config.existing-model.example.json instead.
 # Replace every placeholder; confirm the model, region, capacity and operator ID.
+```
+
+### Optional isolated Azure CLI authentication
+
+If tenant-explicit azd login works but its default-context token acquisition
+fails, do not repeatedly provision resources or change Conditional Access
+policy. The installed azd version can require default user claims while
+resolving a subscription's tenant, before applying that tenant.
+
+For an already signed-in **user**, explicitly select azd's supported Azure CLI
+delegation in a project-isolated profile:
+
+```powershell
+.\scripts\use-azure-cli-auth.ps1 -ConfigPath .\config.local.json
+```
+
+The helper verifies that Azure CLI already selects the approved subscription
+and that its signed-in user object ID matches `operatorPrincipalId`. It does not switch accounts,
+log in, change tenant policy, or change global azd configuration. It sets
+`AZD_CONFIG_DIR` to the ignored `.artifacts\azd-cli-auth` directory and enables
+`auth.useAzCliAuth` there. This is an explicit operator choice, not an automatic
+fallback after an authentication failure.
+It affects operator CLI authentication only; the hosted agent still uses its
+own managed identity, never the operator's credentials.
+
+Run the helper in **each new PowerShell process**, then run preflight and the
+lifecycle commands in that same process. If preflight reports missing
+extensions in the isolated profile, install the reviewed versions there:
+
+```powershell
+azd extension install azure.ai.agents --version 1.0.0-beta.15 --no-prompt
+azd extension install azure.ai.projects --version 1.0.0-beta.10 --no-prompt
+.\scripts\preflight.ps1 -ConfigPath .\config.local.json -CheckAzure
+```
+
+Keep the entire profile out of Git. Closing the shell ends its process-local
+selection; it does not log out other sessions. Authentication failures must
+still be resolved through the tenant's approved sign-in process.
+
+### Staged deployment
+
+```powershell
 .\scripts\preflight.ps1 -ConfigPath .\config.local.json -CheckAzure
 
 .\scripts\deploy.ps1 -ConfigPath .\config.local.json -Stage Provision -ApproveAzureChanges
@@ -171,35 +215,50 @@ scripts intentionally reject existing resource groups.
 
 ## Cleanup and ownership
 
-**Complete ordered Foundry teardown before deleting the resource group.**
-The first cloud experiment exposed a race in bulk group deletion: Foundry
-account/Capability Host deletion is asynchronous, and `legionservicelink`
-can keep the VNet in use. `cleanup.ps1` now refuses group deletion while an
-active Foundry account or a subnet service association remains.
+`cleanup.ps1` now performs ordered, resumable teardown: project Capability
+Hosts, account Capability Hosts, project, account, service-managed subnet-link
+release, initializer network associations, then the remaining resource group.
+It waits for asynchronous deletion instead of treating an accepted request
+as completion. Never start by deleting the group or directly changing
+`legionservicelink`.
 
-Follow the [teardown requirements](docs/deployment-approval.md#ordered-teardown-required)
-using only this experiment's recorded resource IDs. Ordered Foundry teardown
-is currently a manual prerequisite, not automated by this probe package.
-After preserving evidence and verifying those prerequisites:
+After preserving evidence, preview the owned targets without changing Azure
+or local ownership state, then execute with explicit approval:
 
 ```powershell
+.\scripts\cleanup.ps1 -ConfigPath .\config.local.json `
+    -ConfirmResourceGroup '<exact-resource-group-name>' -WhatIf
+
 .\scripts\cleanup.ps1 -ConfigPath .\config.local.json `
     -ConfirmResourceGroup '<exact-resource-group-name>' -ApproveAzureChanges
 ```
 
 Cleanup checks the subscription, exact group name, ownership tags, local state,
 and resource inventory before requesting confirmation. It refuses unknown
-resources and never adopts customer groups. State is stored in the ignored
+resources, unexpected projects and mismatched account incarnations; it never
+adopts customer groups. State is stored in the ignored
 `.artifacts/<environment>/state.json`; retain it for cleanup and diagnosis.
+Timeouts are explicit failures, not cleanup success. Each wait operation
+defaults to 1800 seconds with 15-second polling, configurable using
+`-WaitTimeoutSeconds` (1-3600) and `-PollIntervalSeconds` (1-60).
+This is not an overall experiment-duration limit. Rerun the same command after
+reviewing a timeout; recorded progress does not replace fresh Azure checks.
 
 If provisioning failed or the inventory differs, inspect Azure and the state
 before proceeding. Do not edit the state just to bypass a guard.
 Temporary execution containers may be removed by deployment-script retention;
 their supporting storage, NAT/IP and private-network resources still need
 experiment cleanup.
-The script does not delete Entra directory objects or purge soft-deleted
-Foundry resources. Review any retained identities and name-reuse constraints
-with the operator.
+The script does not delete Entra directory objects or external role
+assignments. Soft-deleted accounts are retained by default. Permanent purge
+requires separate `-ApproveFoundryPurge` authorization and verified account
+incarnation evidence; `-ApproveAzureChanges` alone never approves purge.
+If the group is already absent, the script is always read-only, even with
+purge approval: it reports the exact retained soft-deleted account rather
+than claiming nothing remains. Purging that residual is a separately reviewed
+operation, not performed by the absent-group path.
+See [teardown requirements](docs/deployment-approval.md#ordered-teardown-required)
+for retention and recovery boundaries.
 
 ## Security and scope
 

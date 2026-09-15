@@ -1,6 +1,6 @@
 # Minimal experiment: deployment approval
 
-Status: **Central US infrastructure provisioned; agent deployment blocked on azd authentication context; active experiment resource group deleted, soft-deleted Foundry account retained**.
+Status: **isolated same-user azd authentication validated and ordered cleanup implemented; no new deployment performed; previous active resource group deleted, soft-deleted Foundry account retained**.
 
 Local build/test evidence must be reviewed separately from the Azure checks.
 Passing tests does not certify SDK/runtime compatibility or private SQL access.
@@ -62,9 +62,9 @@ Japan East, Australia East and West Europe. The local candidate now places
 the new Foundry account/project, VNet and SQL in Central US. The existing
 DeepSeek model stays in East US; it is not migrated or recreated.
 
-**Current gates:** resolve the effective azd authentication context and review
-the retained soft-deleted account before considering another deployment. The
-actual runtime identity and its shared-model role remain unverified.
+**Current gates:** select the validated isolated azd profile and review the
+retained soft-deleted account/name and next experiment scope before another
+deployment. Actual runtime identity and shared-model access remain unverified.
 Read-only availability and quota checks do not reserve capacity or prove the
 runtime works.
 
@@ -100,8 +100,8 @@ rejected by Conditional Access authentication-flow checks. Tenant-explicit
 ARM and Foundry token acquisition succeeds, but default-context ARM token
 acquisition fails with the same error. Setting `AZURE_TENANT_ID` in the azd
 environment did not prevent the deployment failure. The effective deployment
-login context remains unresolved; do not describe this as all tenant-scoped
-authentication failing or circumvent the tenant's policy.
+login context was unresolved at that checkpoint; do not describe this as all
+tenant-scoped authentication failing or circumvent the tenant's policy.
 
 Preflight now checks actual azd token acquisition for ARM and Foundry in both
 the configured-tenant and default contexts, not just cached login status.
@@ -123,6 +123,30 @@ cost is unknown, not zero.
 There is no successful hosted-agent invocation, SQL initialization, runtime
 identity validation, or idle/resume result.
 
+### Authentication-context resolution
+
+The exact installed azd 1.34.0 implementation explains the failure path:
+[token tenant selection](https://github.com/Azure/azure-dev/blob/127491451b9940e3ca7e5faf03f107b4f9442eac/cli/azd/cmd/auth_token.go)
+resolves the subscription before selecting its user-access tenant.
+[Subscription lookup](https://github.com/Azure/azure-dev/blob/127491451b9940e3ca7e5faf03f107b4f9442eac/cli/azd/pkg/account/subscriptions_manager.go)
+first calls `ClaimsForCurrentUser(ctx, nil)`, which requires the default
+credential. Explicit `--tenant-id` avoids that lookup. Setting
+`AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` alone still reproduced the failure.
+
+The explicit resolution uses the
+[supported `auth.useAzCliAuth` mode](https://github.com/Azure/azure-dev/blob/127491451b9940e3ca7e5faf03f107b4f9442eac/cli/azd/pkg/auth/manager.go)
+in a new project-isolated `AZD_CONFIG_DIR`. The Azure CLI user object,
+subscription and tenant were verified against the approved operator before
+selecting the profile. No identities, global azd configuration, Conditional
+Access policy or shared-model permissions were changed.
+
+Both configured-tenant and default ARM/Foundry token acquisition now pass in
+that explicit profile, and the complete existing read-only preflight passed.
+The global/native azd context was not repaired or silently replaced.
+Use [the opt-in helper](../README.md#optional-isolated-azure-cli-authentication)
+in every new shell to select the validated profile. No resources were
+redeployed or models invoked to validate this authentication resolution.
+
 ## Approval record
 
 | Decision | Required value |
@@ -140,9 +164,10 @@ identity validation, or idle/resume result.
 
 ## Ordered teardown required
 
-Do not begin another teardown with bulk group deletion. Use the
+Do not begin another teardown with bulk group deletion. `cleanup.ps1` now
+automates the guarded order using this probe's recorded resource IDs. Use the
 [repository's Foundry cleanup sequence](../../private-network-hosted-agent/docs/cleanup.md#supported-manual-order)
-as a manual reference, with **this probe's** recorded IDs and ownership checks.
+as a troubleshooting reference, with **this probe's** IDs and ownership checks.
 Do not run that other template's script or adopt its environment.
 
 Delete and verify absence of project Capability Hosts before account
@@ -151,17 +176,32 @@ Capability Hosts, then projects and the account. If a resource is already
 Account deletion and subnet-link release are separate asynchronous operations.
 Never directly delete or patch a service association link.
 
-This package does not automatically purge soft-deleted Foundry accounts or
-delete directory objects. If an exact soft-deleted account requires purge to
-finish cleanup, obtain explicit approval before that irreversible operation.
+This package does not implicitly purge soft-deleted Foundry accounts or
+delete directory objects. Permanent purge requires separate
+`-ApproveFoundryPurge` authorization and matching recorded account-incarnation
+evidence. Do not fabricate missing metadata to permit purge.
+Purge also requires matching soft-account ownership tags and creation time,
+plus verified active-account absence. The already-absent-group path is always
+read-only, even when purge approval is supplied; it reports rather than
+removes retained soft-deleted resources.
 Do not claim complete teardown while residual Foundry resources or links
 remain; retain the evidence and escalate stalled platform cleanup.
 
 Only after active Foundry accounts and subnet service associations are absent
-can `cleanup.ps1` delete the remaining owned group. Its new guards enforce
-those prerequisites. The initializer NAT association may be removed only
-after verifying its exact owned subnet/NAT IDs and that no initializer work
-remains. Full ordered Foundry teardown automation is still a package gap.
+can `cleanup.ps1` delete the remaining owned group. It checks each stage,
+observes already-`Deleting` resources, and bounds waits with visible progress.
+The timeout is per wait operation, not an overall experiment deadline;
+operators must still enforce their approved duration and spending response.
+The initializer NAT association is removed only after verifying its exact
+owned subnet/NAT IDs and that no initializer work remains.
+
+`-WhatIf` is read-only for Azure and local ownership state. The absent-group
+path reports residual soft-deleted accounts explicitly. No shared-model
+resource, external role assignment, or directory identity is part of teardown.
+The implementation passed offline lifecycle regressions, and a real
+`-WhatIf` against the already-deleted experiment reported the retained account
+without requesting purge or changing state. No new resources were deployed
+to rerun full destructive teardown in this follow-up.
 
 ## Resources to review
 
