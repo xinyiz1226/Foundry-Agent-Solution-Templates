@@ -87,7 +87,17 @@ Subsequent local preflight passed with Azure CLI 2.90.0, azd 1.34.0,
 `azure.ai.agents` 1.0.0-beta.15 and `azure.ai.projects` 1.0.0-beta.10.
 The extension regression test rejects absent, outdated and malformed installed
 versions; catalog availability alone must not pass preflight.
-Account checks found no Azure CLI login and an unauthenticated azd session.
+The operator subsequently completed tenant-scoped Azure CLI/azd login.
+Check azd status with the same `--tenant-id` used for login; an unscoped check
+returned `unauthenticated` while the scoped check returned `success`.
+A live ARM subscription read and limited management/directory permission
+checks passed. Regional catalog/quota reads were performed without inference.
+
+The read-only deployment preflight remains **blocked** because
+`Microsoft.Sql` is `NotRegistered`. SQL capabilities returned
+`SubscriptionNotFound`; the ARM subscription itself exists and is enabled.
+No registration was attempted. Detailed findings and capacity limitations
+are recorded in [deployment approval](deployment-approval.md).
 
 No resources were deployed or hosted agents invoked. Hosted Linux dependencies,
 real agent token identity/SID mapping, actual private routing, model access,

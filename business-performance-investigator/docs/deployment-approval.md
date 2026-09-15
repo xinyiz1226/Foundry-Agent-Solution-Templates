@@ -1,6 +1,6 @@
 # Minimal experiment: deployment approval
 
-Status: **not approved for execution; no Azure validation performed**.
+Status: **read-only Azure checks performed; provisioning not approved or run**.
 
 Local build/test evidence must be reviewed separately from the Azure checks.
 Passing tests does not certify SDK/runtime compatibility or private SQL access.
@@ -9,13 +9,17 @@ All entries below must be settled before running approval-gated scripts.
 ## Current preparation checkpoint
 
 The package has been committed and pushed. Local Azure CLI 2.90.0 and azd
-1.34.0 are available for this session, with the required Foundry agent/project
-extensions installed. Local preflight passed, but Azure CLI returned no
-signed-in subscriptions and azd reported `unauthenticated`.
+1.34.0 are available with the required Foundry agent/project extensions.
+The operator completed tenant-scoped sign-in. A live ARM subscription read
+passed, and tenant-scoped azd status returned `success`. An unscoped azd
+status check returned `unauthenticated` for the same local installation;
+always check the tenant used for sign-in before asking the user to sign in again.
 
 The proposed USD 10 spending-response threshold, maximum 24-hour experiment,
-and immediate cleanup were **not confirmed**. No subscription was selected
-and no Azure resources were created. User unavailability is not approval.
+and immediate cleanup still require approval. Subscription/tenant and operator
+IDs were verified and retained only in ignored local preflight artifacts.
+No Azure resources were created. Sign-in and permission availability are not
+approval to provision, register providers, or change role assignments.
 
 On the deployment workstation, first make `az` and `azd` available on the
 current shell's PATH and complete interactive sign-in with the intended tenant:
@@ -23,6 +27,7 @@ current shell's PATH and complete interactive sign-in with the intended tenant:
 ```powershell
 az login --tenant '<approved-tenant-id>' --use-device-code
 azd auth login --tenant-id '<approved-tenant-id>' --use-device-code
+azd auth login --tenant-id '<approved-tenant-id>' --check-status --output json
 ```
 
 Sign-in does not approve deployment. Complete the record below, use the actual
@@ -31,18 +36,51 @@ operator identity in an ignored `config.local.json`, and run read-only
 Keep credentials and local configuration out of Git. Region/model/quota,
 permissions and spending approval remain separate gates.
 
+### Read-only findings, 2026-09-15
+
+| Check | Observed result |
+|---|---|
+| Subscription and caller | Enabled subscription; management permission includes `*` with no exclusions on that grant |
+| Policy/deny checks | No assignments returned by the subscription/inherited policy query or at-scope deny query; not a guarantee that future deployment cannot be denied |
+| Directory lookup | Current user object ID and an existing service principal's object/application IDs were readable; actual agent identity is not yet created |
+| Required providers | All checked providers registered **except `Microsoft.Sql`, which is `NotRegistered`** |
+| Proposed new resource group | `rg-bpi-probe` does not exist; ownership guards must recheck immediately before creation |
+| Hosted agents/private networking | Microsoft documentation lists East US 2 support; actual subscription session capacity and routing remain unverified |
+| Model catalog | AIServices lists `gpt-4.1-mini` version `2025-04-14`, Responses support and GlobalStandard; lifecycle is `Legacy`, inference deprecation is listed as 2027-04-14 |
+| Model quota | Exact meter `OpenAI.GlobalStandard.gpt4.1-mini`: 0 used / 200 limit; DataZoneStandard has zero quota and is not the proposed SKU |
+| Initializer quota | East US 2: 0/100 container groups and 0/10 Standard cores |
+| Network quota | East US 2: 0/1000 VNets, 0/20 Standard IPv4 public IPs, 0/100 NAT gateways, 0/65536 private endpoints |
+| SQL regional capabilities | SQL returned `SubscriptionNotFound` while ARM confirmed an enabled subscription; SQL provider registration is absent. Recheck after authorized registration; do not claim SQL Basic availability passed |
+
+**Immediate blocker:** obtain explicit permission to register `Microsoft.Sql`
+in the selected subscription, then rerun provider and SQL capability checks.
+The read-only preflight does not perform registration.
+
+The candidate local configuration proposes model capacity **10**, rather than
+the example's 1, to give the two-model-call probe throughput headroom. This is
+not deployed or approved. The SKU catalog default is 10 and quota headroom is
+200 units, but model-level `maxCapacity` is 3 while SKU-level maximum is
+1,000,000. These metadata must not be treated as interchangeable. Resolve
+actual capacity acceptance during approved deployment validation; never
+silently select a different model/SKU or claim quota guarantees capacity.
+The GlobalStandard SKU is pay-as-you-go, not provisioned throughput.
+
+The local evidence and candidate configuration are under `.artifacts/preflight/`.
+They are not ownership state or a deployment approval. No registration,
+resource writes, model inference, or automatic permissions changes were run.
+
 ## Approval record
 
 | Decision | Required value |
 |---|---|
 | Approver and approval date | Not yet supplied |
-| Subscription, tenant, and operator principal | Not yet supplied |
+| Subscription, tenant, and operator principal | Verified for read-only checks; actual IDs remain in ignored local artifacts |
 | New resource group and environment | Choose a dedicated `rg-bpi-*` group; no reuse |
-| Region | Confirm joint hosted-agent/model/SQL/initializer support |
-| Model, version, deployment SKU/capacity | Confirm availability and quota; example configuration is not approval |
+| Region | East US 2 candidate; hosted/private support documented, SQL capability check blocked pending registration |
+| Model, version, deployment SKU/capacity | Catalog and quota checked; approve final capacity and resolve metadata during deployment validation |
 | Experiment duration and cleanup owner | Not yet supplied |
 | Spending limit and response to threshold | Not yet supplied; budgets are alerts, not hard caps |
-| Required directory/resource permissions | Confirm with operator; no automatic tenant consent |
+| Required directory/resource permissions | Broad management access and basic directory lookup observed; no automatic tenant consent or provider registration |
 | Required package/image egress | Explicitly review; private SQL is not zero-internet execution |
 
 ## Resources to review

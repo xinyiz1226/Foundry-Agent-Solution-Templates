@@ -388,12 +388,25 @@ prepared locally, with `azure.ai.agents` beta.15 and `azure.ai.projects`
 beta.10 installed. Local CLI preflight now checks installed extension
 versions, not just catalog entries.
 
-Azure CLI returned no signed-in subscriptions and azd reported
-`unauthenticated`. No resources were deployed. A proposed USD 10 spending
-response threshold and 24-hour duration were not confirmed; neither is
-approval or a guaranteed cap. Resume with interactive Azure/azd sign-in,
-then settle the approval record and run read-only account/provider,
-region/model/quota and permission checks before any provisioning.
+Tenant-scoped Azure CLI and azd sign-in subsequently succeeded, and a live
+ARM subscription read passed. An unscoped azd authentication-status check
+can return `unauthenticated` despite successful tenant-scoped login; check
+with the explicit tenant before asking the operator to authenticate again.
+
+Read-only checks found an enabled subscription, broad management permissions,
+readable directory object IDs, documented East US 2 hosted/private-network
+support, and GlobalStandard model quota headroom. `Microsoft.Sql` is
+**NotRegistered**; the SQL regional capabilities endpoint returned
+`SubscriptionNotFound`, so SQL Basic readiness remains unverified.
+No provider registration or resource creation was performed.
+
+The immediate next gate is explicit SQL provider-registration approval,
+followed by another provider/SQL-capability check. See
+[deployment approval](docs/deployment-approval.md) for the full findings,
+model-capacity caveat and remaining decisions. Actual identifiers and the
+unapproved candidate configuration are in ignored `.artifacts/preflight/`.
+The USD 10 spending-response threshold, maximum 24-hour duration and cleanup
+ownership still require approval; they are not a guaranteed billing cap.
 
 ## Primary references
 
