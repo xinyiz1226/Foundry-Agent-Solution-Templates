@@ -1,9 +1,10 @@
-"""Local-only workbench transport; reads never submit extraction work."""
+"""Shared workbench protocol and strictly loopback-only local transport."""
 
 from dataclasses import dataclass
 import json
 import math
 import time
+from typing import Protocol
 from urllib.parse import urlsplit
 from uuid import uuid4
 
@@ -96,6 +97,20 @@ class CurrentJob:
     app_instance_id: str
     round: RoundView | None = None
     pending: SavedRequest | None = None
+
+
+class Workbench(Protocol):
+    """UI-facing operations shared by local and cloud transports."""
+
+    def current(self) -> CurrentJob: ...
+
+    def start(self, job_id: str, *, max_attempts: int = 1, duration_seconds: int = 120) -> None: ...
+
+    def resume(self, current: RoundView, *, max_attempts: int = 1, duration_seconds: int = 120) -> None: ...
+
+    def retry(self, saved: SavedRequest) -> None: ...
+
+    def close(self) -> None: ...
 
 
 def _mapping(value: object) -> dict[str, object]:
@@ -215,52 +230,18 @@ def _saved(value: object, job_id: str | None = None) -> SavedRequest:
     )
 
 
-class WorkbenchClient:
-    def __init__(self, endpoint: str, *, transport: httpx.BaseTransport | None = None):
-        try:
-            url = urlsplit(endpoint)
-            if (
-                url.scheme != "http" or url.hostname != "127.0.0.1"
-                or url.port is None or not 1 <= url.port <= 65535
-                or url.username is not None or url.password is not None
-                or url.path not in ("", "/") or url.query or url.fragment
-            ):
-                raise ValueError("invalid_endpoint")
-        except ValueError:
-            raise WorkbenchError("Use a local backend URL of the form http://127.0.0.1:PORT.") from None
-        self._client = httpx.Client(
-            base_url=f"http://127.0.0.1:{url.port}", transport=transport, timeout=10,
-            follow_redirects=False, trust_env=False,
-        )
-
+class _WorkbenchProtocol:
     def __enter__(self):
         return self
 
     def __exit__(self, *_):
+        self.close()
+
+    def close(self):
         self._client.close()
 
     def _request(self, body: dict[str, object], expected_status: int) -> dict[str, object]:
-        try:
-            with self._client.stream("POST", "/invocations", json=body) as response:
-                raw = bytearray()
-                for chunk in response.iter_bytes(chunk_size=8192):
-                    if len(raw) + len(chunk) > 65536:
-                        raise WorkbenchError("The local backend returned an oversized response.")
-                    raw.extend(chunk)
-                data = _mapping(json.loads(raw, object_pairs_hook=_unique_object))
-                if response.status_code != expected_status:
-                    error = data.get("error")
-                    code = error.get("code") if isinstance(error, dict) else None
-                    message = _ERROR_MESSAGES.get(code) if isinstance(code, str) else None
-                    raise WorkbenchError(message or f"The local backend rejected the request (HTTP {response.status_code}).")
-                return data
-        except httpx.HTTPError:
-            raise WorkbenchError(
-                "The local backend could not be reached or did not respond. No automatic retry was made; "
-                "refresh to discover any saved request before acting again."
-            ) from None
-        except (ValueError, TypeError, RecursionError):
-            raise WorkbenchError("The local backend returned invalid data.") from None
+        raise NotImplementedError
 
     @staticmethod
     def _limits(max_attempts: int, duration_seconds: int) -> BatchLimits:
@@ -307,7 +288,7 @@ class WorkbenchClient:
                 raise ValueError("unexpected_response")
             _identifier(authorization["run_id"])
         except (ValueError, KeyError, TypeError, InvalidInput):
-            raise WorkbenchError("The local backend did not confirm the request. Refresh before acting again.") from None
+            raise WorkbenchError("The backend did not confirm the request. Refresh before acting again.") from None
 
     def current(self) -> CurrentJob:
         data = self._request({"action": "current"}, 200)
@@ -321,4 +302,46 @@ class WorkbenchClient:
                 _saved(data["pending_request"], job_id) if data["pending_request"] is not None else None,
             )
         except (ValueError, KeyError, TypeError, InvalidInput):
+            raise WorkbenchError("The backend returned invalid data.") from None
+
+
+class WorkbenchClient(_WorkbenchProtocol):
+    def __init__(self, endpoint: str, *, transport: httpx.BaseTransport | None = None):
+        try:
+            url = urlsplit(endpoint)
+            if (
+                url.scheme != "http" or url.hostname != "127.0.0.1"
+                or url.port is None or not 1 <= url.port <= 65535
+                or url.username is not None or url.password is not None
+                or url.path not in ("", "/") or url.query or url.fragment
+            ):
+                raise ValueError("invalid_endpoint")
+        except ValueError:
+            raise WorkbenchError("Use a local backend URL of the form http://127.0.0.1:PORT.") from None
+        self._client = httpx.Client(
+            base_url=f"http://127.0.0.1:{url.port}", transport=transport, timeout=10,
+            follow_redirects=False, trust_env=False,
+        )
+
+    def _request(self, body: dict[str, object], expected_status: int) -> dict[str, object]:
+        try:
+            with self._client.stream("POST", "/invocations", json=body) as response:
+                raw = bytearray()
+                for chunk in response.iter_bytes(chunk_size=8192):
+                    if len(raw) + len(chunk) > 65536:
+                        raise WorkbenchError("The local backend returned an oversized response.")
+                    raw.extend(chunk)
+                data = _mapping(json.loads(raw, object_pairs_hook=_unique_object))
+                if response.status_code != expected_status:
+                    error = data.get("error")
+                    code = error.get("code") if isinstance(error, dict) else None
+                    message = _ERROR_MESSAGES.get(code) if isinstance(code, str) else None
+                    raise WorkbenchError(message or f"The local backend rejected the request (HTTP {response.status_code}).")
+                return data
+        except httpx.HTTPError:
+            raise WorkbenchError(
+                "The local backend could not be reached or did not respond. No automatic retry was made; "
+                "refresh to discover any saved request before acting again."
+            ) from None
+        except (ValueError, TypeError, RecursionError):
             raise WorkbenchError("The local backend returned invalid data.") from None

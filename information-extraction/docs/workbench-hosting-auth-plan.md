@@ -10,8 +10,10 @@ workbench at `444e974` and design at `bbdf975`.
 Architecture selection is not approval to create resources, grant roles,
 register directory applications, enable an endpoint, or incur recurring
 hosting charges. The [read-only preflight](workbench-hosting-preflight.md)
-records the observed prerequisites and remaining approvals. Authentication
-is not yet implemented or deployed.
+records the observed prerequisites and remaining approvals.
+[Authorization and a separate cloud client](cloud-workbench.md) now have
+local signed-token/HTTP/UI-fixture coverage. They have not been deployed or
+validated against Azure ingress, browser WebSockets, or effective permissions.
 
 The operator subsequently approved one empty B1 plan/site in the same
 resource group as the Foundry project. After an East US quota rejection,
@@ -35,8 +37,9 @@ contract, and a successful live authorization test are different evidence.
 
 | Surface | Observed implementation | Consequence |
 | --- | --- | --- |
-| [Streamlit page](../workbench.py) | Reads the configured job and sends explicit commands; no authenticated operator context. | Do not expose the current page publicly. |
-| [Workbench client](../src/information_extraction/workbench_client.py) | Allows only loopback HTTP, without bearer credentials or gateway session routing. | Preserve this local-only boundary; a cloud transport is new work, not an environment-variable change. |
+| [Local Streamlit page](../workbench.py) | Reads the configured job and sends explicit commands; no authenticated operator context. | Keep it loopback-only; it is not the cloud entry point. |
+| [Cloud Streamlit page](../cloud_workbench.py) | Guards sources, reads, results and commands with a signed, short-lived single-operator proof. | Requires the separately approved Easy Auth v2/token-store configuration and live acceptance matrix. |
+| [Workbench client](../src/information_extraction/workbench_client.py) | Local adapter remains loopback-only; the separate cloud adapter shares projection/command rules and adds guarded service authentication and bounded session reuse. | No URL-switch authentication fallback; no automatic mutation retry or routing reset. |
 | [Hosted handler](../src/information_extraction/hosted_app.py) | Checks configured job ownership, sample identity, request shape, and durable execution ownership. | These checks are not caller authorization. All four actions need an authorized entry path. |
 | [Local launcher](../scripts/run_workbench.py) | Launches a local backend and Streamlit, clearing inherited hosted settings. | It is not a cloud startup command. Do not launch the offline backend inside the web app. |
 | [Hosted probe](hosted-smoke-results.md) | Gateway denied an unauthenticated request; shared-project invocation permissions were accepted for that probe only. | An anonymous 401 does not prove rejection of an unauthorized signed-in user. |
@@ -123,6 +126,15 @@ behavior, recheck server-side policy before reads and commands, and test
 an already-connected browser. Do not claim immediate directory-assignment
 revocation without verifying it.
 
+The local implementation now bounds a signed Entra v2 ID token to the
+earlier of its `exp` and 900 seconds after `iat` by default, rechecks server
+configuration and current request context on every protected operation, and
+checks again before displaying a backend read. Its
+[documented contract](cloud-workbench.md#human-identity-proof-and-expiry)
+requires Easy Auth's token store and a matching web-registration audience.
+This is a concrete stale-header limit, not evidence of live Entra assignment
+refresh or a completed WebSocket test.
+
 Revoking operator access must prevent later operator actions within the
 defined policy window. It is not automatically cancellation of an already
 accepted native round, which retains its original bounded authorization.
@@ -184,6 +196,10 @@ network-private endpoints require a separately approved network design.
 5. **Run the bounded synthetic acceptance matrix below.** Keep the cloud
    probe model-free; record the deployed source hash and observed caller
    outcomes. Stop only the newly approved services/sessions afterward.
+
+Steps 2-3 now have code and local fixture evidence. Resource/identity wiring,
+web packaging/deployment and the live acceptance matrix remain separate
+approvals; the existing deployed agent has not been changed.
 
 Cloud transport must distinguish a durable job ID from the gateway's
 ephemeral `agent_session_id` routing selector. Reuse a known selector within

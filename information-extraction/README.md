@@ -63,8 +63,11 @@ and approval/export are not part of this slice.
 The next cloud slice is scoped in the
 [hosting and authorization plan](docs/workbench-hosting-auth-plan.md), with
 [primary-source findings](docs/workbench-hosting-auth-research.md). It is a
-selected architecture and resource/permission checklist, not implemented
-authentication or approval to create resources. The
+selected architecture and resource/permission checklist, not approval to
+create resources. A separate [cloud entry point and authorization/client
+implementation](docs/cloud-workbench.md) now has local signed-token,
+HTTP, and UI-fixture coverage; it has not been deployed or validated against
+live Easy Auth, WebSockets, or effective Foundry access. The
 [read-only preflight](docs/workbench-hosting-preflight.md) records the runtime,
 scoped resource/role inventory and indicative B1 price. An
 [empty web-host slice](docs/web-host-deployment.md) was created in approved

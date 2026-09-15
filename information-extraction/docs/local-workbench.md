@@ -147,3 +147,9 @@ recovery result, end-to-end operator authorization, or a real-model browser
 flow. No cloud deployment occurred for this workbench slice. Historical
 [hosted evidence](hosted-smoke-results.md) remains tied to its original source
 archive; **G0 is still incomplete**.
+
+The separate [cloud workbench code](cloud-workbench.md) adds signed-operator
+checks and authenticated gateway transport without changing this local
+mode into a cloud fallback. Its local fixtures do not establish live Azure
+authorization. Use its distinct entry point only after the documented
+configuration/deployment approvals and acceptance gates.
