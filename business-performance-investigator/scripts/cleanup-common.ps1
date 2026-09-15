@@ -3,7 +3,7 @@
 # not generic CLI failures, and must never invoke azd or touch shared resources.
 
 function Invoke-BpiCleanupAz {
-    param([string[]]$Arguments, [switch]$AllowAbsent, [switch]$Mutation)
+    param([string[]]$Arguments, [switch]$AllowAbsent, [switch]$Mutation, [switch]$StrictJson)
     $global:LASTEXITCODE = 0
     $text = @(& az @Arguments --output json --only-show-errors 2>&1 |
         ForEach-Object { [string]$_ }) -join "`n"
@@ -40,10 +40,16 @@ function Invoke-BpiCleanupAz {
         if ($AllowAbsent -and $code -and $text -notmatch 'AADSTS|AuthorizationFailed|AuthenticationFailed|Forbidden') {
             return $null
         }
-        throw "Cleanup Azure request failed (exit $LASTEXITCODE): $text"
+        $failure = [InvalidOperationException]::new("Cleanup Azure request failed (exit $LASTEXITCODE): $text")
+        $failure.Data['BpiAzureErrorResponse'] = $text
+        throw $failure
     }
     if ($Mutation) { return }
     if ([string]::IsNullOrWhiteSpace($text)) { throw 'Malformed cleanup response: empty JSON.' }
+    if ($StrictJson) {
+        $document = [System.Text.Json.JsonDocument]::Parse($text)
+        $document.Dispose()
+    }
     $result = ConvertFrom-Json -InputObject $text -AsHashtable -NoEnumerate
     if ($null -eq $result) { throw 'Malformed cleanup response: null JSON is not a 404.' }
     return ,$result
@@ -51,13 +57,56 @@ function Invoke-BpiCleanupAz {
 
 function Get-BpiCleanupResource {
     param([string]$Id, [string]$Api = '2025-04-01-preview')
-    $value = Invoke-BpiCleanupAz @('rest', '--method', 'get', '--url',
-        "https://management.azure.com${Id}?api-version=$Api") -AllowAbsent
+    try {
+        $value = Invoke-BpiCleanupAz @('rest', '--method', 'get', '--url',
+            "https://management.azure.com${Id}?api-version=$Api") -AllowAbsent
+    }
+    catch {
+        if ($Id -imatch '^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft.CognitiveServices/accounts/[^/]+(?:/projects/[^/]+)?/capabilityHosts/[^/]+$' -and
+            (Test-BpiCapabilityHostAbsenceCandidate ([string]$_.Exception.Data['BpiAzureErrorResponse']) (($Id -split '/')[-1]))) {
+            $parent = $Id.Substring(0, $Id.LastIndexOf('/capabilityHosts/', [StringComparison]::OrdinalIgnoreCase))
+            # UserError is not a 404 signal. Only a successful, complete list at
+            # the exact parent can corroborate that this particular child is gone.
+            $collection = Invoke-BpiCleanupAz @('rest', '--method', 'get', '--url',
+                "https://management.azure.com$parent/capabilityHosts?api-version=$Api") -StrictJson
+            $children = @(ConvertFrom-BpiCleanupChildren $collection $parent 'capabilityHosts')
+            if (@($children | Where-Object { $_.id -ieq $Id }).Count -eq 0) {
+                Write-Host "Absence of $Id corroborated by successful parent capabilityHosts list."
+                return $null
+            }
+        }
+        throw
+    }
     if ($null -ne $value -and ($value -isnot [hashtable] -or
         -not $value.ContainsKey('id') -or $value.id -ine $Id)) {
         throw "Malformed or mismatched resource metadata for $Id."
     }
     return $value
+}
+
+function Test-BpiCapabilityHostAbsenceCandidate {
+    param([string]$Text, [string]$Name)
+    if ($Text -match 'AADSTS|Authorization|Authentication|Forbidden|Unauthorized|ConnectionError|Connection refused|timed out|\b(?:401|403)\b' -or
+        $Text -cnotmatch '\AERROR: CapabilityHost ''[^\r\n]*\((\{"error"[^\r\n]*\})\)\z') { return $false }
+    $document = $null
+    try {
+        $document = [System.Text.Json.JsonDocument]::Parse([string]$Matches[1])
+        $root = $document.RootElement
+        $body = $root.GetProperty('error')
+        if (@($root.EnumerateObject()).Count -ne 1 -or @($body.EnumerateObject()).Count -ne 4 -or
+            $body.GetProperty('code').GetString() -cne 'UserError' -or
+            $body.GetProperty('message').GetString() -cnotmatch "^CapabilityHost '$([regex]::Escape($Name))' not found in workspace '.+'$" -or
+            $body.GetProperty('details').GetArrayLength() -ne 0) { return $false }
+        $innerErrors = @($body.GetProperty('additionalInfo').EnumerateArray() |
+            Where-Object { $_.GetProperty('type').GetString() -ceq 'InnerError' })
+        if ($innerErrors.Count -ne 1) { return $false }
+        $inner = $innerErrors[0].GetProperty('info').GetProperty('value')
+        return @($inner.EnumerateObject()).Count -eq 2 -and
+            $inner.GetProperty('code').GetString() -ceq 'NotFoundError' -and
+            $inner.GetProperty('innerError').ValueKind -eq [System.Text.Json.JsonValueKind]::Null
+    }
+    catch { return $false }
+    finally { if ($null -ne $document) { $document.Dispose() } }
 }
 
 function Get-BpiCleanupChildren {
@@ -85,7 +134,12 @@ function Get-BpiCleanupChildren {
         }
         return @()
     }
-    if ($value -isnot [hashtable] -or -not $value.ContainsKey('value') -or
+    return ConvertFrom-BpiCleanupChildren $value $Parent $Child
+}
+
+function ConvertFrom-BpiCleanupChildren {
+    param($Value, [string]$Parent, [string]$Child)
+    if ($Value -isnot [hashtable] -or -not $Value.ContainsKey('value') -or
         $value.value -isnot [array] -or ($value.ContainsKey('nextLink') -and $value.nextLink)) {
         throw "Incomplete or malformed $Child collection; refusing cleanup."
     }

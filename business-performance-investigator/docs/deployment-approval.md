@@ -182,6 +182,11 @@ revoked and its absence verified; no pre-existing assignment was removed.
 
 Active-resource cleanup is pending at this checkpoint, with the 24-hour
 fallback retained. No purge has been performed and final billing is unknown.
+The project and active account have been confirmed absent; the remaining
+dependency is service-managed subnet-link release before final group deletion.
+An unexpected capability-host 404 envelope was corroborated by a successful
+empty parent list before resuming. Cleanup now handles that precise case
+without interpreting arbitrary `UserError` responses as absence.
 
 ## Approval record
 

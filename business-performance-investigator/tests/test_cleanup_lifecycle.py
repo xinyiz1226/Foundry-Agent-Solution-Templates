@@ -125,6 +125,20 @@ def initializer_fixture():
     return data
 
 
+def capability_host_not_found(host_id):
+    host_name = host_id.rsplit("/", 1)[-1]
+    payload = {"error": {
+        "code": "UserError",
+        "message": f"CapabilityHost '{host_name}' not found in workspace 'bpi-test-foundry@AML'",
+        "details": [],
+        "additionalInfo": [
+            {"type": "ComponentName", "info": {"value": "managementfrontend"}},
+            {"type": "InnerError", "info": {"value": {"code": "NotFoundError", "innerError": None}}},
+        ],
+    }}
+    return f"ERROR: CapabilityHost '{host_name}' not found in workspace 'bpi-test-(" + json.dumps(payload, separators=(",", ":")) + ")"
+
+
 HARNESS = r"""
 $ErrorActionPreference = 'Stop'
 $global:f = Get-Content -LiteralPath '__FIXTURE__' -Raw | ConvertFrom-Json -AsHashtable
@@ -160,6 +174,14 @@ function az {
         $method = $a[[array]::IndexOf($a, '--method') + 1]
         $url = $a[[array]::IndexOf($a, '--url') + 1]
         $id = ($url -replace '^https://management.azure.com', '') -replace '\?.*$', ''
+        if ($global:f.ContainsKey('afterDeletionResponses') -and
+            -not $global:f.resources.ContainsKey($global:f.afterDeletionTarget) -and
+            $global:f.afterDeletionResponses.ContainsKey("$method $id")) {
+            $response = $global:f.afterDeletionResponses["$method $id"]
+            $global:LASTEXITCODE = $response.exitCode
+            $response.text
+            return
+        }
         if ($global:f.errors.ContainsKey("$method $id")) {
             $global:LASTEXITCODE = 1
             $global:f.errors["$method $id"]
@@ -549,6 +571,85 @@ class CleanupLifecycleTests(unittest.TestCase):
                 self.assert_refused_without_mutations(
                     data, "Cleanup Azure request failed", flags="-WhatIf",
                 )
+
+    def test_provider_user_error_host_absence_requires_successful_parent_list(self):
+        for host in (PROJECT_HOST, ACCOUNT_HOST):
+            with self.subTest(host=host):
+                data = fixture()
+                data["afterDeletionTarget"] = host
+                data["afterDeletionResponses"] = {
+                    f"get {host}": {"exitCode": 1, "text": capability_host_not_found(host)},
+                }
+                result, calls, state, _ = self.run_cleanup(data)
+                self.assert_ok(result)
+                self.assertEqual(state["status"], "deleted")
+                self.assertEqual(sum(f"{host}?api-version" in w for w in self.mutations(calls)), 1)
+                self.assertIn("corroborated by successful parent capabilityHosts list", result.stdout)
+
+    def test_provider_user_error_does_not_hide_host_still_in_parent_list(self):
+        data = fixture()
+        data["errors"][f"get {PROJECT_HOST}"] = capability_host_not_found(PROJECT_HOST)
+        self.assert_refused_without_mutations(data, "Cleanup Azure request failed")
+
+    def test_provider_user_error_requires_valid_successful_complete_parent_list(self):
+        parent_list = PROJECT_HOST.rsplit("/", 1)[0]
+        for response in (
+            {"exitCode": 1, "text": "ERROR: (AuthorizationFailed) Forbidden"},
+            {"exitCode": 1, "text": "ERROR: (ResourceNotFound) Parent collection missing"},
+            {"exitCode": 1, "text": "ERROR: ConnectionError timed out"},
+            {"exitCode": 0, "text": '{"value":null}'},
+            {"exitCode": 0, "text": '{"value":[],}'},
+            {"exitCode": 0, "text": "null"},
+            {"exitCode": 0, "text": '{"value":[],"nextLink":"more"}'},
+            {"exitCode": 0, "text": '{"value":[{"id":"/unexpected"}]}'},
+        ):
+            with self.subTest(response=response):
+                data = fixture()
+                data["afterDeletionTarget"] = PROJECT_HOST
+                data["afterDeletionResponses"] = {
+                    f"get {PROJECT_HOST}": {"exitCode": 1, "text": capability_host_not_found(PROJECT_HOST)},
+                    f"get {parent_list}": response,
+                }
+                result, calls, state, _ = self.run_cleanup(data)
+                self.assertNotEqual(result.returncode, 0)
+                writes = self.mutations(calls)
+                self.assertEqual(len(writes), 1)
+                self.assertIn(PROJECT_HOST, writes[0])
+                self.assertNotEqual(state["status"], "deleted")
+
+    def test_provider_user_error_is_not_globally_treated_as_404(self):
+        for target in (GROUP, ACCOUNT, SOFT):
+            with self.subTest(target=target):
+                data = fixture()
+                data["errors"][f"get {target}"] = capability_host_not_found(PROJECT_HOST)
+                self.assert_refused_without_mutations(data, "Cleanup Azure request failed")
+
+    def test_provider_user_error_candidate_rejects_auth_network_and_malformed_payloads(self):
+        exact = capability_host_not_found(PROJECT_HOST)
+        for text in (
+            exact.replace('"UserError"', '"AuthorizationFailed"'),
+            exact.replace('"NotFoundError"', '"PermissionDenied"'),
+            exact.replace("ERROR: CapabilityHost", "ERROR: ConnectionError CapabilityHost"),
+            exact.replace("ERROR: CapabilityHost", "ERROR: network is unreachable CapabilityHost"),
+            exact.replace("'default'", "'another-host'"),
+            exact.replace('"details":[]', '"details":[{"code":"Forbidden","status":403}]'),
+            exact.replace('"details":[]', '"details":[{"code":"UnrelatedFailure"}]'),
+            exact.replace('"innerError":null', '"innerError":{"code":"AuthenticationFailed"}'),
+            exact[:-1],
+            exact.replace('"code":"UserError",', '"code":"UserError",broken,'),
+            "ERROR: (UserError) CapabilityHost not found",
+        ):
+            with self.subTest(text=text):
+                data = fixture()
+                data["afterDeletionTarget"] = PROJECT_HOST
+                data["afterDeletionResponses"] = {
+                    f"get {PROJECT_HOST}": {"exitCode": 1, "text": text},
+                }
+                result, calls, state, _ = self.run_cleanup(data)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Cleanup Azure request failed", result.stderr)
+                self.assertEqual(len(self.mutations(calls)), 1)
+                self.assertNotEqual(state["status"], "deleted")
 
     def test_soft_deleted_read_permission_failure_stops_before_mutation(self):
         data = fixture()

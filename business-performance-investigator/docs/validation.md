@@ -202,6 +202,17 @@ For this live run, the completed initializer was independently verified and
 deleted before starting the ordered teardown; automatic terminal-ACI removal
 is covered by offline entrypoint tests, not a second live container deletion.
 
+During live host deletion, Azure returned a second response shape: HTTP 404
+with `UserError` and nested `NotFoundError`. The CLI truncated its message
+prefix, so cleanup correctly stopped rather than guessing absence. A direct
+GET and successful empty parent list independently confirmed deletion.
+The narrowly scoped compatibility fix now corroborates that exact
+capability-host GET failure with a fresh, complete parent list; generic
+`UserError`, permission/network failures and ambiguous results still fail.
+The updated cleanup suite passed **56 focused tests**. A guarded resume
+confirmed deletion of the project and active account and is waiting for
+service-managed subnet-link release; soft-deleted-account retention is explicit.
+
 The exact temporary shared-model role was revoked and its absence verified.
 Ordered resource cleanup remains pending at this checkpoint; no permanent
 purge is approved. The second scoped Cost Management query also returned
