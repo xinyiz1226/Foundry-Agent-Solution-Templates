@@ -1,15 +1,20 @@
 # Business Performance Investigator
 
-**Current deliverable: a minimal private-SQL validation package, not the full
-analyst application. Hosted-agent model access, private SQL and controlled
-same-session compute resume have been verified in Azure.**
+**Current deliverables: a deterministic local business-analysis baseline and
+a verified private-SQL connectivity package, not the full analyst application.
+Hosted-agent model access, private SQL and controlled same-session compute
+resume have been verified in Azure; analytical SQL is not yet cloud-validated.**
 
 The disposable experiment's active resource group has been deleted and its
 temporary shared-model permission revoked. Soft-deleted Foundry accounts are
 retained without purge; actual billed cost remains unknown.
 
-The planned solution investigates business metric changes without requiring
-Fabric or Databricks. This first milestone checks a smaller prerequisite:
+The solution investigates business metric changes without requiring Fabric
+or Databricks. Start with the [local analysis baseline](docs/baseline.md) for
+metric comparisons, reconciled territory/product changes and reproducible
+evidence. It creates no cloud resources and calls no model.
+
+The separately deployed connectivity probe checks a smaller prerequisite:
 
 ```text
 Authenticated operator -> public Foundry agent endpoint
@@ -40,6 +45,10 @@ SQL publicly. Review this addition and the revised cost subtotal before approval
 | Path | Purpose |
 |---|---|
 | `agent/` | Source-deployed hosted agent, fixed SQL probe, pinned dependencies |
+| `analysis/` | Deterministic metrics, bounded SQL plans/cursor adapter, offline report CLI |
+| `data/` | Pinned official AdventureWorksDW provenance, single-currency scope and license |
+| `evaluation/` | Hand-worked synthetic ledger and hash-pinned report configuration |
+| `sql/analysis-view.sql` | Proposed matching Internet Sales view; not deployed by the probe lifecycle |
 | `infra-bicep/` | Core private-SQL resources and separate initialization deployment |
 | `scripts/` | Local validation, preflight, approval-gated lifecycle, cloud evidence validation |
 | `tests/` | Local runtime and lifecycle contracts; no live database required |
@@ -47,6 +56,7 @@ SQL publicly. Review this addition and the revised cost subtotal before approval
 | `config.existing-model.example.json` | Reuse an externally managed Azure model deployment without creating or resizing it |
 | `docs/deployment-approval.md` | Resources, permissions, cost assumptions, and approval checklist |
 | `docs/validation.md` | Local versus cloud checks and failure investigation |
+| `docs/baseline.md` | Business-analysis workflow, twelve reference cases and execution boundaries |
 
 ## Prerequisites
 
@@ -320,6 +330,6 @@ for retention and recovery boundaries.
 - Local state and reports are excluded from Git. Never commit tokens, connection
   secrets, customer data, or raw authentication responses.
 
-The full analyst application, AdventureWorksDW import, adaptive investigation,
+The full analyst application, loading AdventureWorksDW into Azure SQL, adaptive investigation,
 App Service login UI, and existing-database path are **not implemented in this
 milestone**. Their requirements remain in the plan.

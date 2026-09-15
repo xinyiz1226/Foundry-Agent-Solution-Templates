@@ -8,13 +8,21 @@ Last updated: 2026-09-15.
 controlled same-session compute resume in Azure. The analyst application is
 not built; cleanup and billing evidence are recorded separately.**
 
+Phase 4 now includes a local deterministic analysis baseline: pinned official
+AdventureWorksDW acquisition, a single-CurrencyKey Internet Sales projection,
+exact metric tools, a fixed comparison/drilldown report, and twelve independent
+analytical cases. It performs no model calls or Azure provisioning. Actual
+analytical SQL execution, adaptive investigation and the Web application remain
+later milestones. See [baseline guidance](docs/baseline.md).
+
 - The product scope and the next technical-validation milestone were agreed
   with the project owner.
 - Public documentation and reference-template source were inspected. The local
   package now includes the minimal runtime, Bicep, lifecycle scripts, tests and
   deployment-approval materials. Two isolated cloud experiments were authorized;
   the second reached actual hosted-agent/private-SQL validation.
-  Business-analysis evaluation has not been performed.
+  Local business-analysis reference evaluation is now implemented; hosted
+  adaptive-analysis evaluation has not been performed.
 - Cloud creation is limited to separately approved, disposable experiments;
   unrelated resources and the shared model remain outside ownership.
 - The original plan was committed as `a49097b`. Implementation followed explicit
@@ -220,9 +228,10 @@ The full template should eventually include:
 Infrastructure validation and analytical evaluation are separate deliverables.
 Neither substitutes for the other.
 
-## Immediate next milestone: minimal validation package
+## Phase 1 record: minimal validation package
 
-**Prepare this package before implementing the complete analyst application.**
+**This prerequisite package was prepared and its isolated cloud probe verified
+before work on the analysis baseline.**
 Its purpose is to de-risk:
 
 `Hosted agent -> bounded SQL tool -> agent identity -> private SQL -> approved view`
@@ -390,7 +399,8 @@ The prior active group is deleted. The second separately approved experiment
 passed actual model/private-SQL and controlled same-session resume checks.
 Its temporary shared-model role is revoked; active resource-group deletion was
 verified on 2026-09-15 at 10:25 UTC. Soft-deleted accounts remain retained.
-Natural idle-timeout behavior and the business-analysis baseline remain open.
+Natural idle-timeout behavior remains untested. The deterministic local
+business-analysis baseline is implemented; adaptive evaluation remains open.
 
 ### Published checkpoint and deployment blocker
 

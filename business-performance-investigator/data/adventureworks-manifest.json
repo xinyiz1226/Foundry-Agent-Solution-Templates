@@ -1,0 +1,107 @@
+{
+  "manifest_version": 1,
+  "dataset_id": "adventureworksdw-2025-install-snapshot-internet-sales-currencykey-100-usd",
+  "currency_filter": {"key": "100", "code": "USD", "name": "US Dollar"},
+  "source": {
+    "publisher": "Microsoft",
+    "repository": "https://github.com/microsoft/sql-server-samples",
+    "release": "https://github.com/microsoft/sql-server-samples/releases/tag/adventureworks",
+    "version": "AdventureWorksDW install-script release asset 318027345, 2025-11-18; SQL script updated 2025-11-14",
+    "release_asset_id": 318027345,
+    "url": "https://github.com/microsoft/sql-server-samples/releases/download/adventureworks/AdventureWorksDW-data-warehouse-install-script.zip",
+    "archive_name": "AdventureWorksDW-data-warehouse-install-script.zip",
+    "size_bytes": 16765004,
+    "max_download_bytes": 20000000,
+    "sha256": "73c27309d17cd30bf5351665401106abf649d9f9a9ecb0c770682f6be965aba8",
+    "hash_provenance": "GitHub release asset API's published sha256 digest; independently matched downloaded bytes on 2026-09-15. Mutable release URL is content-pinned: changed bytes fail closed.",
+    "license": {
+      "spdx": "MIT",
+      "url": "https://raw.githubusercontent.com/microsoft/sql-server-samples/beaab06ef72831089ca80e5355d65e661fd19b26/license.txt",
+      "sha256": "201f3705979e932c92cd3c6ddbddf4dc3c71dcc5a82089a1e4018227cfe1cf09",
+      "notice": "Copyright (c) Microsoft Corporation. All rights reserved. See data/MICROSOFT-SAMPLE-LICENSE.txt.",
+      "scope": "Repository-level Microsoft SQL Server Sample Code MIT license. instawdbdw.sql identifies itself as Microsoft SQL Server Code Samples and explicitly states all data is fictitious."
+    }
+  },
+  "members": {
+    "FactInternetSales.csv": {
+      "sha256": "0f87171a41f56a40d7f5f6261286e3dde83c88178fff5d55a36636e6150ed3be",
+      "size_bytes": 11726880,
+      "rows": 60398,
+      "columns": 26
+    },
+    "DimDate.csv": {
+      "sha256": "1be7b27194b4b5dae6fb3d619d81c34c0757a748be6381e5d765c42c5db132f8",
+      "size_bytes": 353497,
+      "rows": 3652,
+      "columns": 19
+    },
+    "DimProduct.csv": {
+      "sha256": "8e06a201098caef67bf6e38a93042738329d9fba5dac0f3dedb3dffbdac5c4f5",
+      "size_bytes": 9303851,
+      "rows": 606,
+      "columns": 36
+    },
+    "DimSalesTerritory.csv": {
+      "sha256": "24945e074b1eb4d76a3c4e8eb750f12e13eccd20f504ed52951c85dd8e3c1c64",
+      "size_bytes": 878402,
+      "rows": 11,
+      "columns": 6
+    },
+    "DimCurrency.csv": {
+      "sha256": "9ff911e2d0447204806722e736d74e9686faad7c68b9fe896446ed83264239f6",
+      "size_bytes": 2104,
+      "rows": 105,
+      "columns": 3
+    },
+    "instawdbdw.sql": {
+      "sha256": "908ed29f7412234a65c781b0573b8fe6161d164c5d873b197467a2317aae9172",
+      "size_bytes": 54095
+    }
+  },
+  "format": {
+    "encoding": "utf-8",
+    "delimiter": "|",
+    "header": false,
+    "schema_authority": "Pinned instawdbdw.sql CREATE TABLE column order and BULK INSERT CODEPAGE=65001, FIELDTERMINATOR='|', ROWTERMINATOR='\\n'. The SQL is inspected, never executed.",
+    "grain": "One FactInternetSales order line filtered to CurrencyKey=100, verified as USD / US Dollar in the pinned DimCurrency.csv; preserve source ordering. Order totals must group distinct SalesOrderNumber, not count lines as orders.",
+    "order_date": "DimDate.FullDateAlternateKey joined on OrderDateKey, checked against DateKey YYYYMMDD and fact OrderDate midnight timestamp; not ShipDate or DueDate.",
+    "analysis_intervals": "The audit coverage, baseline and current objects use exclusive-end [start,end) intervals. They are derived only from the explicitly reviewed contiguous full demonstration months below, whose start/end dates are inclusive.",
+    "money": "SalesAmount and TotalProductCost are source SQL money, preserved as four-place decimal text without floats, tax/freight, rounding or FX conversion.",
+    "currency_limitation": "Source facts have six CurrencyKey values. The default explicitly filters CurrencyKey=100 and verifies the USD / US Dollar identity using official DimCurrency, avoiding cross-key aggregation. Monetary text is unchanged; no FX conversion or broader base-currency semantics are asserted. Currency identity does not establish production accounting completeness.",
+    "privacy": "ZIP remains ignored and contains other fictitious sample tables including personal columns. Never extract or commit it. Read only the four analytical tables, nonpersonal DimCurrency authority and schema script in memory; project only the eight allowed nonpersonal columns."
+  },
+  "expected_source_output": {
+    "rows": 60398,
+    "orders": 27659,
+    "products": 158,
+    "territories": 10,
+    "min_order_date": "2010-12-29",
+    "max_order_date": "2014-01-28",
+    "sales_amount": "29358677.2207",
+    "total_product_cost": "17277793.5757"
+  },
+  "expected_output": {
+    "rows": 33400,
+    "orders": 14860,
+    "products": 158,
+    "territories": 10,
+    "min_order_date": "2010-12-29",
+    "max_order_date": "2014-01-28",
+    "sales_amount": "14693465.3186",
+    "total_product_cost": "8611268.3850"
+  },
+  "demonstration_periods": [
+    {"name": "baseline", "start": "2013-11-01", "end": "2013-11-30"},
+    {"name": "comparison", "start": "2013-12-01", "end": "2013-12-31"}
+  ],
+  "completeness_policy": {
+    "classification": "reviewed_official_sample_interior_period_assumption",
+    "production_certified": false,
+    "rationale": "November and December 2013 are reviewed interior calendar months in this pinned fictitious snapshot after filtering to the verified CurrencyKey=100 (USD) subset, with activity on every calendar day and valid complete joins. They are deliberately selected for deterministic demonstration, not inferred complete from the maximum fact date.",
+    "limitations": "Calendar coverage, daily activity, joins and row counts establish internal consistency only. No extract watermark, source reconciliation, late-arrival policy or production data-owner completeness certification is supplied. Production use must obtain those controls and validate currency semantics.",
+    "boundary_periods": [
+      {"month": "2010-12", "status": "partial boundary: observed facts start December 29"},
+      {"month": "2014-01", "status": "partial boundary: observed facts end January 28"}
+    ]
+  }
+}

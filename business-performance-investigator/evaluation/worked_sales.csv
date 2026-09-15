@@ -1,0 +1,9 @@
+order_date,sales_order_number,product_id,product_name,territory_id,territory_name,sales_amount,total_product_cost
+2024-01-05,O1,1,Alpha,10,North,100,60
+2024-01-05,O1,2,Beta,10,North,50,30
+2024-01-12,O2,1,Alpha,20,South,200,160
+2024-01-20,O3,2,Beta,20,South,50,20
+2024-02-05,O4,1,Alpha,10,North,80,56
+2024-02-05,O4,2,Beta,10,North,40,24
+2024-02-12,O5,1,Alpha,20,South,280,196
+2024-02-20,O6,2,Beta,20,South,0,0

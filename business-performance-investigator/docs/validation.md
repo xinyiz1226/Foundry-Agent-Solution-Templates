@@ -251,5 +251,28 @@ The exact temporary shared-model role was revoked and its absence verified.
 Active-resource cleanup is verified; no permanent purge was approved or
 performed. The second scoped Cost Management query also returned
 HTTP 429, so final billed cost is unknown; group-only totals would additionally
-exclude shared-model inference charges. AdventureWorks import,
-business-analysis evaluation and the full analyst application remain unbuilt.
+exclude shared-model inference charges. At that cloud checkpoint,
+AdventureWorks loading, business-analysis evaluation and the full analyst
+application had not been implemented.
+
+## Deterministic analytical baseline
+
+The subsequent local milestone prepared hash-pinned official AdventureWorksDW
+data, using only the verified USD CurrencyKey 100 subset. The fixed workflow
+compares November and December 2013, reconciles territory and scoped product
+changes, and emits source-linked Markdown/JSON evidence without model calls.
+Completeness remains an explicit reviewed sample-snapshot assumption.
+
+The complete local suite passed **202 tests with no skips**, including twelve
+independently worked numerical cases, workflow/adapter guards, actual source
+auditing, an independent integer-SQL oracle and ScriptDom view-contract checks.
+Dependencies and both Bicep templates also passed the existing validation
+entrypoint. No Azure resources or model calls were used for this milestone.
+After that integrated run, the reference CSV's checkout format was pinned to
+LF and its hash updated; all 11 focused workflow tests, including portable
+fixture reproduction, passed. This did not change the official dataset.
+
+See [baseline instructions and boundaries](baseline.md) and the
+[sample investigation](../examples/adventureworks-baseline.md). Analytical SQL
+execution in Azure, hosted adaptive investigation, customer SQL onboarding and
+the authenticated UI remain unimplemented or unverified; the probe is unchanged.

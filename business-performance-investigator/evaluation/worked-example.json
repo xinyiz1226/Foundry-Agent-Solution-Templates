@@ -1,0 +1,13 @@
+{
+  "dataset_id": "hand-worked-synthetic-ledger-v1",
+  "csv_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+  "coverage": {
+    "start": "2024-01-01",
+    "end": "2024-04-01",
+    "attestation": "Complete hand-authored synthetic ledger, not AdventureWorks. January and February contain all stated transactions; March deliberately contains none."
+  },
+  "baseline": {"start": "2024-01-01", "end": "2024-02-01"},
+  "current": {"start": "2024-02-01", "end": "2024-03-01"},
+  "top_k": 1,
+  "limits": {"max_requests": 10, "max_groups": 1000, "max_seconds": 30}
+}
