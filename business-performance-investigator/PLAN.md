@@ -388,7 +388,8 @@ infrastructure deployment succeeded. The subsequent isolated same-user azd
 profile passes authentication/preflight, and ordered cleanup is implemented.
 The prior active group is deleted. The second separately approved experiment
 passed actual model/private-SQL and controlled same-session resume checks.
-Its temporary shared-model role is revoked; active-resource cleanup is pending.
+Its temporary shared-model role is revoked; active resource-group deletion was
+verified on 2026-09-15 at 10:25 UTC. Soft-deleted accounts remain retained.
 Natural idle-timeout behavior and the business-analysis baseline remain open.
 
 ### Published checkpoint and deployment blocker
@@ -460,7 +461,8 @@ initialized the fixed SQL fixture through private ACI, and passed actual
 DeepSeek inference and private-SQL access. It also passed controlled stop,
 idle and resume of the same session, preserving its version/creation time.
 The temporary inference role was revoked and the session stopped. Active
-resource teardown is in progress; no permanent account purge is authorized.
+resource teardown completed and was independently verified. No permanent
+account purge was authorized or performed; the cleanup fallback was cleared.
 This completes runtime feasibility evidence, not the business-analysis
 application or a test of natural automatic idle timeout.
 

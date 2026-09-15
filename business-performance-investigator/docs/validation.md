@@ -210,7 +210,7 @@ The narrowly scoped compatibility fix now corroborates that exact
 capability-host GET failure with a fresh, complete parent list; generic
 `UserError`, permission/network failures and ambiguous results still fail.
 The updated cleanup suite passed **56 focused tests**. A guarded resume
-confirmed deletion of the project and active account and is waiting for
+confirmed deletion of the project and active account and then waited for
 service-managed subnet-link release; soft-deleted-account retention is explicit.
 
 The subsequent 30-minute network wait exposed an overly strict cleanup guard,
@@ -224,15 +224,32 @@ its example. Cleanup now distinguishes this exact deletable initializer
 residual from blocking/unknown links, with fresh ownership, topology and
 no-active-work checks before mutations. It never directly deletes or patches
 a SAL or removes delegation. The focused cleanup suite passed **64 tests**.
-The final guarded retry reached normal owned-network deletion; final group
-deletion remains unverified at this checkpoint.
+The final guarded retry reached normal owned-network and group deletion.
 The final integrated run passed **159 tests** with Bicep compilation and no
 skips. Azure accepted the guarded group-deletion request and its resource
-inventory is decreasing; an accepted request is not proof of completion.
+inventory decreased; an accepted request alone was not proof of completion.
+
+### Verified cleanup outcome
+
+At **2026-09-15 10:25 UTC**, an independent `az group exists` returned `false`
+for the exact second experiment, and the temporary model-assignment count
+was zero. A subsequent read-only cleanup preview confirmed group absence
+and explicitly reported the retained soft-deleted account. The 24-hour
+fallback was cleared only after verified approved-scope cleanup.
+
+The final local polling process had failed on an empty resource inventory
+after Azure deleted the resources. This was a reporting/lifecycle error,
+not a failed cloud deletion. Preserve the original state/log rather than
+rewriting it to mask the failure; the separate ignored completion artifact
+records authoritative absence checks. The final polling fix enumerates
+resource IDs explicitly instead of reading `.id` on an empty array under
+strict mode. **66 focused cleanup tests passed**, including a present group
+with zero resources followed by group absence, malformed inventory rejection,
+and read-only absent-group handling with the original `validated` state.
 
 The exact temporary shared-model role was revoked and its absence verified.
-Ordered resource cleanup remains pending at this checkpoint; no permanent
-purge is approved. The second scoped Cost Management query also returned
+Active-resource cleanup is verified; no permanent purge was approved or
+performed. The second scoped Cost Management query also returned
 HTTP 429, so final billed cost is unknown; group-only totals would additionally
 exclude shared-model inference charges. AdventureWorks import,
 business-analysis evaluation and the full analyst application remain unbuilt.

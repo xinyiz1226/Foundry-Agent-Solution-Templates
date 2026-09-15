@@ -757,7 +757,8 @@ function Invoke-BpiOrderedCleanup {
             if ($null -eq $current) { return $true }
             Assert-BpiOwnership $config $state $current
             $remaining = @(Get-BpiCleanupInventory)
-            Write-Host "Remaining resources ($($remaining.Count)): $($remaining.id -join ', ')"
+            $remainingIds = @($remaining | ForEach-Object { $_.id })
+            Write-Host "Remaining resources ($($remaining.Count)): $($remainingIds -join ', ')"
             if ((Get-BpiCleanupProvisioningState $current) -in @('Failed', 'Canceled')) {
                 throw 'Resource group deletion failed; cleanup is incomplete.'
             }

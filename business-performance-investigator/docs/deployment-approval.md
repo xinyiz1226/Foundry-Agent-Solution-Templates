@@ -1,6 +1,6 @@
 # Minimal experiment: deployment approval
 
-Status: **second approved experiment passed real model/private-SQL and controlled same-session resume validation; temporary model access revoked; active-resource cleanup pending**.
+Status: **second approved experiment passed real model/private-SQL and controlled same-session resume validation; temporary model access revoked and active resource group deleted; soft-deleted accounts retained, actual cost unknown**.
 
 Local build/test evidence must be reviewed separately from the Azure checks.
 Passing tests does not certify SDK/runtime compatibility or private SQL access.
@@ -180,14 +180,23 @@ was not tested. See [runtime evidence](validation.md#second-approved-cloud-exper
 The session was stopped again. The one newly created shared-model role was
 revoked and its absence verified; no pre-existing assignment was removed.
 
-Active-resource cleanup is pending at this checkpoint, with the 24-hour
-fallback retained. No purge has been performed and final billing is unknown.
+Active resource-group absence was independently verified at **10:25 UTC**,
+along with absence of the exact temporary model assignment. The 24-hour
+fallback was cleared only after those checks. No purge has been performed
+and final billing is unknown.
 The project and active account have been confirmed absent. The 30-minute
 network wait subsequently timed out; inspection found no Foundry SAL, only
 the initializer's explicitly deletable ACI `acisal`. The corrected cleanup
 guard distinguishes this exact residual from blocking links. A guarded retry
-is performing normal owned-resource deletion; completion must be verified.
+completed normal owned-resource deletion without modifying the SAL directly.
 No direct SAL mutation or account purge is authorized.
+The final local poll encountered an empty-inventory error after resources
+were removed. An independent `az group exists` returned `false`, and a fresh
+read-only cleanup preview confirmed group absence and retained soft deletion.
+The older lifecycle state is preserved rather than rewritten to hide the
+polling failure; separate completion evidence records verified cloud absence.
+The empty-array polling error is now fixed with entrypoint regression
+coverage; no resource recreation or additional cloud deletion was needed.
 An unexpected capability-host 404 envelope was corroborated by a successful
 empty parent list before resuming. Cleanup now handles that precise case
 without interpreting arbitrary `UserError` responses as absence.

@@ -173,6 +173,8 @@ $global:readCounts = @{}
 $global:groupId = '__GROUP__'
 $global:accountId = '__ACCOUNT__'
 $global:softId = '__SOFT__'
+$global:groupDeleteStarted = $false
+$global:emptyGroupPolls = 0
 function Emit($value) { ConvertTo-Json -InputObject $value -Depth 40 -Compress }
 function Absent {
     $global:LASTEXITCODE = 3
@@ -216,6 +218,11 @@ function az {
         if ($method -eq 'get') {
             if (-not $global:readCounts.ContainsKey($id)) { $global:readCounts[$id] = 0 }
             $global:readCounts[$id]++
+            if ($id -eq $global:groupId -and $global:groupDeleteStarted -and
+                $global:f.ContainsKey('emptyInventoryBeforeAbsence') -and $global:f.emptyInventoryBeforeAbsence) {
+                $global:emptyGroupPolls++
+                if ($global:emptyGroupPolls -ge 2) { $global:f.resources.Remove($id) }
+            }
             $vanishAt = if ($global:f.vanishAt.ContainsKey($id)) { $global:f.vanishAt[$id] } else { 2 }
             if ($id -in $global:f.vanish -or
                 ($id -in $global:f.vanishAfterDelete -and $global:readCounts[$id] -ge $vanishAt)) {
@@ -311,6 +318,10 @@ function az {
         return
     }
     if ($a[0] -eq 'resource' -and $a[1] -eq 'list') {
+        if ($global:groupDeleteStarted -and $global:f.ContainsKey('rawInventoryAfterGroupDelete')) {
+            $global:f.rawInventoryAfterGroupDelete
+            return
+        }
         if ($global:f.ContainsKey('rawInventory')) { $global:f.rawInventory; return }
         $items = @($global:f.resources.Values | Where-Object { $_.id.StartsWith("$global:groupId/providers/") })
         Emit $items
@@ -341,9 +352,15 @@ function az {
         return
     }
     if ($a[0] -eq 'group' -and $a[1] -eq 'delete') {
+        $global:groupDeleteStarted = $true
         if (-not $global:f.noOpGroupDelete) {
             foreach ($id in @($global:f.resources.Keys)) {
                 if ($id -eq $global:groupId -or $id.StartsWith("$global:groupId/")) {
+                    if ($id -eq $global:groupId -and $global:f.ContainsKey('emptyInventoryBeforeAbsence') -and
+                        $global:f.emptyInventoryBeforeAbsence) {
+                        $global:f.resources[$id].properties.provisioningState = 'Deleting'
+                        continue
+                    }
                     $global:f.resources.Remove($id)
                 }
             }
@@ -544,7 +561,7 @@ class CleanupLifecycleTests(unittest.TestCase):
         self.assertEqual(state["status"], "deleted")
 
     def test_already_gone_group_is_read_only_even_with_deleted_state_and_purge_flag(self):
-        for status in ("deleted", "provisionFailed"):
+        for status in ("deleted", "provisionFailed", "validated"):
             with self.subTest(status=status):
                 data = fixture()
                 data["state"]["status"] = status
@@ -739,6 +756,32 @@ class CleanupLifecycleTests(unittest.TestCase):
         self.assertIn("Timed out", result.stderr)
         self.assertEqual(sum("group delete" in write for write in self.mutations(calls)), 1)
         self.assertNotEqual(state["status"], "deleted")
+
+    def test_group_polling_empty_inventory_then_confirmed_absence(self):
+        data = fixture()
+        data["state"]["status"] = "validated"
+        data["emptyInventoryBeforeAbsence"] = True
+        result, calls, state, unchanged = self.run_cleanup(data)
+        self.assert_ok(result)
+        self.assertIn("Remaining resources (0):", result.stdout)
+        self.assertIn("resource group absence", result.stdout)
+        self.assertEqual(state["status"], "deleted")
+        self.assertIn("deletedAt", state)
+        self.assertFalse(unchanged)
+        self.assertEqual(sum("group delete" in w for w in self.mutations(calls)), 1)
+
+    def test_group_polling_malformed_inventory_is_not_treated_as_empty(self):
+        for raw in ("null", "{}", "[null]", "[{}]"):
+            with self.subTest(raw=raw):
+                data = fixture()
+                data["state"]["status"] = "validated"
+                data["emptyInventoryBeforeAbsence"] = True
+                data["rawInventoryAfterGroupDelete"] = raw
+                result, _, state, _ = self.run_cleanup(data)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Malformed", result.stderr)
+                self.assertEqual(state["status"], "validated")
+                self.assertNotIn("deletedAt", state)
 
     def test_unexpected_resource_appearing_during_cleanup_stops_group_delete(self):
         data = fixture()

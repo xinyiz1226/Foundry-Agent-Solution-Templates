@@ -4,6 +4,10 @@
 analyst application. Hosted-agent model access, private SQL and controlled
 same-session compute resume have been verified in Azure.**
 
+The disposable experiment's active resource group has been deleted and its
+temporary shared-model permission revoked. Soft-deleted Foundry accounts are
+retained without purge; actual billed cost remains unknown.
+
 The planned solution investigates business metric changes without requiring
 Fabric or Databricks. This first milestone checks a smaller prerequisite:
 
