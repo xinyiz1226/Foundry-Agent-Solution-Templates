@@ -63,9 +63,12 @@ and approval/export are not part of this slice.
 The next cloud slice is scoped in the
 [hosting and authorization plan](docs/workbench-hosting-auth-plan.md), with
 [primary-source findings](docs/workbench-hosting-auth-research.md). It is a
-proposed design and resource/permission checklist, not implemented
-authentication or approval to create resources. Protecting only the web
-login does not protect a separately callable Foundry endpoint.
+selected architecture and resource/permission checklist, not implemented
+authentication or approval to create resources. The
+[read-only preflight](docs/workbench-hosting-preflight.md) records the runtime,
+scoped resource/role inventory, indicative B1 price and remaining approvals.
+Protecting only the web login does not protect a separately callable Foundry
+endpoint.
 
 ## Run the offline checks
 

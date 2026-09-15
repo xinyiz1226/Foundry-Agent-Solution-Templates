@@ -12,8 +12,9 @@ and hosted probes, as recorded below; the full G0 gate has not passed. A dedicat
 storage slice has been deployed. Foundry native resilient tasks Preview is
 selected for a [model-free batch feasibility slice](batch-hosting-feasibility.md).
 A [bounded hosted probe](hosted-smoke-results.md) completed and its agent was
-disabled afterward. Web hosting remains unselected,
-and maintainer alignment is also still pending.
+disabled afterward. Linux App Service is now the selected web architecture,
+but resource creation, identity configuration and deployment are not yet
+approved or completed. Maintainer alignment is also still pending.
 
 Read alongside the [implementation plan](implementation-plan.md) and
 [source migration inventory](migration-inventory.md).
@@ -171,7 +172,7 @@ Responses wrapper, or a full deployment template merely to prove this path.
 
 | Decision | Candidate direction | Evidence needed before selection |
 | --- | --- | --- |
-| Web hosting | Evaluate an Azure-managed web host for the existing Streamlit process; App Service is a candidate, not a selection. | Startup/dependency support, interactive connection behavior, Entra integration, identity, restart behavior, costs, and cleanup |
+| Web hosting | Operator selected Linux App Service; scoped read-only preflight found Python 3.13 and East US B1 advertised, but no existing web app/plan in the inspected resource group. | Resource/cost approval, actual startup/dependency support, interactive connection behavior, Entra integration, identity, restart behavior, and cleanup |
 | Batch driver lifetime | Prefer deterministic bounded progression outside browser-request and page-rerun lifetimes. | A supported host lifecycle that survives client disconnect and has documented cancellation/deadline behavior |
 | Driver placement | Operator selected Foundry native resilient tasks Preview for model-free feasibility; Durable Functions remains a fallback, not an approved deployment. | Real SDK compatibility, persisted application limits, and later hosted start/status/resume and process recovery; approve resource changes separately |
 | Deployment interface | Preserve the existing Invocations approach unless evidence requires a change. | Clean package readiness and a supported source deployment/invocation path; confirm what azd can express |
@@ -182,7 +183,9 @@ records the minimum resource/permission inventory, installed SDK identity
 limitations, direct-gateway bypass checks, and long-lived WebSocket
 expiry/revocation probes. Its [primary-source research](workbench-hosting-auth-research.md)
 does not replace target-environment checks or approval for resource changes.
-Neither document marks G0-10 complete.
+The [read-only target preflight](workbench-hosting-preflight.md) records the
+subsequent inventory and explicit remaining approvals. None of these
+documents marks G0-10 complete.
 
 An in-memory background task, a thread launched from Streamlit, or a longer
 HTTP timeout is not evidence of durable batch execution. If the hosting

@@ -2,9 +2,16 @@
 
 ## Status and decision boundary
 
-Proposed on September 15, 2026, following the local workbench at `444e974`.
-This document defines the next implementation and approval gates; it does
-not claim deployed authentication or authorize Azure changes.
+The operator selected the recommended architecture on September 15, 2026:
+Linux App Service, Entra single-operator authorization, a web managed
+identity, and agent-scoped Foundry Agent Consumer. This follows the local
+workbench at `444e974` and design at `bbdf975`.
+
+Architecture selection is not approval to create resources, grant roles,
+register directory applications, enable an endpoint, or incur recurring
+hosting charges. The [read-only preflight](workbench-hosting-preflight.md)
+records the observed prerequisites and remaining approvals. Authentication
+is not yet implemented or deployed.
 
 The first release remains a **single-operator** reference workbench, as
 agreed in the [implementation plan](implementation-plan.md). The next cloud
@@ -42,11 +49,11 @@ or trusting a browser-supplied identity header. SDK context plumbing alone
 does not establish the live ingress anti-spoofing boundary. Do not silently
 change the container protocol as part of adding authentication.
 
-## Recommended topology, subject to feasibility gates
+## Selected topology, subject to feasibility and resource approval
 
-Prefer an Azure-managed Linux web host for Streamlit, with **App Service as
-the first candidate**, and a service-to-service managed identity for the
-web process. Keep extraction in the existing Foundry/native-task design:
+Use **Linux App Service** for Streamlit and a service-to-service managed
+identity for the web process, subject to the gates below. Keep extraction
+in the existing Foundry/native-task design:
 
 ```text
 Approved operator's browser

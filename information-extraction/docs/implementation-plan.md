@@ -9,8 +9,10 @@ The [execution core](../README.md) is implemented, and a
 A [local synthetic workbench](local-workbench.md) now supports current-job
 rediscovery, explicit start/resume, and evidence inspection. The authenticated
 hosted browser workflow and complete G0 gate remain outstanding; the next
-[hosting and authorization slice](workbench-hosting-auth-plan.md) is a
-proposed design, not a deployed access-control boundary.
+[hosting and authorization slice](workbench-hosting-auth-plan.md) is now the
+operator-selected architecture, not a deployed access-control boundary.
+Its [read-only preflight](workbench-hosting-preflight.md) records resource,
+runtime and role observations without authorizing resource changes.
 
 Execution planning is detailed in the [minimal migration inventory](migration-inventory.md)
 and [G0 technical validation plan](g0-validation-plan.md). The
