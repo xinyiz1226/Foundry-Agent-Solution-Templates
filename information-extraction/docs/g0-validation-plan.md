@@ -16,8 +16,10 @@ disabled afterward. Linux App Service is now the selected web architecture.
 After an East US quota rejection, the operator approved West US 2, where
 [a B1 plan and empty site were created](web-host-deployment.md) in the same
 resource group. The site is stopped/public-access-disabled and the plan
-is retained and billable. Identity configuration and application deployment
-remain unapproved and incomplete. Maintainer alignment is also still pending.
+is retained and billable. A later [identity-only approval](web-identity-configuration.md)
+configured the web login, protected credential and narrow managed-identity
+grant. Code deployment and live authorization verification remain
+unapproved and incomplete. Maintainer alignment is also still pending.
 
 Read alongside the [implementation plan](implementation-plan.md) and
 [source migration inventory](migration-inventory.md).
@@ -59,7 +61,7 @@ corruption, source evidence resolution, and unknown versus observed usage.
 | G0-07 | Offline identity/revision and Blob integrity checks; valid history restored in a replacement hosted application. | No live corruption injection. |
 | G0-08 | Native hosted task reached a persisted limit; explicit resume completed the remaining chunk through real Blob persistence. | Two chunks from one uninterrupted cloud start and browser-disconnect timing remain unverified. |
 | G0-09 | Local Streamlit page/client recreation restores current progress and evidence; a separate native-task process and process restart preserve the job. | Hosted authenticated browser reconnect and live disconnect timing remain unverified. |
-| G0-10 | Scoped runtime-identity Blob grant followed by successful hosted Blob/task operations; authenticated gateway calls and unauthenticated HTTP 401. Signed-token operator policy and a cloud client now have local fixture coverage. | No live web-operator allowlist, unauthorized signed-in-user test, or full effective-permissions audit. |
+| G0-10 | Scoped runtime-identity Blob grant followed by successful hosted Blob/task operations; authenticated gateway calls and unauthenticated HTTP 401. Local signed-token/client coverage plus actual web login/identity/grant configuration readback. | No live browser/operator-denial test, unauthorized signed-in-user direct-call test, or full effective-permissions audit. |
 | G0-11 | Owned session stop, different hosted application UUID, unchanged durable status, explicit resume, and endpoint disable observed. | Unexpected in-flight crash/lease recovery, hard cancellation, and real-model lifecycle remain unverified. |
 | G0-12 | Probe endpoint disabled and four session stops acknowledged; records report `idle`. | Source version, role, sessions and storage intentionally retained; deletion and final billing are not verified. |
 

@@ -23,6 +23,14 @@ stopped with public access disabled; its retained B1 plan continues billing.
 Directory/role changes, application deployment and agent enablement remain
 outside that approval.
 
+The operator subsequently approved the identity-only step.
+[Observed configuration](web-identity-configuration.md) now includes the
+single-tenant registration, operator assignment, OIDC-only consent, protected
+login credential, mandatory Easy Auth, system-assigned web identity and
+agent-scoped Consumer grant. The app is still stopped/public-access-disabled,
+the agent is still disabled, and no code was deployed. Live caller isolation
+and WebSocket behavior remain unverified.
+
 The first release remains a **single-operator** reference workbench, as
 agreed in the [implementation plan](implementation-plan.md). The next cloud
 probe must still use the fixed synthetic sample. Real model integration,
@@ -197,8 +205,10 @@ network-private endpoints require a separately approved network design.
    probe model-free; record the deployed source hash and observed caller
    outcomes. Stop only the newly approved services/sessions afterward.
 
-Steps 2-3 now have code and local fixture evidence. Resource/identity wiring,
-web packaging/deployment and the live acceptance matrix remain separate
+Steps 2-3 now have code and local fixture evidence. A separately approved
+identity slice configured the existing resources, with readback evidence.
+Repeatable deployment definitions, web packaging/deployment, the necessary
+backend update and the live acceptance matrix remain separate work and
 approvals; the existing deployed agent has not been changed.
 
 Cloud transport must distinguish a durable job ID from the gateway's

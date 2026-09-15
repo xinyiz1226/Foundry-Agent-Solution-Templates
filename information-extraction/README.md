@@ -73,9 +73,12 @@ scoped resource/role inventory and indicative B1 price. An
 [empty web-host slice](docs/web-host-deployment.md) was created in approved
 West US 2 after East US quota rejection, in the same existing resource group.
 The empty site is stopped with public access disabled; its retained B1 plan
-continues billing. Identity and application deployment still require separate
-approval. Protecting only the web login does not protect a separately
-callable Foundry endpoint.
+continues billing. A subsequent [approved identity slice](docs/web-identity-configuration.md)
+configured single-operator Easy Auth, its protected login credential, and an
+agent-scoped web managed identity. Application deployment and live
+authorization checks remain separate approvals; the old hosted backend
+also needs an approved update for the `current` interface. Protecting only
+the web login does not protect a separately callable Foundry endpoint.
 
 ## Run the offline checks
 

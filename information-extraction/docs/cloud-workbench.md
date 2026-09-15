@@ -1,10 +1,13 @@
 # Cloud workbench code: authorization and transport
 
 This is **locally tested code, not a deployed or live-validated application**.
-The empty App Service remains stopped/public-access-disabled; its retained B1
-plan still bills. No directory registration, credential, managed identity,
-role assignment, deployment, agent enablement, or real-model call is part of
-this implementation slice. **G0 remains incomplete.**
+The code-only slice did not create directory registrations, credentials,
+identities or grants. A subsequent, separately approved
+[identity-configuration slice](web-identity-configuration.md) configured
+those controls on the existing App Service. The app remains
+stopped/public-access-disabled without deployed application code; its B1
+plan still bills. No agent was enabled or real model called. **G0 remains
+incomplete.**
 
 ## Entry points and public interfaces
 
