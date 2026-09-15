@@ -9,6 +9,7 @@ param(
     [ValidateRange(1, 60)][int]$PollIntervalSeconds = 15
 )
 . "$PSScriptRoot/common.ps1"
+. "$PSScriptRoot/initializer-common.ps1"
 . "$PSScriptRoot/cleanup-common.ps1"
 if (-not $WhatIfPreference) { Assert-BpiAzureApproval -Approved:$ApproveAzureChanges }
 $config = Read-BpiConfig $ConfigPath

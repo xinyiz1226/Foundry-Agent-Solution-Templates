@@ -17,6 +17,26 @@ function Invoke-BpiCleanupAz {
         elseif ($text -match '"error"\s*:\s*\{\s*"code"\s*:\s*"(ResourceNotFound|ResourceGroupNotFound|ParentResourceNotFound)"') {
             $code = $Matches[1]
         }
+        elseif ($text -cmatch '\AERROR: Not Found\((\{[^\r\n]*\})\)\z') {
+            # Cognitive Services uses NotFound inside az rest's HTTP-404 envelope.
+            # Validate the entire JSON payload, not a substring of arbitrary errors.
+            $document = $null
+            try {
+                $document = [System.Text.Json.JsonDocument]::Parse([string]$Matches[1])
+                $root = $document.RootElement
+                $errorBody = $root.GetProperty('error')
+                $message = $errorBody.GetProperty('message').GetString()
+                if (@($root.EnumerateObject()).Count -eq 1 -and
+                    @($errorBody.EnumerateObject()).Count -eq 2 -and
+                    $errorBody.GetProperty('code').GetString() -ceq 'NotFound' -and
+                    -not [string]::IsNullOrWhiteSpace($message) -and
+                    $message -notmatch '\b(?:401|403)\b|Unauthorized|Forbidden|AADSTS|AuthorizationFailed|AuthenticationFailed|ConnectionError|timed out') {
+                    $code = 'NotFound'
+                }
+            }
+            catch { $code = '' }
+            finally { if ($null -ne $document) { $document.Dispose() } }
+        }
         if ($AllowAbsent -and $code -and $text -notmatch 'AADSTS|AuthorizationFailed|AuthenticationFailed|Forbidden') {
             return $null
         }
@@ -131,6 +151,14 @@ function Invoke-BpiCleanupMutation {
     if ($script:CleanupAccountId) {
         $active = Get-BpiCleanupResource $script:CleanupAccountId
         if ($null -ne $active) { Assert-BpiCleanupAccount $active }
+    }
+    if ($Target -imatch '/providers/Microsoft.ContainerInstance/containerGroups/[^/]+$') {
+        # A confirmation prompt can be left open while execution changes. Re-read
+        # the complete initializer guard after confirmation, just before deletion.
+        $initializer = Get-BpiCleanupInitializer $Target
+        if ($null -eq $initializer) { return $true }
+        Assert-BpiCleanupInitializerWorkStopped
+        if ((Get-BpiCleanupProvisioningState $initializer) -eq 'Deleting') { return $true }
     }
     Save-BpiCleanupProgress "$Action about to be requested: $Target"
     Invoke-BpiCleanupAz $Arguments -Mutation -AllowAbsent | Out-Null
@@ -361,6 +389,83 @@ function Wait-BpiCleanupNetwork {
     }
 }
 
+function Get-BpiCleanupInitializer {
+    param([string]$Id)
+    $identityId = [string](Get-BpiOutput $state 'INITIALIZER_ID')
+    $identityPrefix = "$script:CleanupGroupId/providers/Microsoft.ManagedIdentity/userAssignedIdentities/"
+    if ($identityId -inotmatch "^$([regex]::Escape($identityPrefix))(bpi-[a-z0-9]+)-initializer$" -or
+        $identityId -notin $state.resourceIds) {
+        throw 'Initializer identity output is not a recorded, planned owned target.'
+    }
+    $stem = $Matches[1]
+    $expectedSubnet = "$script:CleanupGroupId/providers/Microsoft.Network/virtualNetworks/$stem-vnet/subnets/initializer"
+    $expectedId = "$script:CleanupGroupId/providers/Microsoft.ContainerInstance/containerGroups/$stem-bootstrap-aci"
+    if ($Id -ine $expectedId -or $Id -notin $state.resourceIds -or
+        (Get-BpiOutput $state 'initializerSubnetId') -ine $expectedSubnet -or
+        ($expectedSubnet -replace '/subnets/initializer$', '') -notin $state.resourceIds) {
+        throw 'Initializer container or subnet is not the exact recorded, planned owned target.'
+    }
+    $active = Get-BpiCleanupResource $Id '2023-05-01'
+    if ($null -eq $active) { return $null }
+    Assert-BpiCleanupTags $active
+    # Reuse deployment's independent CLI validation of tags, exact identity and
+    # subnet, single named container, and the pinned Microsoft image.
+    $container = Get-BpiPrivateInitializer $config $state "$stem-bootstrap-aci"
+    if (-not $container.ContainsKey('restartPolicy') -or $container.restartPolicy -cne 'Never' -or
+        -not $container.ContainsKey('osType') -or $container.osType -cne 'Linux' -or
+        ($container.ContainsKey('ipAddress') -and $null -ne $container.ipAddress -and
+            ($container.ipAddress -isnot [hashtable] -or $container.ipAddress['type'] -cne 'Private'))) {
+        throw 'Initializer must retain its planned private Linux topology and Never restart policy.'
+    }
+    $phase = Get-BpiCleanupProvisioningState $active
+    if (-not $container.ContainsKey('provisioningState') -or
+        $container.provisioningState -cne $phase -or
+        $phase -notin @('Succeeded', 'Failed', 'Canceled', 'Deleting')) {
+        throw 'Initializer provisioning is active, unknown, or inconsistent; deletion refused.'
+    }
+    $instance = $container.containers[0]
+    if (-not $instance.ContainsKey('instanceView') -or $instance.instanceView -isnot [hashtable] -or
+        -not $instance.instanceView.ContainsKey('currentState') -or
+        $instance.instanceView.currentState -isnot [hashtable]) {
+        throw 'Initializer terminal execution metadata is missing.'
+    }
+    $current = $instance.instanceView.currentState
+    if ($current['state'] -cne 'Terminated' -or -not $current.ContainsKey('exitCode') -or
+        ($current.exitCode -isnot [int] -and $current.exitCode -isnot [long])) {
+        throw 'Initializer must have a verified terminal state and integer exit code; running or unknown work is never deleted.'
+    }
+    return $active
+}
+
+function Assert-BpiCleanupInitializerWorkStopped {
+    foreach ($item in @(Get-BpiCleanupInventory)) {
+        if ($item.type -ine 'Microsoft.Resources/deploymentScripts') { continue }
+        $job = Get-BpiCleanupResource $item.id '2023-08-01'
+        if ($null -ne $job -and (Get-BpiCleanupProvisioningState $job) -notin @('Succeeded', 'Failed', 'Canceled')) {
+            throw 'Legacy initializer deploymentScript work remains active; container deletion refused.'
+        }
+    }
+}
+
+function Remove-BpiCleanupInitializer {
+    param([string]$Id)
+    $container = Get-BpiCleanupInitializer $Id
+    if ($null -eq $container) { return }
+    Assert-BpiCleanupInitializerWorkStopped
+    if ((Get-BpiCleanupProvisioningState $container) -ine 'Deleting') {
+        if (-not (Invoke-BpiCleanupMutation $Id 'Delete verified terminal private initializer ACI' @(
+            'rest', '--method', 'delete', '--url',
+            "https://management.azure.com${Id}?api-version=2023-05-01"))) { return }
+    }
+    elseif ($WhatIfPreference) { Write-Host "Already Deleting: $Id (would wait for verified ACI absence)."; return }
+    Wait-BpiCleanup "private initializer ACI absence $Id" {
+        # Local request markers never substitute for exact Azure absence. If an
+        # initializer is recreated or restarts while polling, validation stops us.
+        return $null -eq (Get-BpiCleanupInitializer $Id)
+    }
+    Save-BpiCleanupProgress "private initializer ACI absence confirmed: $Id"
+}
+
 function Remove-BpiCleanupInitializerNetwork {
     param([object[]]$Vnets)
     foreach ($item in $Vnets) {
@@ -443,6 +548,11 @@ function Invoke-BpiOrderedCleanup {
         $vnet = Get-BpiCleanupResource $item.id '2024-07-01'
         if ($null -ne $vnet) { Assert-BpiCleanupNetwork $vnet }
     }
+    $initializers = @($resources | Where-Object { $_.type -ieq 'Microsoft.ContainerInstance/containerGroups' })
+    foreach ($initializer in $initializers) {
+        Get-BpiCleanupInitializer $initializer.id | Out-Null
+    }
+    if ($initializers.Count) { Assert-BpiCleanupInitializerWorkStopped }
     $projects = @()
     $projectHosts = @()
     $accountHosts = @()
@@ -463,7 +573,7 @@ function Invoke-BpiOrderedCleanup {
         # Read the exact residual before any mutation; 403 is not evidence of absence.
         Get-BpiCleanupSoftAccount | Out-Null
     }
-    Write-Host 'Order: project hosts -> account hosts -> project -> account -> active/soft status -> SAL -> initializer NAT -> resource group.'
+    Write-Host 'Order: project hosts -> account hosts -> project -> account -> active/soft status -> terminal initializer ACI -> SAL/subnet release -> initializer NAT -> resource group.'
     foreach ($hostResource in $projectHosts) { Remove-BpiCleanupResource $hostResource.id }
     foreach ($project in $projects) {
         if (-not $WhatIfPreference -and @(Get-BpiCleanupChildren $project.id 'capabilityHosts').Count) {
@@ -500,6 +610,7 @@ function Invoke-BpiOrderedCleanup {
         }
         Complete-BpiCleanupAccount
     }
+    foreach ($initializer in $initializers) { Remove-BpiCleanupInitializer $initializer.id }
     if ($WhatIfPreference) {
         Write-Host 'WhatIf: would wait for account absence, SAL release and initializer work completion before network changes.'
     }

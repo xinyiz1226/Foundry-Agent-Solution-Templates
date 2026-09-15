@@ -8,6 +8,7 @@ param(
     [switch]$RetryInitialization
 )
 . "$PSScriptRoot/common.ps1"
+. "$PSScriptRoot/initializer-common.ps1"
 Assert-BpiAzureApproval -Approved:$ApproveAzureChanges
 $config = Read-BpiConfig $ConfigPath
 $model = Get-BpiModelConfiguration $config
@@ -109,6 +110,9 @@ try {
             $value = [string](Get-BpiOutput $state $key)
             Invoke-BpiNative azd @('env', 'set', $key, $value, '-e', $config.environmentName) | Out-Null
         }
+        $projectEndpoint = [string](Get-BpiOutput $state 'AZURE_AI_PROJECT_ENDPOINT')
+        Invoke-BpiNative azd @('env', 'set', 'FOUNDRY_PROJECT_ENDPOINT', $projectEndpoint,
+            '-e', $config.environmentName) | Out-Null
         $modelEndpoint = [string](Get-BpiOutput $state 'AZURE_AI_MODEL_ENDPOINT' -AllowEmpty)
         Invoke-BpiNative azd @('env', 'set', 'AZURE_AI_MODEL_ENDPOINT', $modelEndpoint,
             '-e', $config.environmentName) | Out-Null
@@ -164,10 +168,29 @@ try {
         parameters = $parameters
     } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $parameterFile -Encoding utf8
     try {
-        Invoke-BpiNative az @('deployment', 'group', 'create', '--subscription',
-            $config.subscriptionId, '--resource-group', $config.resourceGroupName,
-            '--name', 'bpi-bootstrap', '--template-file', 'infra-bicep/bootstrap.bicep',
-            '--parameters', "@$parameterFile", '--output', 'none') | Out-Null
+        $existingInitializers = @((Get-BpiResources $config) | Where-Object {
+            $_.type -ieq 'Microsoft.ContainerInstance/containerGroups'
+        })
+        if ($existingInitializers.Count -gt 1) {
+            throw 'Multiple initializer containers found. Inspect the owned environment before continuing.'
+        }
+        $containerName = ''
+        if ($existingInitializers.Count -eq 1) {
+            $containerName = [string]$existingInitializers[0].name
+            $container = Get-BpiPrivateInitializer $config $state $containerName
+            if ($RetryInitialization -and $container.containers[0].instanceView.currentState.state -ne 'Terminated') {
+                throw 'The initializer is still running. Do not restart an in-flight SQL transaction.'
+            }
+        }
+        if (-not $containerName -or $RetryInitialization) {
+            $deployment = Invoke-BpiNative az @('deployment', 'group', 'create', '--subscription',
+                $config.subscriptionId, '--resource-group', $config.resourceGroupName,
+                '--name', 'bpi-bootstrap', '--template-file', 'infra-bicep/bootstrap.bicep',
+                '--parameters', "@$parameterFile", '--output', 'json') -Json
+            $containerName = [string](Get-BpiOutput @{outputs = $deployment.properties.outputs} 'bootstrapContainerGroupName')
+        }
+        $state.initializerEvidence = Wait-BpiPrivateInitializer -Config $config -State $state `
+            -ContainerName $containerName -AgentClientId $clientId -AgentPrincipalId $principalId
         $state.agentPrincipalId = $principalId.ToString()
         $state.agentClientId = $clientId.ToString()
         $state.status = 'initialized'

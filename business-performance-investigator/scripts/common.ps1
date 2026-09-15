@@ -352,6 +352,19 @@ function Get-BpiAgentPrincipalId {
     return [string](@($candidates)[0])
 }
 
+function Get-BpiProbeInvokeArguments {
+    param([string]$EnvironmentName, [string]$SessionId = '')
+    $arguments = @('ai', 'agent', 'invoke', 'sql-probe',
+        '--new-conversation', 'Run the private SQL probe.', '-e', $EnvironmentName)
+    if ($SessionId) {
+        $arguments += @('--session-id', $SessionId)
+    }
+    else {
+        $arguments += '--new-session'
+    }
+    return $arguments
+}
+
 function ConvertFrom-BpiProbeEvidence {
     param([Parameter(Mandatory)][string]$Text)
     $plain = [regex]::Replace($Text, '\x1B\[[0-?]*[ -/]*[@-~]', '')

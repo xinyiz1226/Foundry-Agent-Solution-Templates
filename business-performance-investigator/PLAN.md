@@ -4,16 +4,19 @@ Last updated: 2026-09-15.
 
 ## Status and authorization
 
-**The Phase 1 validation package is implemented and locally checked; no cloud
-deployment has been performed. The complete analyst application is not built.**
+**The Phase 1 package has passed hosted-agent model/private-SQL validation and
+controlled same-session compute resume in Azure. The analyst application is
+not built; cleanup and billing evidence are recorded separately.**
 
 - The product scope and the next technical-validation milestone were agreed
   with the project owner.
 - Public documentation and reference-template source were inspected. The local
   package now includes the minimal runtime, Bicep, lifecycle scripts, tests and
-  deployment-approval materials. No end-to-end Azure deployment, real SQL
-  connection, or business-analysis evaluation has been performed.
-- No Azure resources have been created for this project.
+  deployment-approval materials. Two isolated cloud experiments were authorized;
+  the second reached actual hosted-agent/private-SQL validation.
+  Business-analysis evaluation has not been performed.
+- Cloud creation is limited to separately approved, disposable experiments;
+  unrelated resources and the shared model remain outside ownership.
 - The original plan was committed as `a49097b`. Implementation followed explicit
   approval to prepare the package without deploying Azure resources.
 - See `docs/validation.md` for recorded local evidence and
@@ -38,7 +41,8 @@ Working branch: `xinyiz1226-business-performance-investigator`, created from
   static public IP to make private ACI outbound access explicit. This addition
   and its hourly cost require review before deployment.
 - Source deployment, `python-tds`, and the deterministic evidence protocol
-  passed local dependency and behavior checks, not a hosted Linux/SQL test.
+  passed both local checks and the second experiment's hosted Linux/private-SQL
+  invocation and controlled compute-resume checks.
 
 ## Purpose and positioning
 
@@ -86,7 +90,7 @@ possible future direction, not a first-release requirement.
 | Runtime access | Managed identity with SELECT on approved analysis views, not general write access. |
 | Infrastructure | Bicep only; no first-release Terraform implementation. |
 | Agent packaging | Prefer source deployment. A validated, pinned third-party SQL driver is acceptable. |
-| Driver candidate | `python-tds` (`pytds` import), subject to runtime, token-authentication, TLS, and connection-recovery checks. |
+| Probe driver | `python-tds` 1.17.1 (`pytds` import); hosted runtime, token authentication, TLS and controlled session recovery verified for the fixed query. |
 | Private initialization | Template-owned temporary private execution resources are allowed; initializer identity is separate from runtime identity. |
 | Completion bar | Deployable template, correct results, fixed-workflow comparison, and second-dataset configuration-only adaptation. |
 
@@ -285,9 +289,10 @@ The inspected reference uses Python 3.13 source deployment with `remote_build`,
 but has no SQL driver. Installing `pyodbc` is not proof that Microsoft ODBC
 native dependencies exist. `mssql-python` also has native requirements.
 
-`python-tds` is an approved candidate, not a verified implementation. Pin its
-version and validate token callbacks, trusted CA certificates, TLS dependencies,
-Python compatibility, query timeouts, and reconnect behavior.
+`python-tds` 1.17.1 passed the hosted Linux/private-SQL probe, including token
+authentication, certificate/hostname verification and controlled same-session
+compute resume. Keep dependencies pinned and validate these contracts again
+when upgrading; this does not establish full business-query performance.
 
 If the source path fails, report the evidence and request approval before
 switching to a custom image/ACR or relaxing any security constraint.
@@ -305,11 +310,14 @@ reference versions and current documentation differ.
 - SQL Entra administrator setup and directory lookup permissions can require
   tenant/operator actions beyond Azure resource deployment permissions.
 - Do not silently grant Directory Readers or tenant-wide permissions.
-- A private Bicep deployment-script runner is a candidate initialization path.
-  Its container execution, separate subnet, storage/file endpoint, identities,
-  required egress, permissions, and cleanup must be fully accounted for.
-- Applying that runner to SQL initialization is an implementation proposal,
-  not an already validated end-to-end example.
+- A private deployment-script runner was attempted but required a trusted
+  storage-services bypass. Direct private ACI initialization now preserves
+  the no-bypass storage policy and has been validated against the probe SQL.
+  Its container execution, separate subnet, identities, egress and cleanup
+  remain explicitly accounted for. Legacy private storage/file endpoint/DNS
+  resources are still provisioned by the core template but unused by ACI.
+- This validates initialization of the synthetic probe, not arbitrary
+  customer-owned SQL or the later AdventureWorks import.
 
 ### Existing-resource boundaries
 
@@ -348,7 +356,7 @@ telemetry, and data transfer. SQL Basic is a candidate for the tiny probe,
 not a confirmed SKU for full DW analysis.
 
 Region, model/version, quota, final SKUs, full resource inventory, experiment
-duration, and an acceptable spending limit remain to be agreed before deployment.
+duration, and an acceptable spending response require approval for each deployment.
 Reprice the actual selected topology; do not imply a budget alert is a hard
 spending cap. Persistent SQL, endpoints, DNS, and hosting plans can accrue costs
 while idle; stopping an application is not equivalent to deleting its plan.
@@ -378,8 +386,10 @@ Do not equate the full-template scope with authorization to skip the early gates
 Step 1 has local implementation evidence and the first approved Central US
 infrastructure deployment succeeded. The subsequent isolated same-user azd
 profile passes authentication/preflight, and ordered cleanup is implemented.
-The prior active group is deleted. Review the retained soft-deleted account
-and next experiment scope before redeploying; runtime validation is still open.
+The prior active group is deleted. The second separately approved experiment
+passed actual model/private-SQL and controlled same-session resume checks.
+Its temporary shared-model role is revoked; active-resource cleanup is pending.
+Natural idle-timeout behavior and the business-analysis baseline remain open.
 
 ### Published checkpoint and deployment blocker
 
@@ -442,8 +452,17 @@ ordered cleanup now handles capability hosts, project/account deletion,
 bounded service-link waits, owned initializer associations and final group
 deletion. Purge remains a separate opt-in guarded by incarnation evidence.
 The integrated suite passes 126 tests; a real cleanup `-WhatIf` against the
-previous experiment confirms read-only residual reporting. A fresh end-to-end
-deployment/runtime/teardown run has not been performed.
+previous experiment confirms read-only residual reporting. At that checkpoint,
+a fresh end-to-end deployment/runtime/teardown run had not been performed.
+
+The separately authorized second run subsequently deployed the hosted agent,
+initialized the fixed SQL fixture through private ACI, and passed actual
+DeepSeek inference and private-SQL access. It also passed controlled stop,
+idle and resume of the same session, preserving its version/creation time.
+The temporary inference role was revoked and the session stopped. Active
+resource teardown is in progress; no permanent account purge is authorized.
+This completes runtime feasibility evidence, not the business-analysis
+application or a test of natural automatic idle timeout.
 
 See [deployment approval](docs/deployment-approval.md) for current evidence,
 teardown requirements and remaining gates. Actual identifiers,

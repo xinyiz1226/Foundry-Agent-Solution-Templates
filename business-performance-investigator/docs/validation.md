@@ -53,8 +53,9 @@ project sessions when cleaning up one probe.
 | TLS validation fails | Confirm the normal server FQDN and trusted CA bundle. Never set TrustServerCertificate or disable hostname validation. |
 | Token login fails | Check actual identity, token audience, client/object ID distinction, and contained database user. Never print the token. |
 | Initializer cannot download image/module | Check its required outbound route and approved registry/gallery endpoints; SQL public access is unrelated. |
-| Storage mount or deployment script fails | Check private file DNS, initializer role propagation, delegation and platform support. |
-| Failed initialization does not rerun | After fixing the cause and reapproving execution, repeat Initialize with `-RetryInitialization`; no implicit new force-update marker is generated. |
+| Legacy deployment script rejects storage firewall settings | Deployment Scripts requires a trusted-services bypass even in its private-endpoint example. The current direct ACI initializer avoids that dependency; do not weaken storage or SQL networking to resume an old script. |
+| Initializer ARM deployment succeeds but SQL is not ready | Container provisioning is not script completion. Require the pinned image/identity/subnet, zero process exit code and the exact completion marker. |
+| Failed initialization does not rerun | After fixing the cause and reapproving execution, repeat Initialize with `-RetryInitialization`; a completed/failed container is not implicitly redeployed, and running initialization cannot be restarted. |
 | Result mismatch or extra permissions | Treat as failed validation, not a successful answer; inspect fixture and grants. |
 | Resource inventory differs at cleanup | Inspect the additional resources. Do not edit ownership state merely to bypass the guard. |
 
@@ -150,7 +151,60 @@ against the prior deleted experiment reported its exact retained soft-deleted
 account and confirmed that neither Azure nor local state was changed.
 No new deployment or destructive teardown was run for this follow-up.
 
-No hosted agents were invoked. Hosted Linux dependencies, real agent token
-identity/SID mapping, actual private routing, model access, private
-initialization, idle/resume and final costs remain unverified. Active resource
-group deletion is verified; soft-deleted-account retention remains explicit.
+### Second approved cloud experiment, 2026-09-15
+
+The second isolated run successfully deployed `sql-probe` version 1. The
+Agent stage now exports both `AZURE_AI_PROJECT_ENDPOINT` and the extension's
+required `FOUNDRY_PROJECT_ENDPOINT` from the same verified deployment output.
+Its actual directory `ServiceIdentity` was verified; object ID and application
+ID happened to be equal, but both were independently checked.
+
+Private Deployment Scripts initialization failed before SQL execution because
+its storage integration requires `AzureServices` bypass. Rather than relax
+`publicNetworkAccess: Disabled` or `bypass: None`, initialization moved to
+direct ACI in the same approved subnet with the same initializer identity/NAT.
+The Microsoft Azure PowerShell image is digest-pinned; the container completed
+with exit code zero and the required SQL evidence marker. Legacy storage/file
+endpoint/DNS resources remain in the core inventory but are unused by ACI.
+
+The first hosted invocation passed at **08:53:09 UTC**:
+
+| Evidence | Result |
+|---|---|
+| Existing DeepSeek model | Actual agent-identity inference and bounded tool execution passed |
+| Hosted Linux / SQL driver | Agent successfully executed the fixed private-SQL query |
+| Private connectivity | DNS matched the approved endpoint; SQL public access remained disabled |
+| TLS | Certificate/hostname validation and full-session encryption enabled |
+| SQL identity | `bpi_probe_agent`; SID matched the verified application/client ID |
+| Fixture | `(1, 'private-sql-probe', 42.00)` |
+| Effective permissions | View SELECT allowed; checked base-table/DML/DDL/control permissions denied; no unknown checks |
+
+The exact session was then stopped and observed as `idle`. Validation with
+`-SessionId` reused that session, with a fresh conversation, and passed the
+same probe again. The session returned to `active`, preserving its ID,
+version and creation timestamp; last-access time increased. Compound evidence
+was recorded at **08:58:27 UTC**.
+
+This proves **controlled stop -> idle -> same-session resume**, not natural
+automatic idle-timeout behavior. `cloud-probe-first.json`, `cloud-probe.json`
+and `resume-evidence.json` are separate ignored evidence artifacts; the
+single-invocation validator alone does not claim compound resume success.
+Two hosted invocations were made, each bounded to two model requests and
+one SQL query. The session was stopped again afterward.
+
+The integrated suite subsequently passed **146 tests**, including compiled
+Bicep, actual Agent-stage endpoint handoff, initializer completion and pinned
+image consistency, retained-session argument handling, and ordered cleanup.
+Cleanup regressions include the provider's exact JSON-wrapped `NotFound`
+response and guarded terminal-ACI deletion/subnet release; malformed responses,
+permission errors, active execution and identity/topology mismatches fail closed.
+For this live run, the completed initializer was independently verified and
+deleted before starting the ordered teardown; automatic terminal-ACI removal
+is covered by offline entrypoint tests, not a second live container deletion.
+
+The exact temporary shared-model role was revoked and its absence verified.
+Ordered resource cleanup remains pending at this checkpoint; no permanent
+purge is approved. The second scoped Cost Management query also returned
+HTTP 429, so final billed cost is unknown; group-only totals would additionally
+exclude shared-model inference charges. AdventureWorks import,
+business-analysis evaluation and the full analyst application remain unbuilt.

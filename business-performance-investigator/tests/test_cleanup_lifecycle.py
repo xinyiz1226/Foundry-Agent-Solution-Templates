@@ -19,6 +19,9 @@ PROJECT_HOST = f"{PROJECT}/capabilityHosts/default"
 ACCOUNT_HOST = f"{ACCOUNT}/capabilityHosts/bpi-test-foundry@aml_aiagentservice"
 VNET = f"{GROUP}/providers/Microsoft.Network/virtualNetworks/bpi-test-vnet"
 NAT = f"{GROUP}/providers/Microsoft.Network/natGateways/bpi-test-initializer-nat"
+ACI = f"{GROUP}/providers/Microsoft.ContainerInstance/containerGroups/bpi-test-bootstrap-aci"
+IDENTITY = f"{GROUP}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/bpi-test-initializer"
+LEGACY_JOB = f"{GROUP}/providers/Microsoft.Resources/deploymentScripts/bpi-test-bootstrap"
 SOFT = (
     f"/subscriptions/{SUB}/providers/Microsoft.CognitiveServices/locations/centralus"
     "/resourceGroups/rg-bpi-cleanup-test/deletedAccounts/bpi-test-foundry"
@@ -92,6 +95,36 @@ def fixture():
     }
 
 
+def initializer_fixture():
+    data = fixture()
+    data["resources"][IDENTITY] = resource(IDENTITY, "Microsoft.ManagedIdentity/userAssignedIdentities")
+    data["resources"][LEGACY_JOB] = resource(
+        LEGACY_JOB, "Microsoft.Resources/deploymentScripts", provisioningState="Failed",
+    )
+    data["resources"][ACI] = resource(
+        ACI, "Microsoft.ContainerInstance/containerGroups",
+        restartPolicy="Never", osType="Linux",
+        subnetIds=[{"id": f"{VNET}/subnets/initializer"}],
+        containers=[{
+            "name": "sql-initializer",
+            "properties": {
+                "image": "mcr.microsoft.com/azure-powershell@sha256:82b5bb8daa75c8e974f5ff74a61a6add5e8ccd0d464a231a1a1e90ff0b713bd9",
+                "instanceView": {"currentState": {"state": "Terminated", "exitCode": 0}},
+            },
+        }],
+    )
+    data["resources"][ACI]["identity"] = {
+        "type": "UserAssigned", "userAssignedIdentities": {IDENTITY: {}},
+    }
+    data["state"]["resourceIds"].extend([IDENTITY, LEGACY_JOB, ACI])
+    data["state"]["outputs"] = {
+        "INITIALIZER_ID": {"value": IDENTITY},
+        "initializerSubnetId": {"value": f"{VNET}/subnets/initializer"},
+    }
+    data["aciLinkReads"] = 2
+    return data
+
+
 HARNESS = r"""
 $ErrorActionPreference = 'Stop'
 $global:f = Get-Content -LiteralPath '__FIXTURE__' -Raw | ConvertFrom-Json -AsHashtable
@@ -111,7 +144,10 @@ function Start-Sleep {
     $networkWait = @($global:readCounts.Keys | Where-Object {
         $_ -match '/virtualNetworks/[^/]+$' -and $global:readCounts[$_] -gt 1
     }).Count -gt 0
-    if ($global:f.stuck.Count -or ($global:f.noOpGroupDelete -and $groupDeleteRequested) -or
+    $deletingStuck = @($global:f.stuck | Where-Object {
+        $global:f.resources.ContainsKey($_) -and $global:f.resources[$_].properties.provisioningState -eq 'Deleting'
+    }).Count -gt 0
+    if ($deletingStuck -or ($global:f.noOpGroupDelete -and $groupDeleteRequested) -or
         ($global:f.salReads -eq -1 -and $networkWait)) {
         [Threading.Thread]::Sleep(1050)
     }
@@ -164,11 +200,26 @@ function az {
                 $global:readCounts[$id] -ge $global:f.settle[$id]) {
                 $result.properties.provisioningState = 'Succeeded'
             }
+            if ($id -match '/containerGroups/[^/]+$' -and $global:f.ContainsKey('restartAt') -and
+                $global:readCounts[$id] -ge $global:f.restartAt) {
+                $result.properties.containers[0].properties.instanceView.currentState.state = 'Running'
+            }
             if ($id -match '/virtualNetworks/[^/]+$' -and $global:f.salReads -ne 0) {
                 $result.properties.subnets[0].properties.serviceAssociationLinks = @(@{id='service-owned-SAL'})
                 if ($global:f.salReads -gt 0) { $global:f.salReads-- }
             } elseif ($id -match '/virtualNetworks/[^/]+$') {
                 $result.properties.subnets[0].properties.serviceAssociationLinks = @()
+            }
+            if ($id -match '/virtualNetworks/[^/]+$' -and $global:f.ContainsKey('aciLinkReads')) {
+                $aciExists = @($global:f.resources.Values | Where-Object {
+                    $_.type -eq 'Microsoft.ContainerInstance/containerGroups'
+                }).Count -gt 0
+                if ($aciExists -or $global:f.aciLinkReads -ne 0) {
+                    $result.properties.subnets[2].properties.ipConfigurations = @(@{id='owned-aci-ip'})
+                    if (-not $aciExists -and $global:f.aciLinkReads -gt 0) { $global:f.aciLinkReads-- }
+                } else {
+                    $result.properties.subnets[2].properties.ipConfigurations = @()
+                }
             }
             Emit $result
             return
@@ -205,6 +256,21 @@ function az {
         if ($global:f.ContainsKey('rawInventory')) { $global:f.rawInventory; return }
         $items = @($global:f.resources.Values | Where-Object { $_.id.StartsWith("$global:groupId/providers/") })
         Emit $items
+        return
+    }
+    if ($a[0] -eq 'container' -and $a[1] -eq 'show') {
+        $name = $a[[array]::IndexOf($a, '--name') + 1]
+        $id = "$global:groupId/providers/Microsoft.ContainerInstance/containerGroups/$name"
+        if (-not $global:f.resources.ContainsKey($id)) { Absent; return }
+        $source = $global:f.resources[$id]
+        $flat = $source.Clone()
+        foreach ($key in $source.properties.Keys) { $flat[$key] = $source.properties[$key] }
+        $flat.containers = @($source.properties.containers | ForEach-Object {
+            $c = $_.properties.Clone()
+            $c.name = $_.name
+            $c
+        })
+        Emit $flat
         return
     }
     if (($a[0..3] -join ' ') -eq 'network vnet subnet update') {
@@ -249,7 +315,7 @@ class CleanupLifecycleTests(unittest.TestCase):
             work = Path(directory)
             scripts = work / "scripts"
             scripts.mkdir()
-            for name in ("common.ps1", "cleanup-common.ps1", "cleanup.ps1"):
+            for name in ("common.ps1", "initializer-common.ps1", "cleanup-common.ps1", "cleanup.ps1"):
                 shutil.copyfile(ROOT / "scripts" / name, scripts / name)
             config_path = work / "config.json"
             config_path.write_text(json.dumps(data["config"]))
@@ -448,6 +514,42 @@ class CleanupLifecycleTests(unittest.TestCase):
                 data["errors"][f"get {GROUP}"] = text
                 self.assert_refused_without_mutations(data, "Cleanup Azure request failed")
 
+    def test_service_not_found_soft_account_while_active_account_exists(self):
+        data = fixture()
+        data["errors"][f"get {SOFT}"] = (
+            'ERROR: Not Found({"error":{"code":"NotFound","message":'
+            f'"The deleted account \'{ACCOUNT}\' could not be found."'
+            '}})'
+        )
+        result, calls, _, unchanged = self.run_cleanup(data, flags="-WhatIf")
+        self.assert_ok(result)
+        self.assertTrue(unchanged)
+        self.assertEqual(self.mutations(calls), [])
+        self.assertIn("No exact soft-deleted account currently visible", result.stdout)
+
+    def test_service_not_found_parser_rejects_non_404_and_malformed_errors(self):
+        for text in (
+            "ERROR: NotFound",
+            'ERROR: (NotFound) an arbitrary failure',
+            'ERROR: ConnectionError: Not Found({"error":{"code":"NotFound","message":"offline"}})',
+            'ERROR: Unauthorized({"error":{"code":"NotFound","message":"401"}})',
+            'ERROR: Forbidden({"error":{"code":"NotFound","message":"403"}})',
+            'ERROR: Not Found({"error":{"code":"AuthorizationFailed","message":"403"}})',
+            'ERROR: Not Found({"error":{"code":"NotFound","message":"absent"},"statusCode":403})',
+            'ERROR: Not Found({"error":{"code":"NotFound","message":"absent","statusCode":401}})',
+            'ERROR: Not Found({"error":{"code":"NotFound","message":"absent"}})\nHTTP 403 Forbidden',
+            'ERROR: Not Found({"error":{"code":"NotFound","message":"absent"}}',
+            'ERROR: Not Found({"error":{"code":"NotFound","message":"absent",}})',
+            'ERROR: Not Found({"error":{"code":"NotFound"}})',
+            'ERROR: Not Found({"error":{"code":"NotFound","message":null}})',
+        ):
+            with self.subTest(text=text):
+                data = fixture()
+                data["errors"][f"get {SOFT}"] = text
+                self.assert_refused_without_mutations(
+                    data, "Cleanup Azure request failed", flags="-WhatIf",
+                )
+
     def test_soft_deleted_read_permission_failure_stops_before_mutation(self):
         data = fixture()
         data["errors"][f"get {SOFT}"] = "ERROR: (AuthorizationFailed) Forbidden"
@@ -640,6 +742,165 @@ class CleanupLifecycleTests(unittest.TestCase):
         self.assert_ok(result)
         self.assertIn("already-Deleting parent", result.stdout)
         self.assertFalse(any(ACCOUNT in write for write in self.mutations(calls)))
+        self.assertEqual(state["status"], "deleted")
+
+    def test_terminal_direct_initializer_and_failed_legacy_script_cleanup_order(self):
+        result, calls, state, _ = self.run_cleanup(initializer_fixture())
+        self.assert_ok(result)
+        writes = self.mutations(calls)
+        aci_delete = next(i for i, w in enumerate(writes) if ACI in w)
+        account_delete = next(i for i, w in enumerate(writes) if f"{ACCOUNT}?api-version" in w)
+        nat_detach = next(i for i, w in enumerate(writes) if "network vnet subnet update" in w)
+        self.assertLess(account_delete, aci_delete)
+        self.assertLess(aci_delete, nat_detach)
+        self.assertEqual(sum(ACI in w for w in writes), 1)
+        self.assertFalse(any(LEGACY_JOB in w for w in writes))
+        self.assertIn("private initializer ACI absence", result.stdout)
+        self.assertIn("Waiting: SAL release", result.stdout)
+        self.assertEqual(state["status"], "deleted")
+
+    def test_terminal_direct_initializer_whatif_is_read_only(self):
+        result, calls, _, unchanged = self.run_cleanup(initializer_fixture(), flags="-WhatIf")
+        self.assert_ok(result)
+        self.assertTrue(unchanged)
+        self.assertEqual(self.mutations(calls), [])
+        self.assertIn("Delete verified terminal private initializer ACI", result.stdout)
+
+    def test_direct_initializer_requires_explicit_approval(self):
+        self.assert_refused_without_mutations(
+            initializer_fixture(), "Azure execution is disabled", flags="",
+        )
+
+    def test_terminal_failed_initializer_can_be_deleted_without_claiming_sql_success(self):
+        data = initializer_fixture()
+        data["resources"][ACI]["properties"]["containers"][0]["properties"]["instanceView"]["currentState"]["exitCode"] = 17
+        result, calls, state, _ = self.run_cleanup(data)
+        self.assert_ok(result)
+        self.assertTrue(any(ACI in w for w in self.mutations(calls)))
+        self.assertEqual(state["status"], "deleted")
+
+    def test_direct_initializer_running_waiting_unknown_or_missing_exit_code_refused(self):
+        for execution in (
+            {"state": "Running", "exitCode": 0},
+            {"state": "Waiting", "exitCode": 0},
+            {"state": "Unknown", "exitCode": 0},
+            {"state": "Terminated"},
+            {"state": "Terminated", "exitCode": None},
+            {"state": "Terminated", "exitCode": "0"},
+        ):
+            with self.subTest(execution=execution):
+                data = initializer_fixture()
+                data["resources"][ACI]["properties"]["containers"][0]["properties"]["instanceView"]["currentState"] = execution
+                self.assert_refused_without_mutations(data, "terminal state", flags="-WhatIf")
+
+    def test_direct_initializer_ownership_and_topology_mismatches_refused(self):
+        for mismatch in ("tags", "identity", "extra_identity", "subnet", "image", "restart", "public", "name", "outputs", "unrecorded", "os", "provisioning", "extra_container", "missing_execution"):
+            with self.subTest(mismatch=mismatch):
+                data = initializer_fixture()
+                aci = data["resources"][ACI]
+                props = aci["properties"]
+                if mismatch == "tags":
+                    aci["tags"]["bpiDeploymentId"] = "unowned"
+                elif mismatch == "identity":
+                    aci["identity"]["userAssignedIdentities"] = {IDENTITY + "-other": {}}
+                elif mismatch == "extra_identity":
+                    aci["identity"]["userAssignedIdentities"][IDENTITY + "-other"] = {}
+                elif mismatch == "subnet":
+                    props["subnetIds"][0]["id"] = f"{VNET}/subnets/foundry"
+                elif mismatch == "image":
+                    props["containers"][0]["properties"]["image"] = "mcr.microsoft.com/azure-powershell:latest"
+                elif mismatch == "restart":
+                    props["restartPolicy"] = "Always"
+                elif mismatch == "public":
+                    props["ipAddress"] = {"type": "Public"}
+                elif mismatch == "name":
+                    other = ACI + "-other"
+                    aci["id"] = other
+                    data["resources"][other] = data["resources"].pop(ACI)
+                    data["state"]["resourceIds"].append(other)
+                elif mismatch == "outputs":
+                    data["state"]["outputs"] = {}
+                elif mismatch == "unrecorded":
+                    data["state"]["resourceIds"].remove(ACI)
+                elif mismatch == "os":
+                    props["osType"] = "Windows"
+                elif mismatch == "provisioning":
+                    props["provisioningState"] = "Creating"
+                elif mismatch == "extra_container":
+                    props["containers"].append(copy.deepcopy(props["containers"][0]))
+                elif mismatch == "missing_execution":
+                    del props["containers"][0]["properties"]["instanceView"]
+                result, calls, _, _ = self.run_cleanup(data)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.mutations(calls), [], result.stdout + result.stderr)
+
+    def test_direct_initializer_deleting_resume_does_not_repeat_delete(self):
+        data = initializer_fixture()
+        data["resources"][ACI]["properties"]["provisioningState"] = "Deleting"
+        data["vanishAfterDelete"] = [ACI]
+        data["vanishAt"][ACI] = 3
+        result, calls, state, _ = self.run_cleanup(data)
+        self.assert_ok(result)
+        self.assertFalse(any(ACI in w for w in self.mutations(calls)))
+        self.assertEqual(state["status"], "deleted")
+
+    def test_direct_initializer_already_absent_resumes(self):
+        data = initializer_fixture()
+        del data["resources"][ACI]
+        result, calls, state, _ = self.run_cleanup(data)
+        self.assert_ok(result)
+        self.assertFalse(any(ACI in w for w in self.mutations(calls)))
+        self.assertEqual(state["status"], "deleted")
+
+    def test_direct_initializer_delete_timeout_never_detaches_nat(self):
+        data = initializer_fixture()
+        data["stuck"] = [ACI]
+        result, calls, state, _ = self.run_cleanup(data)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Timed out waiting for private initializer ACI absence", result.stderr)
+        writes = self.mutations(calls)
+        self.assertEqual(sum(ACI in w for w in writes), 1)
+        self.assertFalse(any("network vnet" in w or "group delete" in w for w in writes))
+        self.assertNotEqual(state["status"], "deleted")
+
+    def test_direct_initializer_subnet_release_timeout_never_detaches_nat(self):
+        data = initializer_fixture()
+        data["aciLinkReads"] = -1
+        result, calls, state, _ = self.run_cleanup(data)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Timed out waiting for SAL release", result.stderr)
+        writes = self.mutations(calls)
+        self.assertTrue(any(ACI in w for w in writes))
+        self.assertFalse(any("network vnet" in w or "group delete" in w for w in writes))
+        self.assertNotEqual(state["status"], "deleted")
+
+    def test_active_legacy_script_blocks_direct_initializer_deletion(self):
+        data = initializer_fixture()
+        data["resources"][LEGACY_JOB]["properties"]["provisioningState"] = "Running"
+        self.assert_refused_without_mutations(data, "Legacy initializer deploymentScript work remains active")
+
+    def test_direct_initializer_read_authorization_failure_is_not_absence(self):
+        data = initializer_fixture()
+        data["errors"][f"get {ACI}"] = "ERROR: (AuthorizationFailed) Forbidden."
+        self.assert_refused_without_mutations(data, "AuthorizationFailed")
+
+    def test_direct_initializer_revalidated_immediately_before_delete(self):
+        data = initializer_fixture()
+        data["restartAt"] = 3
+        result, calls, state, _ = self.run_cleanup(data)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("terminal state", result.stderr)
+        self.assertFalse(any(ACI in w or "network vnet" in w or "group delete" in w
+                             for w in self.mutations(calls)))
+        self.assertNotEqual(state["status"], "deleted")
+
+    def test_direct_initializer_disappears_before_delete_request(self):
+        data = initializer_fixture()
+        data["vanishAfterDelete"] = [ACI]
+        data["vanishAt"][ACI] = 3
+        result, calls, state, _ = self.run_cleanup(data)
+        self.assert_ok(result)
+        self.assertFalse(any(ACI in w for w in self.mutations(calls)))
         self.assertEqual(state["status"], "deleted")
 
 

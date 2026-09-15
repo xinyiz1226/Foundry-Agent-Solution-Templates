@@ -95,35 +95,35 @@ class InfrastructureContractTests(unittest.TestCase):
         self.assertEqual(storage["properties"]["publicNetworkAccess"], "Disabled")
         self.assertEqual(storage["properties"]["networkAcls"]["bypass"], "None")
         self.assertFalse(storage["properties"]["allowBlobPublicAccess"])
-        script = self.resource("bootstrap", "Microsoft.Resources/deploymentScripts")
-        self.assertEqual(script["kind"], "AzurePowerShell")
-        self.assertEqual(
-            self.templates["bootstrap"]["parameters"]["azPowerShellVersion"]["defaultValue"],
-            "14.0",
-        )
-        self.assertEqual(set(script["properties"]["storageAccountSettings"]), {"storageAccountName"})
-        self.assertEqual(script["properties"]["cleanupPreference"], "Always")
-        self.assertEqual(script["properties"]["timeout"], "PT15M")
-        self.assertEqual(script["properties"]["retentionInterval"], "PT1H")
-        self.assertEqual(len(script["properties"]["containerSettings"]["subnetIds"]), 1)
+        script = self.resource("bootstrap", "Microsoft.ContainerInstance/containerGroups")
+        self.assertEqual(script["properties"]["osType"], "Linux")
+        self.assertEqual(script["properties"]["restartPolicy"], "Never")
+        self.assertEqual(len(script["properties"]["subnetIds"]), 1)
+        self.assertNotIn("volumes", script["properties"])
+        self.assertNotIn("ipAddress", script["properties"])
+        container = script["properties"]["containers"][0]["properties"]
+        self.assertRegex(container["image"], r"^mcr\.microsoft\.com/azure-powershell@sha256:[0-9a-f]{64}$")
+        self.assertEqual(container["command"][:5], ["pwsh", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command"])
+        self.assertNotIn("volumeMounts", container)
         self.assertEqual(script["identity"]["type"], "UserAssigned")
 
     def test_bootstrap_is_separate_and_binds_actual_agent_identity(self):
         self.assertNotIn(
-            "Microsoft.Resources/deploymentScripts",
+            "Microsoft.ContainerInstance/containerGroups",
             [resource["type"] for resource in self.templates["main"]["resources"]],
         )
-        script = self.resource("bootstrap", "Microsoft.Resources/deploymentScripts")
+        script = self.resource("bootstrap", "Microsoft.ContainerInstance/containerGroups")
+        container = script["properties"]["containers"][0]["properties"]
         environment = {
             item["name"]: item["value"]
-            for item in script["properties"]["environmentVariables"]
+            for item in container["environmentVariables"]
         }
         self.assertEqual(
             environment["AGENT_PRINCIPAL_ID"],
             "[parameters('agentPrincipalId')]",
         )
         self.assertEqual(environment["AGENT_CLIENT_ID"], "[parameters('agentClientId')]")
-        script_content = script["properties"]["scriptContent"]
+        script_content = container["command"][-1]
         if script_content.startswith("[variables("):
             variable_name = script_content[len("[variables('"):-len("')]")]
             script_content = self.templates["bootstrap"]["variables"][variable_name]
@@ -135,6 +135,15 @@ class InfrastructureContractTests(unittest.TestCase):
         for parameter in ("agentPrincipalId", "agentClientId"):
             self.assertNotIn("defaultValue", parameters[parameter])
         self.assertEqual(parameters["forceUpdateTag"]["defaultValue"], "[parameters('deploymentId')]")
+
+    def test_initializer_image_matches_the_lifecycle_verifier(self):
+        import re
+
+        controller = (ROOT / "scripts" / "initializer-common.ps1").read_text()
+        match = re.search(r"containers\[0\]\.image -cne '([^']+)'", controller)
+        self.assertIsNotNone(match)
+        group = self.resource("bootstrap", "Microsoft.ContainerInstance/containerGroups")
+        self.assertEqual(group["properties"]["containers"][0]["properties"]["image"], match.group(1))
 
     def test_topology_excludes_unapproved_resources_and_implicit_model_quota(self):
         allowed_types = {

@@ -7,7 +7,6 @@ param deploymentId string
 
 @description('Exact outputs from the owned main deployment, never customer resource IDs.')
 param initializerIdentityName string = 'bpi-${uniqueString(resourceGroup().id, environmentName)}-initializer'
-param initializerStorageName string = 'bpist${uniqueString(resourceGroup().id, environmentName)}'
 param initializerSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', 'bpi-${uniqueString(resourceGroup().id, environmentName)}-vnet', 'initializer')
 param sqlServerFqdn string = 'bpi-${uniqueString(resourceGroup().id, environmentName)}-sql${environment().suffixes.sqlServerHostname}'
 param sqlDatabaseName string = 'pilot'
@@ -25,19 +24,12 @@ param agentClientId string
 @description('Explicit rerun marker. No utcNow/newGuid default that silently reruns privileged SQL on redeployment.')
 param forceUpdateTag string = deploymentId
 
-@description('PowerShell version from official private deploymentScripts example. The initializer explicitly installs its pinned SqlServer module; no sqlcmd availability is assumed.')
-param azPowerShellVersion string = '14.0'
-
 resource initializerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' existing = {
   name: initializerIdentityName
 }
 
-resource initializerStorage 'Microsoft.Storage/storageAccounts@2025-06-01' existing = {
-  name: initializerStorageName
-}
-
-resource bootstrap 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
-  name: 'bpi-${uniqueString(resourceGroup().id, environmentName)}-bootstrap'
+resource bootstrap 'Microsoft.ContainerInstance/containerGroups@2023-05-01' = {
+  name: 'bpi-${uniqueString(resourceGroup().id, environmentName)}-bootstrap-aci'
   location: location
   tags: {
     bpiTemplate: 'business-performance-investigator'
@@ -46,8 +38,8 @@ resource bootstrap 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
     'bpi-owner': 'business-performance-investigator:${environmentName}:phase1'
     'bpi-environment': environmentName
     'bpi-phase': '1'
+    bpiInitializationRun: forceUpdateTag
   }
-  kind: 'AzurePowerShell'
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -55,48 +47,59 @@ resource bootstrap 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
     }
   }
   properties: {
-    azPowerShellVersion: azPowerShellVersion
-    storageAccountSettings: {
-      storageAccountName: initializerStorage.name
-    }
-    containerSettings: {
-      containerGroupName: 'bpi-${uniqueString(resourceGroup().id, environmentName)}-bootstrap-aci'
-      subnetIds: [
-        {
-          id: initializerSubnetId
-        }
-      ]
-    }
-    environmentVariables: [
+    osType: 'Linux'
+    restartPolicy: 'Never'
+    subnetIds: [
       {
-        name: 'AZURE_SQL_SERVER'
-        value: sqlServerFqdn
-      }
-      {
-        name: 'AZURE_SQL_DATABASE'
-        value: sqlDatabaseName
-      }
-      {
-        name: 'AGENT_PRINCIPAL_ID'
-        value: agentPrincipalId
-      }
-      {
-        name: 'AGENT_CLIENT_ID'
-        value: agentClientId
-      }
-      {
-        name: 'INITIALIZER_CLIENT_ID'
-        value: initializerIdentity.properties.clientId
+        id: initializerSubnetId
       }
     ]
-    scriptContent: loadTextContent('../scripts/initialize-sql.ps1')
-    timeout: 'PT15M'
-    retentionInterval: 'PT1H'
-    cleanupPreference: 'Always'
-    forceUpdateTag: forceUpdateTag
+    containers: [
+      {
+        name: 'sql-initializer'
+        properties: {
+          image: 'mcr.microsoft.com/azure-powershell@sha256:82b5bb8daa75c8e974f5ff74a61a6add5e8ccd0d464a231a1a1e90ff0b713bd9'
+          command: [
+            'pwsh'
+            '-NoLogo'
+            '-NoProfile'
+            '-NonInteractive'
+            '-Command'
+            loadTextContent('../scripts/initialize-sql.ps1')
+          ]
+          resources: {
+            requests: {
+              cpu: 1
+              memoryInGB: json('1.5')
+            }
+          }
+          environmentVariables: [
+            {
+              name: 'AZURE_SQL_SERVER'
+              value: sqlServerFqdn
+            }
+            {
+              name: 'AZURE_SQL_DATABASE'
+              value: sqlDatabaseName
+            }
+            {
+              name: 'AGENT_PRINCIPAL_ID'
+              value: agentPrincipalId
+            }
+            {
+              name: 'AGENT_CLIENT_ID'
+              value: agentClientId
+            }
+            {
+              name: 'INITIALIZER_CLIENT_ID'
+              value: initializerIdentity.properties.clientId
+            }
+          ]
+        }
+      }
+    ]
   }
 }
 
-output bootstrapDeploymentScriptId string = bootstrap.id
-output bootstrapDeploymentScriptName string = bootstrap.name
-output bootstrapContainerGroupId string = resourceId('Microsoft.ContainerInstance/containerGroups', 'bpi-${uniqueString(resourceGroup().id, environmentName)}-bootstrap-aci')
+output bootstrapContainerGroupId string = bootstrap.id
+output bootstrapContainerGroupName string = bootstrap.name

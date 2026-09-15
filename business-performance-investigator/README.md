@@ -1,7 +1,8 @@
 # Business Performance Investigator
 
 **Current deliverable: a minimal private-SQL validation package, not the full
-analyst application. No cloud deployment has been verified.**
+analyst application. Hosted-agent model access, private SQL and controlled
+same-session compute resume have been verified in Azure.**
 
 The planned solution investigates business metric changes without requiring
 Fabric or Databricks. This first milestone checks a smaller prerequisite:
@@ -26,7 +27,7 @@ The probe returns deterministic evidence from one approved view. It does not
 accept arbitrary SQL, perform sales analysis, or provide a Web UI.
 See [PLAN.md](PLAN.md) for the confirmed full-template scope and later milestones.
 
-The proposed initializer uses an explicit NAT gateway and static public IP for
+The initializer uses an explicit NAT gateway and static public IP for
 outbound downloads. These add persistent costs until cleanup; they do not open
 SQL publicly. Review this addition and the revised cost subtotal before approval.
 
@@ -59,7 +60,7 @@ Only for a separately approved cloud experiment:
   `azd extension install azure.ai.agents` and
   `azd extension install azure.ai.projects`.
 - A subscription/region supporting hosted agents, the chosen model deployment,
-  Azure SQL, and private deployment scripts, with sufficient quota.
+  Azure SQL, and private Azure Container Instances, with sufficient quota.
 - Resource creation, role assignment, and managed-identity assignment permissions
   for a **new, dedicated** resource group.
 - Permission to inspect the deployed agent's service principal. Scripts do not
@@ -199,8 +200,26 @@ azd ai agent show sql-probe -e '<environmentName>' --output json
 
 The initializer checks the supplied object ID against agent metadata, resolves
 its application/client ID, and creates the fixed database user
-`bpi_probe_agent`. These identifiers are different: the SQL SID for this
-service principal is based on its application/client ID.
+`bpi_probe_agent`. Object ID and application/client ID are distinct concepts,
+although a Foundry `ServiceIdentity` can report the same GUID for both.
+Always use the directory-verified application/client ID for the SQL SID.
+
+Initialization runs directly in a private ACI using a digest-pinned Microsoft
+Azure PowerShell 14.0 image. It does not use Deployment Scripts or mount
+Azure Files, because that service requires a trusted-services storage bypass.
+The initializer downloads pinned `SqlServer` 22.4.5.1, uses its own managed
+identity, and emits a bounded completion marker after the SQL transaction.
+The lifecycle checks its identity, subnet, image, exit status and marker
+before recording initialization as successful. A 15-minute execution wait
+timeout stops the owned initializer compute and reports failure.
+An existing completed initializer is inspected, not rerun; an explicit
+`-RetryInitialization` is required to redeploy it, and in-flight work cannot
+be restarted through that flag.
+
+The core template currently retains the earlier private initialization
+storage/file endpoint/DNS resources for compatibility with existing ownership
+state. Direct ACI does not consume them; they remain private, owned, billable
+until cleanup, and included in the inventory.
 
 SQL public access stays disabled. Initialization runs in the private execution
 environment, never by temporarily allowing public access or all Azure services.
@@ -212,6 +231,22 @@ Do not run `azd up` or `azd down` for this package. The stage scripts own
 provisioning, explicit approval, resource inventory, and deletion guards.
 Existing Azure SQL adoption is a later full-template milestone; these probe
 scripts intentionally reject existing resource groups.
+
+### Same-session resume validation
+
+The default validator creates a new session. To test recovery of an existing
+one, preserve its ID, stop **only that session** using `azd ai agent sessions
+stop`, verify that it becomes `idle`, and invoke:
+
+```powershell
+.\scripts\validate-agent.ps1 -ConfigPath .\config.local.json `
+    -SessionId '<verified-probe-session-id>' -ApproveAzureChanges
+```
+
+This reuses the session with a fresh conversation. Verify that the same
+session returns to `active` without a changed creation timestamp and that
+the SQL evidence passes again. Controlled stop/resume does not prove the
+platform's natural idle-timeout behavior.
 
 ## Cleanup and ownership
 
@@ -246,9 +281,13 @@ reviewing a timeout; recorded progress does not replace fresh Azure checks.
 
 If provisioning failed or the inventory differs, inspect Azure and the state
 before proceeding. Do not edit the state just to bypass a guard.
-Temporary execution containers may be removed by deployment-script retention;
-their supporting storage, NAT/IP and private-network resources still need
-experiment cleanup.
+The direct initializer stops after completion but remains an owned container
+resource until cleanup. Its supporting NAT/IP and private-network resources,
+plus any legacy deployment-script/storage resources, also need cleanup.
+Ordered cleanup validates the exact terminal initializer before deleting it,
+then waits for container absence and subnet release before detaching NAT.
+Running, unknown or mismatched containers are rejected. A failed legacy
+Deployment Scripts resource is allowed only as terminal work, not bypassed.
 The script does not delete Entra directory objects or external role
 assignments. Soft-deleted accounts are retained by default. Permanent purge
 requires separate `-ApproveFoundryPurge` authorization and verified account

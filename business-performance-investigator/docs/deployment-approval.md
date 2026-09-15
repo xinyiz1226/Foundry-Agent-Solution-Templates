@@ -1,6 +1,6 @@
 # Minimal experiment: deployment approval
 
-Status: **isolated same-user azd authentication validated and ordered cleanup implemented; no new deployment performed; previous active resource group deleted, soft-deleted Foundry account retained**.
+Status: **second approved experiment passed real model/private-SQL and controlled same-session resume validation; temporary model access revoked; active-resource cleanup pending**.
 
 Local build/test evidence must be reviewed separately from the Azure checks.
 Passing tests does not certify SDK/runtime compatibility or private SQL access.
@@ -22,7 +22,9 @@ IDs were verified and retained only in ignored local preflight artifacts.
 The operator subsequently authorized reuse of an existing DeepSeek Flash model
 and the next step, SQL provider registration. `Microsoft.Sql` is now registered.
 The subsequent approved resource deployment and its blockers are recorded below.
-No shared-resource role assignment or inference call was performed.
+At that first preparation checkpoint, no shared-resource role assignment or
+inference call had been performed. The second experiment below supersedes
+the earlier runtime-validation status.
 
 On the deployment workstation, first make `az` and `azd` available on the
 current shell's PATH and complete interactive sign-in with the intended tenant:
@@ -62,9 +64,9 @@ Japan East, Australia East and West Europe. The local candidate now places
 the new Foundry account/project, VNet and SQL in Central US. The existing
 DeepSeek model stays in East US; it is not migrated or recreated.
 
-**Current gates:** select the validated isolated azd profile and review the
+**Gates at that checkpoint:** select the validated isolated azd profile and review the
 retained soft-deleted account/name and next experiment scope before another
-deployment. Actual runtime identity and shared-model access remain unverified.
+deployment. Actual runtime identity and shared-model access were unverified.
 Read-only availability and quota checks do not reserve capacity or prove the
 runtime works.
 
@@ -80,7 +82,8 @@ on the shared account. The scripts do not grant or revoke that role, retrieve
 keys, alter shared networking, or fall back to the operator/project identity.
 See [existing-model setup](../README.md#reuse-an-existing-model) for the
 documented role and cleanup responsibilities. No model invocation has been
-performed; real Flash tool-call compatibility and authorization remain live gates.
+performed at that checkpoint; real Flash tool-call compatibility and
+authorization subsequently passed in the second experiment.
 
 The local evidence and configuration are under `.artifacts/preflight/`.
 The chat approval is recorded separately in `experiment-approval.json`;
@@ -120,8 +123,8 @@ The exact new Foundry account remains soft-deleted; permanent purge was not
 approved or performed. No shared model resource or external role was changed.
 The post-experiment Cost Management query returned HTTP 429, so final billed
 cost is unknown, not zero.
-There is no successful hosted-agent invocation, SQL initialization, runtime
-identity validation, or idle/resume result.
+That first attempt produced no successful hosted-agent invocation, SQL
+initialization, runtime identity validation, or idle/resume result.
 
 ### Authentication-context resolution
 
@@ -147,6 +150,39 @@ Use [the opt-in helper](../README.md#optional-isolated-azure-cli-authentication)
 in every new shell to select the validated profile. No resources were
 redeployed or models invoked to validate this authentication resolution.
 
+### Second approved experiment
+
+The operator explicitly authorized continuation on 2026-09-15 at 08:18:30 UTC.
+A separate, unused environment/resource group was selected, with the same
+USD 10 stop-response threshold, maximum 24-hour duration, immediate cleanup
+and exact new-agent inference-role scope. Existing model settings were not
+changed. Neither the old nor new Foundry account was approved for purge.
+
+Infrastructure and hosted-agent deployment succeeded after exporting the
+extension's canonical `FOUNDRY_PROJECT_ENDPOINT`. Actual agent metadata and
+directory `ServiceIdentity` object/application IDs were verified before
+granting one tracked Cognitive Services OpenAI User assignment.
+
+Private Deployment Scripts rejected the storage firewall configuration before
+SQL execution. Its [documented private setup](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/deployment-script-vnet-private-endpoint)
+requires an `AzureServices` bypass. The approved no-bypass policy was preserved:
+the bootstrap instead used direct private ACI in the same approved initializer
+subnet, UAMI and NAT footprint, with a digest-pinned Microsoft PowerShell image.
+No public SQL access, trusted-services bypass or inbound public endpoint was
+enabled. Container termination, exit code and exact SQL completion evidence
+were verified. Legacy storage/file endpoint/DNS and the failed deployment
+script remain owned resources for cleanup, not dependencies of direct ACI.
+
+Both the first hosted invocation and a controlled stop/idle/resume of the exact
+same session passed actual DeepSeek inference, private SQL, TLS, agent SID,
+fixture and checked least-privilege assertions. Natural automatic idle timeout
+was not tested. See [runtime evidence](validation.md#second-approved-cloud-experiment-2026-09-15).
+The session was stopped again. The one newly created shared-model role was
+revoked and its absence verified; no pre-existing assignment was removed.
+
+Active-resource cleanup is pending at this checkpoint, with the 24-hour
+fallback retained. No purge has been performed and final billing is unknown.
+
 ## Approval record
 
 | Decision | Required value |
@@ -156,7 +192,7 @@ redeployed or models invoked to validate this authentication resolution.
 | New resource group and environment | Dedicated experiment group was created with ownership tags and an inventory; no pre-existing group was adopted |
 | Region | Central US explicitly selected for new resources; existing shared model remains in East US |
 | Model, version, deployment SKU/capacity | Existing DeepSeek Flash selected; no new model deployment or capacity change |
-| Shared-model runtime access | New-agent inference access approved in principle; no runtime identity was verified and no shared-role changes were performed |
+| Shared-model runtime access | Actual new agent identity verified; one approved temporary inference assignment created, used and revoked; absence verified |
 | Experiment duration and cleanup owner | Current session executes and verifies immediate cleanup; maximum 24 hours from approval, deadline in ignored record |
 | Spending limit and response to threshold | USD 10 stop-response threshold approved; billing delays mean this is not a hard cap |
 | Required directory/resource permissions | Broad management access and basic directory lookup observed; no automatic tenant consent or provider registration |
@@ -194,14 +230,19 @@ The timeout is per wait operation, not an overall experiment deadline;
 operators must still enforce their approved duration and spending response.
 The initializer NAT association is removed only after verifying its exact
 owned subnet/NAT IDs and that no initializer work remains.
+For direct ACI, cleanup verifies the recorded/planned ID, ownership, identity,
+subnet, image, private topology and terminal state before requesting deletion.
+It confirms both container absence and subnet release before detaching NAT;
+active, unknown or mismatched execution is not treated as safe to remove.
 
 `-WhatIf` is read-only for Azure and local ownership state. The absent-group
 path reports residual soft-deleted accounts explicitly. No shared-model
 resource, external role assignment, or directory identity is part of teardown.
 The implementation passed offline lifecycle regressions, and a real
 `-WhatIf` against the already-deleted experiment reported the retained account
-without requesting purge or changing state. No new resources were deployed
-to rerun full destructive teardown in this follow-up.
+without requesting purge or changing state. The second experiment now
+requires the full guarded teardown, including its completed direct ACI and
+failed legacy deployment-script resource.
 
 ## Resources to review
 
@@ -218,8 +259,8 @@ compile and inspect them and perform an approved Azure what-if/preflight.
 | Azure SQL logical server and Basic probe DB | Tiny fixture only; Basic is not a performance choice for the full DW |
 | SQL private endpoint and private DNS | SQL public access disabled; endpoint charged while retained |
 | Initializer user-assigned identity | Privileged only for this new experiment; never runtime identity |
-| Private initialization storage/file endpoint/DNS | Private deployment-script support; persists beyond container lifetime |
-| Deployment-script execution container | Temporary SQL bootstrap; required image/module downloads |
+| Private initialization storage/file endpoint/DNS | Legacy resources still provisioned by the core template; unused by direct ACI, owned and charged until cleanup |
+| Direct private ACI | Temporary SQL bootstrap with digest-pinned image and pinned module; completion evidence required |
 | Initializer-only Standard NAT gateway and static public IP | Explicit outbound path for private ACI image/module/identity access; hourly charges persist until cleanup |
 | Scoped Azure role assignments | Model invocation, operator access, initializer storage and resource permissions |
 
@@ -237,7 +278,8 @@ gateway and public IP attached only to the initializer subnet. These make
 initializer egress explicit instead of relying on an unspecified default
 outbound route. They do not create inbound access to SQL or attach a NAT to the
 Foundry delegated subnet. See [ACI virtual-network requirements](https://learn.microsoft.com/en-us/azure/container-instances/container-instances-vnet).
-They are proposed resources, not resources already deployed or approved.
+These resources were explicitly approved and deployed for the bounded
+experiments; future deployments still require separate approval.
 
 ## Authentication and permission review
 
@@ -254,7 +296,7 @@ The template uses separate principals:
 The scripts use explicit external-user SID/type creation after verifying the
 agent object/application IDs. They do not grant Directory Readers or execute
 `CREATE USER ... FROM EXTERNAL PROVIDER` directory-name lookup as a fallback.
-This authentication path still requires live validation. Reject a missing or
+This authentication path passed the second live probe. Reject a missing or
 ambiguous agent identity rather than using the project identity.
 
 The initializer identity is deliberately powerful for the disposable probe.
@@ -306,7 +348,11 @@ Account for supporting storage, every private endpoint/zone, initializer
 compute and egress, any NAT/public-IP charges, source-build charges if
 applicable, platform-managed network resources, model tokens, and diagnostics.
 Do not claim that network injection or source builds are free without evidence.
-The final total and acceptable budget are still open deployment-approval items.
+The bounded experiments have an approved USD 10 stop-response threshold, not
+a hard cap. Final billed cost remains unknown: the second experiment's scoped
+Cost Management query also returned HTTP 429. Its group-only query would not
+include inference charged to the shared model account. Future deployments
+require their own scope and spending approval.
 
 ## Go / no-go
 

@@ -398,6 +398,24 @@ class LifecycleTests(unittest.TestCase):
             result = self.run_ps(f"ConvertFrom-BpiProbeEvidence '{encoded}' | Out-Null")
             self.assertEqual(result.returncode == 0, valid, result.stderr)
 
+    def test_existing_probe_session_is_not_silently_replaced(self):
+        for session in ["", "retained-session"]:
+            with self.subTest(session=session):
+                result = self.run_ps(
+                    f"$arguments=@(Get-BpiProbeInvokeArguments -EnvironmentName probe -SessionId '{session}');"
+                    "if ($arguments -notcontains '--new-conversation') { throw 'Conversation must be fresh' };"
+                    + (
+                        "if ($arguments -contains '--new-session' -or $arguments -notcontains '--session-id') "
+                        "{ throw 'Retained session would be replaced' };"
+                        "if ($arguments[([array]::IndexOf($arguments,'--session-id')+1)] -cne 'retained-session') "
+                        "{ throw 'Wrong retained session' }"
+                        if session else
+                        "if ($arguments -notcontains '--new-session' -or $arguments -contains '--session-id') "
+                        "{ throw 'Default session behavior changed' }"
+                    )
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_runtime_evidence_format_matches_cli_validator(self):
         sys.path.insert(0, str(ROOT / "agent"))
         try:

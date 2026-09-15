@@ -2,6 +2,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$ConfigPath,
+    [ValidatePattern('^[a-zA-Z0-9_-]{1,128}$')][string]$SessionId = '',
     [switch]$ApproveAzureChanges
 )
 . "$PSScriptRoot/common.ps1"
@@ -44,6 +45,7 @@ $report = @{
     status = 'failed'
     idleResume = 'not_run'
     cleanup = 'not_run'
+    requestedSessionId = $SessionId
 }
 Push-Location $script:ProjectRoot
 try {
@@ -53,9 +55,8 @@ try {
     if ((Get-BpiAgentPrincipalId $agent) -ine $state.agentPrincipalId) {
         throw 'Deployed agent identity changed after SQL initialization.'
     }
-    $response = Invoke-BpiNative azd @('ai', 'agent', 'invoke', 'sql-probe',
-        '--new-session', '--new-conversation', 'Run the private SQL probe.',
-        '-e', $config.environmentName)
+    $response = Invoke-BpiNative azd (Get-BpiProbeInvokeArguments `
+        -EnvironmentName $config.environmentName -SessionId $SessionId)
     $evidence = ConvertFrom-BpiProbeEvidence ($response -join "`n")
     $report.evidence = $evidence
     Assert-BpiProbeEvidence -Evidence $evidence `

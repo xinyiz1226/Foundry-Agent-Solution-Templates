@@ -1,4 +1,4 @@
-# Executed only by the private deployment-script resource as its initializer identity.
+# Executed only by the private initializer container as its initializer identity.
 #Requires -Version 7.2
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -6,7 +6,7 @@ Set-StrictMode -Version Latest
 foreach ($name in @('AZURE_SQL_SERVER', 'AZURE_SQL_DATABASE', 'INITIALIZER_CLIENT_ID',
         'AGENT_CLIENT_ID', 'AGENT_PRINCIPAL_ID')) {
     if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
-        throw "Required deployment-script environment variable '$name' is missing."
+        throw "Required initializer environment variable '$name' is missing."
     }
 }
 if ($env:AZURE_SQL_SERVER -cnotmatch '^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]\.database\.windows\.net$') {
@@ -75,10 +75,11 @@ Invoke-Sqlcmd -ServerInstance $env:AZURE_SQL_SERVER -Database $env:AZURE_SQL_DAT
     -ConnectionTimeout 30 -QueryTimeout 60 -AbortOnError -DisableVariables `
     -DisableCommands -ErrorAction Stop | Out-Null
 
-$DeploymentScriptOutputs = @{
+$result = @{
     initialized = $true
     databaseUser = 'bpi_probe_agent'
     agentClientId = $agentClientId.ToString()
     agentPrincipalId = $agentPrincipalId.ToString()
     expectedProbeAmount = '42.00'
 }
+Write-Output ('BPI_INITIALIZER_RESULT=' + ($result | ConvertTo-Json -Compress))
