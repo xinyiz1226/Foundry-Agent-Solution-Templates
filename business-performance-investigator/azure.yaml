@@ -47,6 +47,44 @@ services:
         value: "15"
       - name: AZURE_SQL_QUERY_TIMEOUT_SECONDS
         value: "15"
+  business-investigator:
+    project: .
+    host: azure.ai.agent
+    language: python
+    uses:
+      - ai-project
+    name: business-investigator
+    displayName: Business Performance Investigator - Bounded Analysis
+    description: Compares fixed baseline and bounded adaptive investigation on a private approved SQL snapshot.
+    kind: hosted
+    codeConfiguration:
+      dependencyResolution: remote_build
+      entryPoint: agent/analysis_main.py
+      runtime: python_3_13
+    container:
+      resources:
+        cpu: "0.5"
+        memory: 1Gi
+    protocols:
+      - protocol: responses
+        version: 2.0.0
+    environmentVariables:
+      - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
+        value: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      - name: AZURE_AI_MODEL_ENDPOINT
+        value: ${AZURE_AI_MODEL_ENDPOINT}
+      - name: AZURE_AI_MODEL_API
+        value: ${AZURE_AI_MODEL_API}
+      - name: AZURE_SQL_SERVER
+        value: ${AZURE_SQL_SERVER}
+      - name: AZURE_SQL_DATABASE
+        value: ${AZURE_SQL_DATABASE}
+      - name: APP_LOCAL_DEVELOPMENT
+        value: "false"
+      - name: AZURE_SQL_CONNECT_TIMEOUT_SECONDS
+        value: "15"
+      - name: AZURE_SQL_QUERY_TIMEOUT_SECONDS
+        value: "15"
 infra:
   provider: bicep
   path: infra-bicep

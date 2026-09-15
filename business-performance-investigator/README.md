@@ -1,9 +1,11 @@
 # Business Performance Investigator
 
-**Current deliverables: a deterministic local business-analysis baseline and
-a verified private-SQL connectivity package, not the full analyst application.
+**Current deliverables: a deterministic baseline, a bounded adaptive engine
+with offline replay evaluation, and a verified private-SQL connectivity package,
+not the full analyst application.
 Hosted-agent model access, private SQL and controlled same-session compute
-resume have been verified in Azure; analytical SQL is not yet cloud-validated.**
+resume have been verified in Azure; the new analytical service and actual
+DeepSeek investigation are not yet cloud-validated.**
 
 The disposable experiment's active resource group has been deleted and its
 temporary shared-model permission revoked. Soft-deleted Foundry accounts are
@@ -13,6 +15,11 @@ The solution investigates business metric changes without requiring Fabric
 or Databricks. Start with the [local analysis baseline](docs/baseline.md) for
 metric comparisons, reconciled territory/product changes and reproducible
 evidence. It creates no cloud resources and calls no model.
+The [adaptive evaluation](docs/adaptive-evaluation.md) adds bounded model-selected
+investigation and a reproducible replay comparison. The
+[analytical hosted service](docs/hosted-analysis.md) and
+[private sample initializer](docs/analysis-initialization.md) prepare the next
+separately approved experiment; replay is not evidence of live model quality.
 
 The separately deployed connectivity probe checks a smaller prerequisite:
 
@@ -45,7 +52,7 @@ SQL publicly. Review this addition and the revised cost subtotal before approval
 | Path | Purpose |
 |---|---|
 | `agent/` | Source-deployed hosted agent, fixed SQL probe, pinned dependencies |
-| `analysis/` | Deterministic metrics, bounded SQL plans/cursor adapter, offline report CLI |
+| `analysis/` | Shared metrics/tools, adaptive loop, comparison harness and private hosted SQL session |
 | `data/` | Pinned official AdventureWorksDW provenance, single-currency scope and license |
 | `evaluation/` | Hand-worked synthetic ledger and hash-pinned report configuration |
 | `sql/analysis-view.sql` | Proposed matching Internet Sales view; not deployed by the probe lifecycle |
@@ -57,6 +64,8 @@ SQL publicly. Review this addition and the revised cost subtotal before approval
 | `docs/deployment-approval.md` | Resources, permissions, cost assumptions, and approval checklist |
 | `docs/validation.md` | Local versus cloud checks and failure investigation |
 | `docs/baseline.md` | Business-analysis workflow, twelve reference cases and execution boundaries |
+| `docs/adaptive-evaluation.md` | Bounded adaptive investigation and fair replay comparison |
+| `docs/hosted-analysis.md` | Analytical service, private snapshot contract and live-validation gaps |
 
 ## Prerequisites
 
@@ -100,8 +109,10 @@ the shared account/model is excluded from experiment ownership and cleanup.
 The runtime uses its own managed identity and a refreshing Entra token with
 scope `https://ai.azure.com/.default`; it does not retrieve account keys.
 The hosted agent still exposes **Responses/2.0.0**. Only its internal model
-transport changes to Chat Completions, with at most two calls and at most one
+transport changes to Chat Completions. The connectivity probe uses at most two calls and at most one
 validated SQL tool execution. No automatic API or model fallback is used.
+The separate analytical service uses the limits documented in
+[adaptive evaluation](docs/adaptive-evaluation.md).
 
 **Shared-model permission is a separate approval.** The newly deployed
 agent's actual object ID needs inference access to the shared model account.

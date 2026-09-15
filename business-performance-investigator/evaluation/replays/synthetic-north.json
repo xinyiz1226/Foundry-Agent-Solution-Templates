@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "label": "Scripted synthetic North ID 10; not real DeepSeek inference",
+  "question": "What changed in North, and which products contributed to its sales change?",
+  "target_territory_ids": ["10"],
+  "expected_dataset_id": "hand-worked-synthetic-ledger-v1",
+  "steps": [
+    {"name": "compare", "arguments": {"filters": {}}},
+    {"name": "breakdown", "arguments": {"dimension": "territory", "filters": {}, "top_k": 1}},
+    {"name": "breakdown", "arguments": {"dimension": "product", "filters": {"territory": "10"}, "top_k": 1}},
+    {"name": "finish", "arguments": {
+      "result_ids": ["r1", "r2", "r3"],
+      "evidence_ids": ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10"],
+      "stop_reason": "complete"
+    }}
+  ]
+}

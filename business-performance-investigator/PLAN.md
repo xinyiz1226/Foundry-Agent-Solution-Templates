@@ -11,9 +11,13 @@ not built; cleanup and billing evidence are recorded separately.**
 Phase 4 now includes a local deterministic analysis baseline: pinned official
 AdventureWorksDW acquisition, a single-CurrencyKey Internet Sales projection,
 exact metric tools, a fixed comparison/drilldown report, and twelve independent
-analytical cases. It performs no model calls or Azure provisioning. Actual
-analytical SQL execution, adaptive investigation and the Web application remain
-later milestones. See [baseline guidance](docs/baseline.md).
+analytical cases. The fixed baseline performs no model calls or Azure provisioning.
+The next slice adds a bounded adaptive engine, a matched-budget replay evaluation,
+and a separate source-hosted analytical runtime/private sample initializer.
+Actual DeepSeek analytical evaluation and private analytical SQL execution have
+not been run: fresh cloud scope/cost approval is still pending. The Web
+application remains a later milestone. See [baseline guidance](docs/baseline.md)
+and [hosted analysis boundaries](docs/hosted-analysis.md).
 
 - The product scope and the next technical-validation milestone were agreed
   with the project owner.

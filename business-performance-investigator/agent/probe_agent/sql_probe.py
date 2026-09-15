@@ -96,6 +96,19 @@ def _private(address: str) -> bool:
     parsed = ipaddress.ip_address(address)
     return any(parsed in network for network in _PRIVATE_NETWORKS)
 
+def require_private_candidates(server: str, timeout: int, resolver=resolve_candidates) -> list[str]:
+    addresses = resolver(server, timeout)
+    try:
+        valid = (
+            isinstance(addresses, list) and 0 < len(addresses) <= 16
+            and all(isinstance(address, str) and _private(address) for address in addresses)
+        )
+    except ValueError:
+        valid = False
+    if not valid:
+        raise ProbeFailure("private_dns_required", "SQL DNS must resolve exclusively to private-network addresses.")
+    return addresses
+
 
 class SqlProbe:
     def __init__(self, settings: Settings, credential: Any, *, connect=None, resolver=None):

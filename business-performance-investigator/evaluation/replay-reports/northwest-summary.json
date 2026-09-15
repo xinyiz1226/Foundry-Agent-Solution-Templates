@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "execution_kind": "replay_harness_only",
+  "real_model_quality_validated": false,
+  "question": "What changed in Northwest, and which products contributed to its sales change?",
+  "baseline_uses_question": false,
+  "snapshot": {
+    "dataset_id": "adventureworksdw-2025-install-snapshot-internet-sales-currencykey-100-usd",
+    "source_sha256": "45d1a25c2b301f730e635fc789fc3ee08c6bb7a9a946159105be7ad00997259f",
+    "mode": "offline_csv",
+    "matched": true,
+    "read_only_private_copy": true
+  },
+  "shared_configuration": {
+    "baseline": {
+      "start": "2013-11-01",
+      "end_exclusive": "2013-12-01"
+    },
+    "current": {
+      "start": "2013-12-01",
+      "end_exclusive": "2014-01-01"
+    },
+    "coverage": {
+      "period": {
+        "start": "2013-11-01",
+        "end_exclusive": "2014-01-01"
+      },
+      "attestation": "Reviewed official sample snapshot assumption for the explicitly selected interior full months [2013-11-01,2014-01-01), supported by pinned source hashes, reviewed daily activity and validated joins/counts; not a production data completeness guarantee or data-owner certification. Coverage is explicitly selected, not inferred from the maximum fact date. No extract watermark, source reconciliation or late-arrival policy is supplied. Monetary scope is the verified CurrencyKey 100 (USD / US Dollar) subset. Source monetary values are preserved without FX conversion; currency identity does not certify production accounting completeness."
+    },
+    "data_limits": {
+      "max_requests": 10,
+      "max_groups": 1000,
+      "max_seconds": 30
+    },
+    "baseline_top_k": 5,
+    "max_top_k": 5,
+    "adaptive_limits": {
+      "max_model_calls": 6,
+      "max_completion_tokens": 1024,
+      "max_total_tokens": 100000,
+      "max_context_chars": 24000,
+      "max_tool_argument_chars": 2048,
+      "max_tool_summary_chars": 16000,
+      "max_response_chars": 24000,
+      "max_question_chars": 4000,
+      "max_top_k": 5,
+      "max_seconds": 60
+    }
+  },
+  "limitations": [
+    "Replay tool selections are scripted; results do not establish DeepSeek intelligence, quality, latency or cost.",
+    "The baseline is question-agnostic and always selects the largest absolute territory change.",
+    "Validity replays aggregate evidence through core; the existing twelve mathematical reference tests remain the oracle.",
+    "No causal correctness, business usefulness, generalization or cloud runtime was evaluated."
+  ],
+  "authorization": {
+    "model_inference_explicitly_approved": false,
+    "caller_identity_supplied": false,
+    "cloud_deployment_approved": false
+  },
+  "artifact_kind": "metrics_only_replay_summary",
+  "full_report_reproduction": "See docs/adaptive-evaluation.md; the full report includes all tool results and evidence.",
+  "baseline": {
+    "metrics": {
+      "status": "ok",
+      "validity": {
+        "status": "valid",
+        "numeric_valid": true,
+        "evidence_valid": true,
+        "facts_checked": 3
+      },
+      "scope": {
+        "declared_coverage": {
+          "period": {
+            "start": "2013-11-01",
+            "end_exclusive": "2014-01-01"
+          },
+          "attestation": "Reviewed official sample snapshot assumption for the explicitly selected interior full months [2013-11-01,2014-01-01), supported by pinned source hashes, reviewed daily activity and validated joins/counts; not a production data completeness guarantee or data-owner certification. Coverage is explicitly selected, not inferred from the maximum fact date. No extract watermark, source reconciliation or late-arrival policy is supplied. Monetary scope is the verified CurrencyKey 100 (USD / US Dollar) subset. Source monetary values are preserved without FX conversion; currency identity does not certify production accounting completeness."
+        },
+        "discovered_territories": {
+          "7": "France",
+          "1": "Northwest",
+          "4": "Southwest",
+          "8": "Germany",
+          "5": "Southeast"
+        },
+        "selected_territory_ids": [
+          "7"
+        ],
+        "product_drilldown_territory_ids": [
+          "7"
+        ],
+        "target_territory_ids": [
+          "1"
+        ],
+        "target_product_coverage": false,
+        "uncovered_target_territory_ids": [
+          "1"
+        ],
+        "exhaustive_coverage_claimed": false
+      },
+      "data_requests": 10,
+      "model_calls": 0,
+      "model_inference_requests": 0,
+      "elapsed_seconds": 0.051125,
+      "latency_kind": "local_replay_wall_time",
+      "token_usage": {
+        "status": "known",
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost": {
+        "status": "not_applicable_no_model",
+        "estimated_model_cost": null,
+        "currency": null,
+        "platform_cost": null,
+        "price_config": null
+      }
+    }
+  },
+  "adaptive": {
+    "metrics": {
+      "status": "ok",
+      "validity": {
+        "status": "valid",
+        "numeric_valid": true,
+        "evidence_valid": true,
+        "facts_checked": 3
+      },
+      "scope": {
+        "declared_coverage": {
+          "period": {
+            "start": "2013-11-01",
+            "end_exclusive": "2014-01-01"
+          },
+          "attestation": "Reviewed official sample snapshot assumption for the explicitly selected interior full months [2013-11-01,2014-01-01), supported by pinned source hashes, reviewed daily activity and validated joins/counts; not a production data completeness guarantee or data-owner certification. Coverage is explicitly selected, not inferred from the maximum fact date. No extract watermark, source reconciliation or late-arrival policy is supplied. Monetary scope is the verified CurrencyKey 100 (USD / US Dollar) subset. Source monetary values are preserved without FX conversion; currency identity does not certify production accounting completeness."
+        },
+        "discovered_territories": {
+          "7": "France",
+          "1": "Northwest",
+          "4": "Southwest",
+          "8": "Germany",
+          "5": "Southeast"
+        },
+        "selected_territory_ids": [
+          "1"
+        ],
+        "product_drilldown_territory_ids": [
+          "1"
+        ],
+        "target_territory_ids": [
+          "1"
+        ],
+        "target_product_coverage": true,
+        "uncovered_target_territory_ids": [],
+        "exhaustive_coverage_claimed": false
+      },
+      "data_requests": 10,
+      "model_calls": 4,
+      "model_inference_requests": 0,
+      "elapsed_seconds": 0.051234,
+      "latency_kind": "local_replay_wall_time",
+      "token_usage": {
+        "prompt_tokens": null,
+        "completion_tokens": null,
+        "total_tokens": null,
+        "status": "unknown"
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_model_cost": null,
+        "currency": null,
+        "platform_cost": null,
+        "price_config": null
+      }
+    }
+  }
+}

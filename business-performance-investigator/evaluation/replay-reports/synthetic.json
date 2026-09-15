@@ -1,0 +1,1612 @@
+{
+  "schema_version": 1,
+  "execution_kind": "replay_harness_only",
+  "real_model_quality_validated": false,
+  "question": "What changed in North, and which products contributed to its sales change?",
+  "baseline_uses_question": false,
+  "snapshot": {
+    "dataset_id": "hand-worked-synthetic-ledger-v1",
+    "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+    "mode": "offline_csv",
+    "matched": true,
+    "read_only_private_copy": true
+  },
+  "shared_configuration": {
+    "baseline": {
+      "start": "2024-01-01",
+      "end_exclusive": "2024-02-01"
+    },
+    "current": {
+      "start": "2024-02-01",
+      "end_exclusive": "2024-03-01"
+    },
+    "coverage": {
+      "period": {
+        "start": "2024-01-01",
+        "end_exclusive": "2024-04-01"
+      },
+      "attestation": "Complete hand-authored synthetic ledger, not AdventureWorks. January and February contain all stated transactions; March deliberately contains none."
+    },
+    "data_limits": {
+      "max_requests": 10,
+      "max_groups": 1000,
+      "max_seconds": 30
+    },
+    "baseline_top_k": 1,
+    "max_top_k": 1,
+    "adaptive_limits": {
+      "max_model_calls": 6,
+      "max_completion_tokens": 1024,
+      "max_total_tokens": 100000,
+      "max_context_chars": 24000,
+      "max_tool_argument_chars": 2048,
+      "max_tool_summary_chars": 16000,
+      "max_response_chars": 24000,
+      "max_question_chars": 4000,
+      "max_top_k": 1,
+      "max_seconds": 60
+    }
+  },
+  "limitations": [
+    "Replay tool selections are scripted; results do not establish DeepSeek intelligence, quality, latency or cost.",
+    "The baseline is question-agnostic and always selects the largest absolute territory change.",
+    "Validity replays aggregate evidence through core; the existing twelve mathematical reference tests remain the oracle.",
+    "No causal correctness, business usefulness, generalization or cloud runtime was evaluated."
+  ],
+  "baseline": {
+    "report": {
+      "schema_version": 1,
+      "status": "ok",
+      "workflow": "fixed_comparison_territory_largest_absolute_change_product",
+      "baseline_period": {
+        "start": "2024-01-01",
+        "end_exclusive": "2024-02-01"
+      },
+      "current_period": {
+        "start": "2024-02-01",
+        "end_exclusive": "2024-03-01"
+      },
+      "coverage": {
+        "period": {
+          "start": "2024-01-01",
+          "end_exclusive": "2024-04-01"
+        },
+        "attestation": "Complete hand-authored synthetic ledger, not AdventureWorks. January and February contain all stated transactions; March deliberately contains none."
+      },
+      "comparison": {
+        "evidence_ids": [
+          "q1",
+          "q2"
+        ],
+        "baseline": {
+          "status": "ok",
+          "line_count": 4,
+          "sales": "400.0000",
+          "total_product_cost": "270.0000",
+          "orders": 3,
+          "gross_profit": "130.0000",
+          "gross_margin": "0.325000"
+        },
+        "current": {
+          "status": "ok",
+          "line_count": 4,
+          "sales": "400.0000",
+          "total_product_cost": "276.0000",
+          "orders": 3,
+          "gross_profit": "124.0000",
+          "gross_margin": "0.310000"
+        },
+        "change": {
+          "sales": "0.0000",
+          "orders": 0,
+          "gross_profit": "-6.0000",
+          "sales_relative": "0.000000",
+          "sales_relative_status": "defined",
+          "gross_margin_percentage_points": "-1.500000"
+        }
+      },
+      "territories": {
+        "evidence_ids": [
+          "q3",
+          "q4",
+          "q5",
+          "q6"
+        ],
+        "dimension": "territory",
+        "baseline_sales": "400.0000",
+        "current_sales": "400.0000",
+        "total_change": "0.0000",
+        "segments": [
+          {
+            "id": "10",
+            "name": "North",
+            "baseline_sales": "150.0000",
+            "current_sales": "120.0000",
+            "change": "-30.0000",
+            "contribution_share": null
+          }
+        ],
+        "other": {
+          "group_count": 1,
+          "baseline_sales": "250.0000",
+          "current_sales": "280.0000",
+          "change": "30.0000"
+        },
+        "contribution_share_status": "near_zero_net_change",
+        "reconciled": true
+      },
+      "selected_territory": {
+        "id": "10",
+        "name": "North",
+        "baseline_sales": "150.0000",
+        "current_sales": "120.0000",
+        "change": "-30.0000",
+        "contribution_share": null
+      },
+      "products": {
+        "evidence_ids": [
+          "q7",
+          "q8",
+          "q9",
+          "q10"
+        ],
+        "dimension": "product",
+        "baseline_sales": "150.0000",
+        "current_sales": "120.0000",
+        "total_change": "-30.0000",
+        "segments": [
+          {
+            "id": "1",
+            "name": "Alpha",
+            "baseline_sales": "100.0000",
+            "current_sales": "80.0000",
+            "change": "-20.0000",
+            "contribution_share": "0.666667"
+          }
+        ],
+        "other": {
+          "group_count": 1,
+          "baseline_sales": "50.0000",
+          "current_sales": "40.0000",
+          "change": "-10.0000"
+        },
+        "contribution_share_status": "defined",
+        "reconciled": true
+      },
+      "facts": [
+        {
+          "kind": "overall_metrics",
+          "evidence_ids": [
+            "q1",
+            "q2"
+          ],
+          "values": {
+            "evidence_ids": [
+              "q1",
+              "q2"
+            ],
+            "baseline": {
+              "status": "ok",
+              "line_count": 4,
+              "sales": "400.0000",
+              "total_product_cost": "270.0000",
+              "orders": 3,
+              "gross_profit": "130.0000",
+              "gross_margin": "0.325000"
+            },
+            "current": {
+              "status": "ok",
+              "line_count": 4,
+              "sales": "400.0000",
+              "total_product_cost": "276.0000",
+              "orders": 3,
+              "gross_profit": "124.0000",
+              "gross_margin": "0.310000"
+            },
+            "change": {
+              "sales": "0.0000",
+              "orders": 0,
+              "gross_profit": "-6.0000",
+              "sales_relative": "0.000000",
+              "sales_relative_status": "defined",
+              "gross_margin_percentage_points": "-1.500000"
+            }
+          }
+        },
+        {
+          "kind": "territory_sales_changes",
+          "evidence_ids": [
+            "q3",
+            "q4",
+            "q5",
+            "q6"
+          ],
+          "values": {
+            "evidence_ids": [
+              "q3",
+              "q4",
+              "q5",
+              "q6"
+            ],
+            "dimension": "territory",
+            "baseline_sales": "400.0000",
+            "current_sales": "400.0000",
+            "total_change": "0.0000",
+            "segments": [
+              {
+                "id": "10",
+                "name": "North",
+                "baseline_sales": "150.0000",
+                "current_sales": "120.0000",
+                "change": "-30.0000",
+                "contribution_share": null
+              }
+            ],
+            "other": {
+              "group_count": 1,
+              "baseline_sales": "250.0000",
+              "current_sales": "280.0000",
+              "change": "30.0000"
+            },
+            "contribution_share_status": "near_zero_net_change",
+            "reconciled": true
+          }
+        },
+        {
+          "kind": "selected_territory_product_changes",
+          "evidence_ids": [
+            "q7",
+            "q8",
+            "q9",
+            "q10"
+          ],
+          "values": {
+            "evidence_ids": [
+              "q7",
+              "q8",
+              "q9",
+              "q10"
+            ],
+            "dimension": "product",
+            "baseline_sales": "150.0000",
+            "current_sales": "120.0000",
+            "total_change": "-30.0000",
+            "segments": [
+              {
+                "id": "1",
+                "name": "Alpha",
+                "baseline_sales": "100.0000",
+                "current_sales": "80.0000",
+                "change": "-20.0000",
+                "contribution_share": "0.666667"
+              }
+            ],
+            "other": {
+              "group_count": 1,
+              "baseline_sales": "50.0000",
+              "current_sales": "40.0000",
+              "change": "-10.0000"
+            },
+            "contribution_share_status": "defined",
+            "reconciled": true
+          }
+        }
+      ],
+      "hypotheses": [],
+      "causal_conclusions": [],
+      "missing_evidence": [
+        "Sales attribution is descriptive, not causal; campaigns, pricing, availability and demand evidence are not present.",
+        "Different period lengths and seasonality are not controlled by a comparison of totals.",
+        "Completeness depends on the declared source attestation, not the maximum transaction date.",
+        "This fixed baseline drills one territory only; other material offsets are not investigated exhaustively."
+      ],
+      "execution": {
+        "mode": "offline_csv",
+        "data_requests": 10,
+        "sql_queries_executed": 0,
+        "model_requests": 0,
+        "limits": {
+          "max_requests": 10,
+          "max_groups": 1000,
+          "max_seconds": 30
+        }
+      },
+      "evidence": [
+        {
+          "id": "q1",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-02-01"
+          },
+          "filters": {},
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s;",
+            "parameters": [
+              1,
+              "2024-01-01",
+              "2024-02-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 4,
+            "sales": "400.0000",
+            "total_product_cost": "270.0000",
+            "orders": 3,
+            "gross_profit": "130.0000",
+            "gross_margin": "0.325000"
+          },
+          "elapsed_seconds": 8.8e-05
+        },
+        {
+          "id": "q2",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-02-01",
+            "end_exclusive": "2024-03-01"
+          },
+          "filters": {},
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s;",
+            "parameters": [
+              1,
+              "2024-02-01",
+              "2024-03-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 4,
+            "sales": "400.0000",
+            "total_product_cost": "276.0000",
+            "orders": 3,
+            "gross_profit": "124.0000",
+            "gross_margin": "0.310000"
+          },
+          "elapsed_seconds": 2.6e-05
+        },
+        {
+          "id": "q3",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-02-01"
+          },
+          "filters": {},
+          "dimension": "territory",
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) CONVERT(nvarchar(128), [territory_id]) AS group_id, [territory_name] AS group_name,\nCOUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s\nGROUP BY [territory_id], [territory_name]\nORDER BY [territory_id], [territory_name];",
+            "parameters": [
+              1001,
+              "2024-01-01",
+              "2024-02-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": [
+            {
+              "id": "10",
+              "name": "North",
+              "status": "ok",
+              "line_count": 2,
+              "sales": "150.0000",
+              "total_product_cost": "90.0000",
+              "orders": 1,
+              "gross_profit": "60.0000",
+              "gross_margin": "0.400000"
+            },
+            {
+              "id": "20",
+              "name": "South",
+              "status": "ok",
+              "line_count": 2,
+              "sales": "250.0000",
+              "total_product_cost": "180.0000",
+              "orders": 2,
+              "gross_profit": "70.0000",
+              "gross_margin": "0.280000"
+            }
+          ],
+          "elapsed_seconds": 3.8e-05
+        },
+        {
+          "id": "q4",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-02-01",
+            "end_exclusive": "2024-03-01"
+          },
+          "filters": {},
+          "dimension": "territory",
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) CONVERT(nvarchar(128), [territory_id]) AS group_id, [territory_name] AS group_name,\nCOUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s\nGROUP BY [territory_id], [territory_name]\nORDER BY [territory_id], [territory_name];",
+            "parameters": [
+              1001,
+              "2024-02-01",
+              "2024-03-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": [
+            {
+              "id": "10",
+              "name": "North",
+              "status": "ok",
+              "line_count": 2,
+              "sales": "120.0000",
+              "total_product_cost": "80.0000",
+              "orders": 1,
+              "gross_profit": "40.0000",
+              "gross_margin": "0.333333"
+            },
+            {
+              "id": "20",
+              "name": "South",
+              "status": "ok",
+              "line_count": 2,
+              "sales": "280.0000",
+              "total_product_cost": "196.0000",
+              "orders": 2,
+              "gross_profit": "84.0000",
+              "gross_margin": "0.300000"
+            }
+          ],
+          "elapsed_seconds": 2.8e-05
+        },
+        {
+          "id": "q5",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-02-01",
+            "end_exclusive": "2024-03-01"
+          },
+          "filters": {},
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s;",
+            "parameters": [
+              1,
+              "2024-02-01",
+              "2024-03-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 4,
+            "sales": "400.0000",
+            "total_product_cost": "276.0000",
+            "orders": 3,
+            "gross_profit": "124.0000",
+            "gross_margin": "0.310000"
+          },
+          "elapsed_seconds": 1.6e-05
+        },
+        {
+          "id": "q6",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-02-01"
+          },
+          "filters": {},
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s;",
+            "parameters": [
+              1,
+              "2024-01-01",
+              "2024-02-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 4,
+            "sales": "400.0000",
+            "total_product_cost": "270.0000",
+            "orders": 3,
+            "gross_profit": "130.0000",
+            "gross_margin": "0.325000"
+          },
+          "elapsed_seconds": 1.5e-05
+        },
+        {
+          "id": "q7",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-02-01"
+          },
+          "filters": {
+            "territory": "10"
+          },
+          "dimension": "product",
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) CONVERT(nvarchar(128), [product_id]) AS group_id, [product_name] AS group_name,\nCOUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s AND CONVERT(nvarchar(128), [territory_id]) = %s\nGROUP BY [product_id], [product_name]\nORDER BY [product_id], [product_name];",
+            "parameters": [
+              1001,
+              "2024-01-01",
+              "2024-02-01",
+              "10"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": [
+            {
+              "id": "1",
+              "name": "Alpha",
+              "status": "ok",
+              "line_count": 1,
+              "sales": "100.0000",
+              "total_product_cost": "60.0000",
+              "orders": 1,
+              "gross_profit": "40.0000",
+              "gross_margin": "0.400000"
+            },
+            {
+              "id": "2",
+              "name": "Beta",
+              "status": "ok",
+              "line_count": 1,
+              "sales": "50.0000",
+              "total_product_cost": "30.0000",
+              "orders": 1,
+              "gross_profit": "20.0000",
+              "gross_margin": "0.400000"
+            }
+          ],
+          "elapsed_seconds": 3.3e-05
+        },
+        {
+          "id": "q8",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-02-01",
+            "end_exclusive": "2024-03-01"
+          },
+          "filters": {
+            "territory": "10"
+          },
+          "dimension": "product",
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) CONVERT(nvarchar(128), [product_id]) AS group_id, [product_name] AS group_name,\nCOUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s AND CONVERT(nvarchar(128), [territory_id]) = %s\nGROUP BY [product_id], [product_name]\nORDER BY [product_id], [product_name];",
+            "parameters": [
+              1001,
+              "2024-02-01",
+              "2024-03-01",
+              "10"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": [
+            {
+              "id": "1",
+              "name": "Alpha",
+              "status": "ok",
+              "line_count": 1,
+              "sales": "80.0000",
+              "total_product_cost": "56.0000",
+              "orders": 1,
+              "gross_profit": "24.0000",
+              "gross_margin": "0.300000"
+            },
+            {
+              "id": "2",
+              "name": "Beta",
+              "status": "ok",
+              "line_count": 1,
+              "sales": "40.0000",
+              "total_product_cost": "24.0000",
+              "orders": 1,
+              "gross_profit": "16.0000",
+              "gross_margin": "0.400000"
+            }
+          ],
+          "elapsed_seconds": 2.5e-05
+        },
+        {
+          "id": "q9",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-02-01",
+            "end_exclusive": "2024-03-01"
+          },
+          "filters": {
+            "territory": "10"
+          },
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s AND CONVERT(nvarchar(128), [territory_id]) = %s;",
+            "parameters": [
+              1,
+              "2024-02-01",
+              "2024-03-01",
+              "10"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 2,
+            "sales": "120.0000",
+            "total_product_cost": "80.0000",
+            "orders": 1,
+            "gross_profit": "40.0000",
+            "gross_margin": "0.333333"
+          },
+          "elapsed_seconds": 1.8e-05
+        },
+        {
+          "id": "q10",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-02-01"
+          },
+          "filters": {
+            "territory": "10"
+          },
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s AND CONVERT(nvarchar(128), [territory_id]) = %s;",
+            "parameters": [
+              1,
+              "2024-01-01",
+              "2024-02-01",
+              "10"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 2,
+            "sales": "150.0000",
+            "total_product_cost": "90.0000",
+            "orders": 1,
+            "gross_profit": "60.0000",
+            "gross_margin": "0.400000"
+          },
+          "elapsed_seconds": 1.5e-05
+        }
+      ]
+    },
+    "metrics": {
+      "status": "ok",
+      "validity": {
+        "status": "valid",
+        "numeric_valid": true,
+        "evidence_valid": true,
+        "facts_checked": 3
+      },
+      "scope": {
+        "declared_coverage": {
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-04-01"
+          },
+          "attestation": "Complete hand-authored synthetic ledger, not AdventureWorks. January and February contain all stated transactions; March deliberately contains none."
+        },
+        "discovered_territories": {
+          "10": "North"
+        },
+        "selected_territory_ids": [
+          "10"
+        ],
+        "product_drilldown_territory_ids": [
+          "10"
+        ],
+        "target_territory_ids": [
+          "10"
+        ],
+        "target_product_coverage": true,
+        "uncovered_target_territory_ids": [],
+        "exhaustive_coverage_claimed": false
+      },
+      "data_requests": 10,
+      "model_calls": 0,
+      "model_inference_requests": 0,
+      "elapsed_seconds": 0.000546,
+      "latency_kind": "local_replay_wall_time",
+      "token_usage": {
+        "status": "known",
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost": {
+        "status": "not_applicable_no_model",
+        "estimated_model_cost": null,
+        "currency": null,
+        "platform_cost": null,
+        "price_config": null
+      }
+    }
+  },
+  "adaptive": {
+    "report": {
+      "schema_version": 1,
+      "workflow": "bounded_adaptive_chat_completions",
+      "status": "ok",
+      "stop_reason": "complete",
+      "baseline_period": {
+        "start": "2024-01-01",
+        "end_exclusive": "2024-02-01"
+      },
+      "current_period": {
+        "start": "2024-02-01",
+        "end_exclusive": "2024-03-01"
+      },
+      "coverage": {
+        "period": {
+          "start": "2024-01-01",
+          "end_exclusive": "2024-04-01"
+        },
+        "attestation": "Complete hand-authored synthetic ledger, not AdventureWorks. January and February contain all stated transactions; March deliberately contains none."
+      },
+      "facts": [
+        {
+          "result_id": "r1",
+          "kind": "compare",
+          "scope": {
+            "filters": {}
+          },
+          "evidence_ids": [
+            "q1",
+            "q2"
+          ],
+          "values": {
+            "evidence_ids": [
+              "q1",
+              "q2"
+            ],
+            "baseline": {
+              "status": "ok",
+              "line_count": 4,
+              "sales": "400.0000",
+              "total_product_cost": "270.0000",
+              "orders": 3,
+              "gross_profit": "130.0000",
+              "gross_margin": "0.325000"
+            },
+            "current": {
+              "status": "ok",
+              "line_count": 4,
+              "sales": "400.0000",
+              "total_product_cost": "276.0000",
+              "orders": 3,
+              "gross_profit": "124.0000",
+              "gross_margin": "0.310000"
+            },
+            "change": {
+              "sales": "0.0000",
+              "orders": 0,
+              "gross_profit": "-6.0000",
+              "sales_relative": "0.000000",
+              "sales_relative_status": "defined",
+              "gross_margin_percentage_points": "-1.500000"
+            }
+          }
+        },
+        {
+          "result_id": "r2",
+          "kind": "breakdown",
+          "scope": {
+            "dimension": "territory",
+            "filters": {},
+            "top_k": 1
+          },
+          "evidence_ids": [
+            "q3",
+            "q4",
+            "q5",
+            "q6"
+          ],
+          "values": {
+            "evidence_ids": [
+              "q3",
+              "q4",
+              "q5",
+              "q6"
+            ],
+            "dimension": "territory",
+            "baseline_sales": "400.0000",
+            "current_sales": "400.0000",
+            "total_change": "0.0000",
+            "segments": [
+              {
+                "id": "10",
+                "name": "North",
+                "baseline_sales": "150.0000",
+                "current_sales": "120.0000",
+                "change": "-30.0000",
+                "contribution_share": null
+              }
+            ],
+            "other": {
+              "group_count": 1,
+              "baseline_sales": "250.0000",
+              "current_sales": "280.0000",
+              "change": "30.0000"
+            },
+            "contribution_share_status": "near_zero_net_change",
+            "reconciled": true
+          }
+        },
+        {
+          "result_id": "r3",
+          "kind": "breakdown",
+          "scope": {
+            "dimension": "product",
+            "filters": {
+              "territory": "10"
+            },
+            "top_k": 1
+          },
+          "evidence_ids": [
+            "q7",
+            "q8",
+            "q9",
+            "q10"
+          ],
+          "values": {
+            "evidence_ids": [
+              "q7",
+              "q8",
+              "q9",
+              "q10"
+            ],
+            "dimension": "product",
+            "baseline_sales": "150.0000",
+            "current_sales": "120.0000",
+            "total_change": "-30.0000",
+            "segments": [
+              {
+                "id": "1",
+                "name": "Alpha",
+                "baseline_sales": "100.0000",
+                "current_sales": "80.0000",
+                "change": "-20.0000",
+                "contribution_share": "0.666667"
+              }
+            ],
+            "other": {
+              "group_count": 1,
+              "baseline_sales": "50.0000",
+              "current_sales": "40.0000",
+              "change": "-10.0000"
+            },
+            "contribution_share_status": "defined",
+            "reconciled": true
+          }
+        }
+      ],
+      "results": [
+        {
+          "result_id": "r1",
+          "kind": "compare",
+          "scope": {
+            "filters": {}
+          },
+          "evidence_ids": [
+            "q1",
+            "q2"
+          ],
+          "values": {
+            "evidence_ids": [
+              "q1",
+              "q2"
+            ],
+            "baseline": {
+              "status": "ok",
+              "line_count": 4,
+              "sales": "400.0000",
+              "total_product_cost": "270.0000",
+              "orders": 3,
+              "gross_profit": "130.0000",
+              "gross_margin": "0.325000"
+            },
+            "current": {
+              "status": "ok",
+              "line_count": 4,
+              "sales": "400.0000",
+              "total_product_cost": "276.0000",
+              "orders": 3,
+              "gross_profit": "124.0000",
+              "gross_margin": "0.310000"
+            },
+            "change": {
+              "sales": "0.0000",
+              "orders": 0,
+              "gross_profit": "-6.0000",
+              "sales_relative": "0.000000",
+              "sales_relative_status": "defined",
+              "gross_margin_percentage_points": "-1.500000"
+            }
+          }
+        },
+        {
+          "result_id": "r2",
+          "kind": "breakdown",
+          "scope": {
+            "dimension": "territory",
+            "filters": {},
+            "top_k": 1
+          },
+          "evidence_ids": [
+            "q3",
+            "q4",
+            "q5",
+            "q6"
+          ],
+          "values": {
+            "evidence_ids": [
+              "q3",
+              "q4",
+              "q5",
+              "q6"
+            ],
+            "dimension": "territory",
+            "baseline_sales": "400.0000",
+            "current_sales": "400.0000",
+            "total_change": "0.0000",
+            "segments": [
+              {
+                "id": "10",
+                "name": "North",
+                "baseline_sales": "150.0000",
+                "current_sales": "120.0000",
+                "change": "-30.0000",
+                "contribution_share": null
+              }
+            ],
+            "other": {
+              "group_count": 1,
+              "baseline_sales": "250.0000",
+              "current_sales": "280.0000",
+              "change": "30.0000"
+            },
+            "contribution_share_status": "near_zero_net_change",
+            "reconciled": true
+          }
+        },
+        {
+          "result_id": "r3",
+          "kind": "breakdown",
+          "scope": {
+            "dimension": "product",
+            "filters": {
+              "territory": "10"
+            },
+            "top_k": 1
+          },
+          "evidence_ids": [
+            "q7",
+            "q8",
+            "q9",
+            "q10"
+          ],
+          "values": {
+            "evidence_ids": [
+              "q7",
+              "q8",
+              "q9",
+              "q10"
+            ],
+            "dimension": "product",
+            "baseline_sales": "150.0000",
+            "current_sales": "120.0000",
+            "total_change": "-30.0000",
+            "segments": [
+              {
+                "id": "1",
+                "name": "Alpha",
+                "baseline_sales": "100.0000",
+                "current_sales": "80.0000",
+                "change": "-20.0000",
+                "contribution_share": "0.666667"
+              }
+            ],
+            "other": {
+              "group_count": 1,
+              "baseline_sales": "50.0000",
+              "current_sales": "40.0000",
+              "change": "-10.0000"
+            },
+            "contribution_share_status": "defined",
+            "reconciled": true
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "id": "q1",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-02-01"
+          },
+          "filters": {},
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s;",
+            "parameters": [
+              1,
+              "2024-01-01",
+              "2024-02-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 4,
+            "sales": "400.0000",
+            "total_product_cost": "270.0000",
+            "orders": 3,
+            "gross_profit": "130.0000",
+            "gross_margin": "0.325000"
+          },
+          "elapsed_seconds": 2.1e-05
+        },
+        {
+          "id": "q2",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-02-01",
+            "end_exclusive": "2024-03-01"
+          },
+          "filters": {},
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s;",
+            "parameters": [
+              1,
+              "2024-02-01",
+              "2024-03-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 4,
+            "sales": "400.0000",
+            "total_product_cost": "276.0000",
+            "orders": 3,
+            "gross_profit": "124.0000",
+            "gross_margin": "0.310000"
+          },
+          "elapsed_seconds": 1.4e-05
+        },
+        {
+          "id": "q3",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-02-01"
+          },
+          "filters": {},
+          "dimension": "territory",
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) CONVERT(nvarchar(128), [territory_id]) AS group_id, [territory_name] AS group_name,\nCOUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s\nGROUP BY [territory_id], [territory_name]\nORDER BY [territory_id], [territory_name];",
+            "parameters": [
+              1001,
+              "2024-01-01",
+              "2024-02-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": [
+            {
+              "id": "10",
+              "name": "North",
+              "status": "ok",
+              "line_count": 2,
+              "sales": "150.0000",
+              "total_product_cost": "90.0000",
+              "orders": 1,
+              "gross_profit": "60.0000",
+              "gross_margin": "0.400000"
+            },
+            {
+              "id": "20",
+              "name": "South",
+              "status": "ok",
+              "line_count": 2,
+              "sales": "250.0000",
+              "total_product_cost": "180.0000",
+              "orders": 2,
+              "gross_profit": "70.0000",
+              "gross_margin": "0.280000"
+            }
+          ],
+          "elapsed_seconds": 3.1e-05
+        },
+        {
+          "id": "q4",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-02-01",
+            "end_exclusive": "2024-03-01"
+          },
+          "filters": {},
+          "dimension": "territory",
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) CONVERT(nvarchar(128), [territory_id]) AS group_id, [territory_name] AS group_name,\nCOUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s\nGROUP BY [territory_id], [territory_name]\nORDER BY [territory_id], [territory_name];",
+            "parameters": [
+              1001,
+              "2024-02-01",
+              "2024-03-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": [
+            {
+              "id": "10",
+              "name": "North",
+              "status": "ok",
+              "line_count": 2,
+              "sales": "120.0000",
+              "total_product_cost": "80.0000",
+              "orders": 1,
+              "gross_profit": "40.0000",
+              "gross_margin": "0.333333"
+            },
+            {
+              "id": "20",
+              "name": "South",
+              "status": "ok",
+              "line_count": 2,
+              "sales": "280.0000",
+              "total_product_cost": "196.0000",
+              "orders": 2,
+              "gross_profit": "84.0000",
+              "gross_margin": "0.300000"
+            }
+          ],
+          "elapsed_seconds": 2.6e-05
+        },
+        {
+          "id": "q5",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-02-01",
+            "end_exclusive": "2024-03-01"
+          },
+          "filters": {},
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s;",
+            "parameters": [
+              1,
+              "2024-02-01",
+              "2024-03-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 4,
+            "sales": "400.0000",
+            "total_product_cost": "276.0000",
+            "orders": 3,
+            "gross_profit": "124.0000",
+            "gross_margin": "0.310000"
+          },
+          "elapsed_seconds": 1.5e-05
+        },
+        {
+          "id": "q6",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-02-01"
+          },
+          "filters": {},
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s;",
+            "parameters": [
+              1,
+              "2024-01-01",
+              "2024-02-01"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 4,
+            "sales": "400.0000",
+            "total_product_cost": "270.0000",
+            "orders": 3,
+            "gross_profit": "130.0000",
+            "gross_margin": "0.325000"
+          },
+          "elapsed_seconds": 1.4e-05
+        },
+        {
+          "id": "q7",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-02-01"
+          },
+          "filters": {
+            "territory": "10"
+          },
+          "dimension": "product",
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) CONVERT(nvarchar(128), [product_id]) AS group_id, [product_name] AS group_name,\nCOUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s AND CONVERT(nvarchar(128), [territory_id]) = %s\nGROUP BY [product_id], [product_name]\nORDER BY [product_id], [product_name];",
+            "parameters": [
+              1001,
+              "2024-01-01",
+              "2024-02-01",
+              "10"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": [
+            {
+              "id": "1",
+              "name": "Alpha",
+              "status": "ok",
+              "line_count": 1,
+              "sales": "100.0000",
+              "total_product_cost": "60.0000",
+              "orders": 1,
+              "gross_profit": "40.0000",
+              "gross_margin": "0.400000"
+            },
+            {
+              "id": "2",
+              "name": "Beta",
+              "status": "ok",
+              "line_count": 1,
+              "sales": "50.0000",
+              "total_product_cost": "30.0000",
+              "orders": 1,
+              "gross_profit": "20.0000",
+              "gross_margin": "0.400000"
+            }
+          ],
+          "elapsed_seconds": 3.1e-05
+        },
+        {
+          "id": "q8",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-02-01",
+            "end_exclusive": "2024-03-01"
+          },
+          "filters": {
+            "territory": "10"
+          },
+          "dimension": "product",
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) CONVERT(nvarchar(128), [product_id]) AS group_id, [product_name] AS group_name,\nCOUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s AND CONVERT(nvarchar(128), [territory_id]) = %s\nGROUP BY [product_id], [product_name]\nORDER BY [product_id], [product_name];",
+            "parameters": [
+              1001,
+              "2024-02-01",
+              "2024-03-01",
+              "10"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": [
+            {
+              "id": "1",
+              "name": "Alpha",
+              "status": "ok",
+              "line_count": 1,
+              "sales": "80.0000",
+              "total_product_cost": "56.0000",
+              "orders": 1,
+              "gross_profit": "24.0000",
+              "gross_margin": "0.300000"
+            },
+            {
+              "id": "2",
+              "name": "Beta",
+              "status": "ok",
+              "line_count": 1,
+              "sales": "40.0000",
+              "total_product_cost": "24.0000",
+              "orders": 1,
+              "gross_profit": "16.0000",
+              "gross_margin": "0.400000"
+            }
+          ],
+          "elapsed_seconds": 2.9e-05
+        },
+        {
+          "id": "q9",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-02-01",
+            "end_exclusive": "2024-03-01"
+          },
+          "filters": {
+            "territory": "10"
+          },
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s AND CONVERT(nvarchar(128), [territory_id]) = %s;",
+            "parameters": [
+              1,
+              "2024-02-01",
+              "2024-03-01",
+              "10"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 2,
+            "sales": "120.0000",
+            "total_product_cost": "80.0000",
+            "orders": 1,
+            "gross_profit": "40.0000",
+            "gross_margin": "0.333333"
+          },
+          "elapsed_seconds": 1.7e-05
+        },
+        {
+          "id": "q10",
+          "execution_mode": "offline_csv",
+          "sql_executed": false,
+          "dataset_id": "hand-worked-synthetic-ledger-v1",
+          "source_sha256": "8617dd9b360ecc17fd25aa1191d937f9806e99a029e89c02941ac33918a3b066",
+          "snapshot_attestation": null,
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-02-01"
+          },
+          "filters": {
+            "territory": "10"
+          },
+          "dimension": null,
+          "query_plan": {
+            "dialect": "azure_sql",
+            "sql": "SELECT TOP (%s) COUNT_BIG(*) AS line_count,\nCOALESCE(SUM([sales_amount]), 0) AS sales,\nCOALESCE(SUM([total_product_cost]), 0) AS cost,\nCOUNT(DISTINCT [sales_order_number]) AS orders\nFROM [reporting].[v_internet_sales]\nWHERE [order_date] >= %s AND [order_date] < %s AND CONVERT(nvarchar(128), [territory_id]) = %s;",
+            "parameters": [
+              1,
+              "2024-01-01",
+              "2024-02-01",
+              "10"
+            ],
+            "parameter_style": "python-tds positional %s"
+          },
+          "result": {
+            "status": "ok",
+            "line_count": 2,
+            "sales": "150.0000",
+            "total_product_cost": "90.0000",
+            "orders": 1,
+            "gross_profit": "60.0000",
+            "gross_margin": "0.400000"
+          },
+          "elapsed_seconds": 1.6e-05
+        }
+      ],
+      "hypotheses": [],
+      "causal_conclusions": [],
+      "missing_evidence": [
+        "Sales attribution is descriptive, not causal; pricing, availability and demand evidence are absent.",
+        "Completion means a valid model selection, not proof that the question was fully investigated.",
+        "Only selected scopes were investigated; period length and seasonality are not controlled."
+      ],
+      "execution": {
+        "mode": "offline_csv",
+        "client_kind": "replay",
+        "model": "offline-replay",
+        "data_requests": 10,
+        "model_calls": 4,
+        "model_inference_requests": 0,
+        "sql_queries_executed": 0,
+        "elapsed_seconds": 0.000981,
+        "limits": {
+          "max_model_calls": 6,
+          "max_completion_tokens": 1024,
+          "max_total_tokens": 100000,
+          "max_context_chars": 24000,
+          "max_tool_argument_chars": 2048,
+          "max_tool_summary_chars": 16000,
+          "max_response_chars": 24000,
+          "max_question_chars": 4000,
+          "max_top_k": 1,
+          "max_seconds": 60
+        },
+        "data_limits": {
+          "max_requests": 10,
+          "max_groups": 1000,
+          "max_seconds": 30
+        },
+        "token_usage": {
+          "prompt_tokens": null,
+          "completion_tokens": null,
+          "total_tokens": null,
+          "status": "unknown"
+        },
+        "usage_by_call": [
+          {
+            "prompt_tokens": null,
+            "completion_tokens": null,
+            "total_tokens": null
+          },
+          {
+            "prompt_tokens": null,
+            "completion_tokens": null,
+            "total_tokens": null
+          },
+          {
+            "prompt_tokens": null,
+            "completion_tokens": null,
+            "total_tokens": null
+          },
+          {
+            "prompt_tokens": null,
+            "completion_tokens": null,
+            "total_tokens": null
+          }
+        ],
+        "reserved_tokens": 23204,
+        "token_reservation_basis": "serialized_ascii_bytes_plus_1024_framing_plus_output_cap"
+      }
+    },
+    "metrics": {
+      "status": "ok",
+      "validity": {
+        "status": "valid",
+        "numeric_valid": true,
+        "evidence_valid": true,
+        "facts_checked": 3
+      },
+      "scope": {
+        "declared_coverage": {
+          "period": {
+            "start": "2024-01-01",
+            "end_exclusive": "2024-04-01"
+          },
+          "attestation": "Complete hand-authored synthetic ledger, not AdventureWorks. January and February contain all stated transactions; March deliberately contains none."
+        },
+        "discovered_territories": {
+          "10": "North"
+        },
+        "selected_territory_ids": [
+          "10"
+        ],
+        "product_drilldown_territory_ids": [
+          "10"
+        ],
+        "target_territory_ids": [
+          "10"
+        ],
+        "target_product_coverage": true,
+        "uncovered_target_territory_ids": [],
+        "exhaustive_coverage_claimed": false
+      },
+      "data_requests": 10,
+      "model_calls": 4,
+      "model_inference_requests": 0,
+      "elapsed_seconds": 0.000981,
+      "latency_kind": "local_replay_wall_time",
+      "token_usage": {
+        "prompt_tokens": null,
+        "completion_tokens": null,
+        "total_tokens": null,
+        "status": "unknown"
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_model_cost": null,
+        "currency": null,
+        "platform_cost": null,
+        "price_config": null
+      }
+    }
+  },
+  "authorization": {
+    "model_inference_explicitly_approved": false,
+    "caller_identity_supplied": false,
+    "cloud_deployment_approved": false
+  }
+}

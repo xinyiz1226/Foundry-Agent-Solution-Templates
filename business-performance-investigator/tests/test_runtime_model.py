@@ -275,7 +275,7 @@ class MainRoutingTests(unittest.TestCase):
             self.assertEqual(client.timeout, 60.0)
             return client
 
-        def run_app(agent):
+        def run_app(agent, *, error_renderer):
             self.assertIsInstance(agent, ChatProbeAgent)
             self.assertIn('"ok":true', agent.answer("Validate"))
             return Mock()

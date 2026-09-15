@@ -9,6 +9,10 @@ param(
 Assert-BpiAzureApproval -Approved:$ApproveAzureChanges
 $config = Read-BpiConfig $ConfigPath
 $state = Read-BpiState $config
+if (($state.ContainsKey('agentName') -and $state.agentName -cne 'sql-probe') -or
+    ($state.ContainsKey('initializationMode') -and $state.initializationMode -cne 'Probe')) {
+    throw 'This validator is probe-specific. Analytical validation requires a dedicated approved cloud validator; probe evidence cannot validate business-investigator.'
+}
 Get-BpiGroup $config $state | Out-Null
 if ((Get-BpiModelConfiguration $config).mode -eq 'existing') {
     Get-BpiExistingModel $config | Out-Null

@@ -5,7 +5,9 @@ param(
     [Parameter(Mandatory)][ValidateSet('Provision', 'Agent', 'Initialize')][string]$Stage,
     [switch]$ApproveAzureChanges,
     [string]$AgentPrincipalId = '',
-    [switch]$RetryInitialization
+    [switch]$RetryInitialization,
+    [ValidateSet('Probe', 'AnalysisSnapshot')][string]$InitializationMode = 'Probe',
+    [ValidateSet('sql-probe', 'business-investigator')][string]$AgentName = 'sql-probe'
 )
 . "$PSScriptRoot/common.ps1"
 . "$PSScriptRoot/initializer-common.ps1"
@@ -14,6 +16,16 @@ $config = Read-BpiConfig $ConfigPath
 $model = Get-BpiModelConfiguration $config
 if ($RetryInitialization -and $Stage -ne 'Initialize') {
     throw '-RetryInitialization is only valid for the Initialize stage.'
+}
+if ($PSBoundParameters.ContainsKey('InitializationMode') -and $Stage -ne 'Initialize') {
+    throw '-InitializationMode is only valid for the Initialize stage.'
+}
+if ($PSBoundParameters.ContainsKey('AgentName') -and $Stage -eq 'Provision') {
+    throw '-AgentName is only valid for the Agent and Initialize stages.'
+}
+if ($Stage -eq 'Initialize' -and
+    (($InitializationMode -eq 'AnalysisSnapshot') -ne ($AgentName -eq 'business-investigator'))) {
+    throw 'AnalysisSnapshot requires -AgentName business-investigator and explicit -InitializationMode AnalysisSnapshot together.'
 }
 & "$PSScriptRoot/preflight.ps1" -ConfigPath $ConfigPath -CheckAzure
 
@@ -93,7 +105,19 @@ try {
     if ($state.status -in @('creating', 'provisionFailed', 'deleted')) {
         throw "State '$($state.status)' cannot proceed. Inspect the failed deployment or clean up."
     }
+    # States predating explicit service selection can only belong to the original sql-probe service.
+    if ($state.ContainsKey('agentName') -and
+        ($state.agentName -isnot [string] -or $state.agentName -cnotin @('sql-probe', 'business-investigator'))) {
+        throw 'Ownership state has an invalid agent service binding. Inspect it before continuing.'
+    }
+    $boundAgent = if ($state.ContainsKey('agentName')) { [string]$state.agentName }
+        elseif ($state.status -ne 'provisioned') { 'sql-probe' } else { '' }
+    if ($boundAgent -and $boundAgent -cne $AgentName) {
+        throw 'Selected agent differs from the service bound to this experiment. Use a fresh experiment; never switch identities silently.'
+    }
     if ($Stage -eq 'Agent') {
+        $state.agentName = $AgentName
+        Save-BpiState $config $state
         if (-not $state.ContainsKey('azdEnvironmentCreated')) {
             if (Test-Path -LiteralPath (Join-Path '.azure' $config.environmentName)) {
                 throw 'An azd environment already exists without matching ownership state. Inspect it manually.'
@@ -122,7 +146,7 @@ try {
             '-e', $config.environmentName) | Out-Null
         Invoke-BpiNative azd @('env', 'set', 'AZURE_RESOURCE_GROUP', $config.resourceGroupName,
             '-e', $config.environmentName) | Out-Null
-        Invoke-BpiNative azd @('deploy', 'sql-probe', '--no-prompt', '-e',
+        Invoke-BpiNative azd @('deploy', $AgentName, '--no-prompt', '-e',
             $config.environmentName) | Write-Host
         $state.status = 'agentDeployed'
         Save-BpiState $config $state
@@ -130,6 +154,8 @@ try {
         return
     }
 
+    . "$PSScriptRoot/analysis-initializer-common.ps1"
+    Assert-BpiInitializationMode $state $InitializationMode
     if ($state.status -notin @('agentDeployed', 'initialized', 'validated')) {
         throw 'Deploy the agent before initializing SQL so its actual identity can be verified.'
     }
@@ -138,7 +164,7 @@ try {
     }
     $principalId = [guid]::Parse($AgentPrincipalId)
     if ($principalId -eq [guid]::Empty) { throw 'AgentPrincipalId must not be zero.' }
-    $agent = Invoke-BpiNative azd @('ai', 'agent', 'show', 'sql-probe', '--output',
+    $agent = Invoke-BpiNative azd @('ai', 'agent', 'show', $AgentName, '--output',
         'json', '-e', $config.environmentName) -Json
     if ((Get-BpiAgentPrincipalId $agent) -ine $principalId.ToString()) {
         throw 'Supplied principal does not match the deployed agent metadata. SQL was not initialized.'
@@ -178,19 +204,35 @@ try {
         if ($existingInitializers.Count -eq 1) {
             $containerName = [string]$existingInitializers[0].name
             $container = Get-BpiPrivateInitializer $config $state $containerName
+            Assert-BpiInitializerModeContainer $container $state $InitializationMode $clientId $principalId
             if ($RetryInitialization -and $container.containers[0].instanceView.currentState.state -ne 'Terminated') {
                 throw 'The initializer is still running. Do not restart an in-flight SQL transaction.'
             }
+            if ($InitializationMode -eq 'AnalysisSnapshot' -and $RetryInitialization -and
+                $container.containers[0].instanceView.currentState.exitCode -eq 0) {
+                throw 'Do not restart a successful analysis initializer. Reuse verified evidence or create a fresh experiment.'
+            }
         }
+        $state.initializationMode = $InitializationMode
+        $state.agentName = $AgentName
+        Save-BpiState $config $state
         if (-not $containerName -or $RetryInitialization) {
+            $bootstrapTemplate = if ($InitializationMode -eq 'AnalysisSnapshot') {
+                'infra-bicep/analysis-bootstrap.bicep'
+            } else { 'infra-bicep/bootstrap.bicep' }
             $deployment = Invoke-BpiNative az @('deployment', 'group', 'create', '--subscription',
                 $config.subscriptionId, '--resource-group', $config.resourceGroupName,
-                '--name', 'bpi-bootstrap', '--template-file', 'infra-bicep/bootstrap.bicep',
+                '--name', 'bpi-bootstrap', '--template-file', $bootstrapTemplate,
                 '--parameters', "@$parameterFile", '--output', 'json') -Json
             $containerName = [string](Get-BpiOutput @{outputs = $deployment.properties.outputs} 'bootstrapContainerGroupName')
         }
-        $state.initializerEvidence = Wait-BpiPrivateInitializer -Config $config -State $state `
-            -ContainerName $containerName -AgentClientId $clientId -AgentPrincipalId $principalId
+        $state.initializerEvidence = if ($InitializationMode -eq 'AnalysisSnapshot') {
+            Wait-BpiAnalysisInitializer -Config $config -State $state `
+                -ContainerName $containerName -AgentClientId $clientId -AgentPrincipalId $principalId
+        } else {
+            Wait-BpiPrivateInitializer -Config $config -State $state `
+                -ContainerName $containerName -AgentClientId $clientId -AgentPrincipalId $principalId
+        }
         $state.agentPrincipalId = $principalId.ToString()
         $state.agentClientId = $clientId.ToString()
         $state.status = 'initialized'

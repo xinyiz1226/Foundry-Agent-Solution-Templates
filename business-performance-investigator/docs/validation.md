@@ -12,9 +12,40 @@ route, driver/native-library availability, or database SID mapping.
 Import and package checks on a Windows workstation also do not prove a Linux
 hosted-runtime build.
 
+### Analytical milestone
+
+The new analytical service has local contracts for strict packaged policy
+validation, baseline/adaptive dispatch, matching data/time budgets, private
+snapshot setup, permissions, cleanup failures and analysis-specific Responses
+errors. The adaptive evaluator uses offline CSV snapshots and scripted model
+replays; it is not a live hosted-SQL comparison runner.
+
+Local validation now compiles `main`, `bootstrap` and `analysis-bootstrap`.
+The analytical sample initializer has a local preparation path so official
+source projection and generated SQL can be checked without database access.
+See [adaptive evaluation](adaptive-evaluation.md),
+[analysis initialization](analysis-initialization.md) and
+[hosted analysis](hosted-analysis.md) for the exact contracts.
+
+The previous successful connectivity run does not validate this new analytical
+runtime or establish a DeepSeek quality improvement. A fresh paid experiment is
+pending explicit approval; no new inference, resource creation or role grant
+has been performed for this milestone.
+
+The integrated analytical checkpoint passed **238 offline tests without skips**,
+dependency consistency checks and all three Bicep compilations. ScriptDom was
+available for generated-SQL parsing. The official Northwest and synthetic replay
+commands both produced `baseline_status: ok`, `adaptive_status: ok` and
+`execution_kind: replay_harness_only`. Logs and generated reports are retained
+under ignored `.artifacts/`; these results do not establish live model quality.
+
 ## Cloud evidence, after approval
 
-Required evidence:
+The following evidence applies to the original connectivity probe. Analytical
+validation has additional sample, numerical and model requirements listed in
+[hosted analysis](hosted-analysis.md).
+
+Required probe evidence:
 
 1. Agent is deployed and active at the version being tested.
 2. SQL resolves exclusively to the approved private endpoint address from the

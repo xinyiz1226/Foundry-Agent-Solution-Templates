@@ -37,7 +37,7 @@ try {
     $report.checks += 'dependency-consistency'
     Invoke-BpiNative $PythonPath @('-m', 'unittest', 'discover', '-s', 'tests', '-v') | Write-Host
     $report.checks += 'unit-and-lifecycle-contracts'
-    foreach ($entry in @('main', 'bootstrap')) {
+    foreach ($entry in @('main', 'bootstrap', 'analysis-bootstrap')) {
         Invoke-BpiNative $BicepPath @('build', "infra-bicep/$entry.bicep",
             '--outfile', (Join-Path $artifacts "$entry.json")) | Write-Host
         $report.checks += "bicep-$entry"

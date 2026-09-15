@@ -13,6 +13,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ManifestTests(unittest.TestCase):
+    def test_analysis_service_packages_shared_engine_without_local_artifacts(self):
+        manifest = yaml.safe_load((ROOT / "azure.yaml").read_text())
+        service = manifest["services"]["business-investigator"]
+        source = ROOT / service["project"]
+        self.assertEqual(source.resolve(), ROOT)
+        self.assertTrue((source / service["codeConfiguration"]["entryPoint"]).is_file())
+        self.assertTrue((source / "analysis" / "hosted-policy.json").is_file())
+        self.assertIn("-r agent/requirements.txt", (source / "requirements.txt").read_text())
+        ignored = (source / ".agentignore").read_text().splitlines()
+        for path in (".azure/", ".artifacts/", ".venv/", ".git/", ".env", ".env.*"):
+            self.assertIn(path, ignored)
+        self.assertNotIn("analysis/", ignored)
+        self.assertNotIn("agent/", ignored)
+        self.assertEqual(service["protocols"], [{"protocol": "responses", "version": "2.0.0"}])
+
     def test_source_service_matches_runtime(self):
         manifest = yaml.safe_load((ROOT / "azure.yaml").read_text())
         service = manifest["services"]["sql-probe"]

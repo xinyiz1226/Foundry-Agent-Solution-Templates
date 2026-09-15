@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "dataset_id": "adventureworksdw-2025-install-snapshot-internet-sales-currencykey-100-usd",
+  "source_sha256": "45d1a25c2b301f730e635fc789fc3ee08c6bb7a9a946159105be7ad00997259f",
+  "row_count": 33400,
+  "sales_amount": "14693465.3186",
+  "total_product_cost": "8611268.3850",
+  "database_principal": "bpi_probe_agent",
+  "coverage": {
+    "start": "2013-11-01",
+    "end": "2014-01-01",
+    "attestation": "Reviewed official fictitious sample snapshot, filtered to verified CurrencyKey 100 (USD). November and December 2013 are explicitly selected interior months; not production completeness or accounting certification. No FX conversion."
+  },
+  "baseline": {"start": "2013-11-01", "end": "2013-12-01"},
+  "current": {"start": "2013-12-01", "end": "2014-01-01"}
+}

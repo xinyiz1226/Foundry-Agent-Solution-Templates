@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import ExitStack
+from typing import Callable, Protocol
 
 from azure.ai.agentserver.responses import (
     CreateResponse,
@@ -23,7 +24,11 @@ from probe_agent.orchestrator import ChatProbeAgent, ProbeAgent, error_answer
 from probe_agent.sql_probe import SqlProbe
 
 
-def create_app(agent: ProbeAgent) -> ResponsesAgentServerHost:
+class Answerer(Protocol):
+    def answer(self, user_input: str) -> str: ...
+
+
+def create_app(agent: Answerer, *, error_renderer: Callable[[str, str], str] = error_answer) -> ResponsesAgentServerHost:
     app = ResponsesAgentServerHost(
         options=ResponsesServerOptions(default_fetch_history_count=1),
         configure_observability=None,
@@ -38,21 +43,30 @@ def create_app(agent: ProbeAgent) -> ResponsesAgentServerHost:
         cancellation_signal: asyncio.Event,
     ) -> TextResponse:
         if cancellation_signal.is_set():
-            return TextResponse(context, request, text=error_answer("cancelled", "The validation request was cancelled."))
+            return TextResponse(context, request, text=error_renderer("cancelled", "The request was cancelled."))
         if active.locked():
-            return TextResponse(context, request, text=error_answer("busy", "One validation probe is already active. Retry after it completes."))
+            return TextResponse(context, request, text=error_renderer("busy", "One request is already active. Retry after it completes."))
         async with active:
             try:
                 user_input = await context.get_input_text(resolve_references=False)
                 answer = await asyncio.to_thread(agent.answer, user_input)
             except Exception:
-                answer = error_answer("runtime_failed", "The validation request failed; raw exception details are omitted.")
+                answer = error_renderer("runtime_failed", "The request failed; raw exception details are omitted.")
         return TextResponse(context, request, text=answer)
 
     return app
 
 
-def main() -> None:
+def build_probe_agent(settings, credential, openai) -> Answerer:
+    probe = SqlProbe(settings, credential)
+    return (
+        ChatProbeAgent(openai.chat.completions, settings.model, probe.run)
+        if settings.model_api == "chat_completions"
+        else ProbeAgent(openai.responses, settings.model, probe.run)
+    )
+
+
+def run_host(agent_factory=build_probe_agent, *, error_renderer=error_answer, model_timeout=60.0) -> None:
     try:
         settings = Settings.from_env()
     except ConfigurationError as exc:
@@ -70,7 +84,7 @@ def main() -> None:
                 openai = clients.enter_context(OpenAI(
                     base_url=settings.model_endpoint,
                     api_key=get_bearer_token_provider(credential, "https://ai.azure.com/.default"),
-                    timeout=60.0,
+                    timeout=model_timeout,
                     max_retries=0,
                 ))
             else:
@@ -79,16 +93,15 @@ def main() -> None:
                     credential=credential,
                     user_agent="business-performance-sql-probe-v1",
                 ))
-                openai = clients.enter_context(project.get_openai_client(timeout=60.0, max_retries=0))
-            probe = SqlProbe(settings, credential)
-            agent = (
-                ChatProbeAgent(openai.chat.completions, settings.model, probe.run)
-                if settings.model_api == "chat_completions"
-                else ProbeAgent(openai.responses, settings.model, probe.run)
-            )
-            create_app(agent).run()
+                openai = clients.enter_context(project.get_openai_client(timeout=model_timeout, max_retries=0))
+            agent = agent_factory(settings, credential, openai)
+            create_app(agent, error_renderer=error_renderer).run()
     finally:
         credential.close()
+
+
+def main() -> None:
+    run_host()
 
 
 if __name__ == "__main__":

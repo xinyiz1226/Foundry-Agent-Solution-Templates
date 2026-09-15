@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "label": "Scripted official AdventureWorks Northwest ID 1; not real DeepSeek inference",
+  "question": "What changed in Northwest, and which products contributed to its sales change?",
+  "target_territory_ids": ["1"],
+  "expected_dataset_id": "adventureworksdw-2025-install-snapshot-internet-sales-currencykey-100-usd",
+  "steps": [
+    {"name": "compare", "arguments": {"filters": {}}},
+    {"name": "breakdown", "arguments": {"dimension": "territory", "filters": {}, "top_k": 5}},
+    {"name": "breakdown", "arguments": {"dimension": "product", "filters": {"territory": "1"}, "top_k": 5}},
+    {"name": "finish", "arguments": {
+      "result_ids": ["r1", "r2", "r3"],
+      "evidence_ids": ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10"],
+      "stop_reason": "complete"
+    }}
+  ]
+}
