@@ -175,6 +175,21 @@ class InfrastructureContractTests(unittest.TestCase):
                      "initializerPublicIpId", "initializerPublicIpName"):
             self.assertIn(name, self.templates["main"]["outputs"])
 
+    def test_existing_model_mode_does_not_own_or_deploy_a_shared_model(self):
+        template = self.templates["main"]
+        deployment = self.resource("main", "Microsoft.CognitiveServices/accounts/deployments")
+        self.assertEqual(deployment["condition"], "[parameters('deployModel')]")
+        self.assertTrue(template["parameters"]["deployModel"]["defaultValue"])
+        self.assertEqual(template["parameters"]["modelEndpoint"]["defaultValue"], "")
+        self.assertEqual(template["parameters"]["modelApi"]["defaultValue"], "responses")
+        outputs = template["outputs"]
+        self.assertEqual(outputs["AZURE_AI_MODEL_ENDPOINT"]["value"], "[parameters('modelEndpoint')]")
+        self.assertEqual(outputs["AZURE_AI_MODEL_API"]["value"], "[parameters('modelApi')]")
+        self.assertEqual(outputs["AZURE_AI_MODEL_DEPLOYMENT_NAME"]["value"], "[parameters('modelDeploymentName')]")
+        self.assertIn("if(parameters('deployModel')", outputs["modelDeploymentId"]["value"])
+        self.assertIn("if(parameters('deployModel')", outputs["ownedResourceIds"]["value"])
+        self.assertNotIn("existingModelResourceId", template["parameters"])
+
     def test_operator_can_deploy_and_project_can_access_models(self):
         roles = [
             resource for resource in self.templates["main"]["resources"]

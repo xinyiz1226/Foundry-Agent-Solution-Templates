@@ -33,6 +33,10 @@ services:
     environmentVariables:
       - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
         value: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      - name: AZURE_AI_MODEL_ENDPOINT
+        value: ${AZURE_AI_MODEL_ENDPOINT}
+      - name: AZURE_AI_MODEL_API
+        value: ${AZURE_AI_MODEL_API}
       - name: AZURE_SQL_SERVER
         value: ${AZURE_SQL_SERVER}
       - name: AZURE_SQL_DATABASE

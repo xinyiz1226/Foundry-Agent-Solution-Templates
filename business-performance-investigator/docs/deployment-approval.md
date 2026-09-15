@@ -1,6 +1,6 @@
 # Minimal experiment: deployment approval
 
-Status: **read-only Azure checks performed; provisioning not approved or run**.
+Status: **preflight and authorized SQL provider registration completed; resource provisioning not approved or run**.
 
 Local build/test evidence must be reviewed separately from the Azure checks.
 Passing tests does not certify SDK/runtime compatibility or private SQL access.
@@ -18,8 +18,10 @@ always check the tenant used for sign-in before asking the user to sign in again
 The proposed USD 10 spending-response threshold, maximum 24-hour experiment,
 and immediate cleanup still require approval. Subscription/tenant and operator
 IDs were verified and retained only in ignored local preflight artifacts.
-No Azure resources were created. Sign-in and permission availability are not
-approval to provision, register providers, or change role assignments.
+The operator subsequently authorized reuse of an existing DeepSeek Flash model
+and the next step, SQL provider registration. `Microsoft.Sql` is now registered.
+No SQL database, Foundry resource, or shared-resource role assignment was created.
+General resource provisioning and inference spending remain separate approvals.
 
 On the deployment workstation, first make `az` and `azd` available on the
 current shell's PATH and complete interactive sign-in with the intended tenant:
@@ -43,31 +45,39 @@ permissions and spending approval remain separate gates.
 | Subscription and caller | Enabled subscription; management permission includes `*` with no exclusions on that grant |
 | Policy/deny checks | No assignments returned by the subscription/inherited policy query or at-scope deny query; not a guarantee that future deployment cannot be denied |
 | Directory lookup | Current user object ID and an existing service principal's object/application IDs were readable; actual agent identity is not yet created |
-| Required providers | All checked providers registered **except `Microsoft.Sql`, which is `NotRegistered`** |
+| Required providers | All checked providers are now registered, including `Microsoft.Sql` after explicit authorization |
 | Proposed new resource group | `rg-bpi-probe` does not exist; ownership guards must recheck immediately before creation |
 | Hosted agents/private networking | Microsoft documentation lists East US 2 support; actual subscription session capacity and routing remain unverified |
-| Model catalog | AIServices lists `gpt-4.1-mini` version `2025-04-14`, Responses support and GlobalStandard; lifecycle is `Legacy`, inference deprecation is listed as 2027-04-14 |
-| Model quota | Exact meter `OpenAI.GlobalStandard.gpt4.1-mini`: 0 used / 200 limit; DataZoneStandard has zero quota and is not the proposed SKU |
+| Selected model | Existing `DeepSeek-V4-Flash-0731`, version `2026-07-31`, Succeeded, GlobalStandard capacity 20, East US; Chat Completions is advertised |
+| Model ownership | The existing model replaces the prior GPT deployment proposal. Do not create, resize, delete, or claim ownership of the shared account/model |
 | Initializer quota | East US 2: 0/100 container groups and 0/10 Standard cores |
 | Network quota | East US 2: 0/1000 VNets, 0/20 Standard IPv4 public IPs, 0/100 NAT gateways, 0/65536 private endpoints |
-| SQL regional capabilities | SQL returned `SubscriptionNotFound` while ARM confirmed an enabled subscription; SQL provider registration is absent. Recheck after authorized registration; do not claim SQL Basic availability passed |
+| SQL regional capabilities | After registration, both East US 2 and East US returned `Visible`, with an explicit provisioning restriction. Basic is listed but also `Visible`, not available for provisioning |
 
-**Immediate blocker:** obtain explicit permission to register `Microsoft.Sql`
-in the selected subscription, then rerun provider and SQL capability checks.
-The read-only preflight does not perform registration.
+**Immediate blocker:** SQL provisioning is restricted in both checked US
+regions. Obtain an approved subscription-limit exception, or select and
+approve a region with actual SQL provisioning availability and recheck the
+entire regional topology. Do not treat `Visible` as `Available` or attempt a
+deployment to work around the restriction. Preflight now fails on this state.
 
-The candidate local configuration proposes model capacity **10**, rather than
-the example's 1, to give the two-model-call probe throughput headroom. This is
-not deployed or approved. The SKU catalog default is 10 and quota headroom is
-200 units, but model-level `maxCapacity` is 3 while SKU-level maximum is
-1,000,000. These metadata must not be treated as interchangeable. Resolve
-actual capacity acceptance during approved deployment validation; never
-silently select a different model/SKU or claim quota guarantees capacity.
-The GlobalStandard SKU is pay-as-you-go, not provisioned throughput.
+The selected local configuration now uses `modelMode: existing` and
+`modelApi: chat_completions`, with the verified shared account's OpenAI v1
+endpoint. Its model version, SKU and capacity are not template parameters
+in this mode. The prior new-GPT quota/capacity proposal is superseded.
+The existing deployment is GlobalStandard pay-as-you-go; reuse does not make
+inference free or reserve any extra capacity for this probe.
+
+The actual deployed agent identity must be separately authorized for inference
+on the shared account. The scripts do not grant or revoke that role, retrieve
+keys, alter shared networking, or fall back to the operator/project identity.
+See [existing-model setup](../README.md#reuse-an-existing-model) for the
+documented role and cleanup responsibilities. No model invocation has been
+performed; real Flash tool-call compatibility and authorization remain live gates.
 
 The local evidence and candidate configuration are under `.artifacts/preflight/`.
-They are not ownership state or a deployment approval. No registration,
-resource writes, model inference, or automatic permissions changes were run.
+They are not ownership state or a deployment approval. The only cloud write
+performed was the explicitly authorized SQL provider registration. No model
+inference or automatic permissions changes were run.
 
 ## Approval record
 
@@ -76,8 +86,9 @@ resource writes, model inference, or automatic permissions changes were run.
 | Approver and approval date | Not yet supplied |
 | Subscription, tenant, and operator principal | Verified for read-only checks; actual IDs remain in ignored local artifacts |
 | New resource group and environment | Choose a dedicated `rg-bpi-*` group; no reuse |
-| Region | East US 2 candidate; hosted/private support documented, SQL capability check blocked pending registration |
-| Model, version, deployment SKU/capacity | Catalog and quota checked; approve final capacity and resolve metadata during deployment validation |
+| Region | East US 2 and East US SQL provisioning restricted; approve a usable region or an authorized exception |
+| Model, version, deployment SKU/capacity | Existing DeepSeek Flash selected; no new model deployment or capacity change |
+| Shared-model runtime access | The model owner must approve the actual agent's inference role; no shared-role changes performed |
 | Experiment duration and cleanup owner | Not yet supplied |
 | Spending limit and response to threshold | Not yet supplied; budgets are alerts, not hard caps |
 | Required directory/resource permissions | Broad management access and basic directory lookup observed; no automatic tenant consent or provider registration |

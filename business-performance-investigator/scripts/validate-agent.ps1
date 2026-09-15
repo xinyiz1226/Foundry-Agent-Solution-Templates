@@ -9,6 +9,9 @@ Assert-BpiAzureApproval -Approved:$ApproveAzureChanges
 $config = Read-BpiConfig $ConfigPath
 $state = Read-BpiState $config
 Get-BpiGroup $config $state | Out-Null
+if ((Get-BpiModelConfiguration $config).mode -eq 'existing') {
+    Get-BpiExistingModel $config | Out-Null
+}
 if ($state.status -notin @('initialized', 'validated')) {
     throw 'Initialize the approved SQL identity and fixture before invoking the probe.'
 }

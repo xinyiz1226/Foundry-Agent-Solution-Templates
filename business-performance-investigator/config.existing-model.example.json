@@ -1,0 +1,13 @@
+{
+  "environmentName": "bpi-probe",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroupName": "rg-bpi-probe",
+  "location": "eastus2",
+  "modelMode": "existing",
+  "modelName": "DeepSeek-V4-Flash-0731",
+  "modelApi": "chat_completions",
+  "modelEndpoint": "https://shared-model-account.openai.azure.com/openai/v1/",
+  "existingModelResourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-shared-models/providers/Microsoft.CognitiveServices/accounts/shared-model-account/deployments/DeepSeek-V4-Flash-0731",
+  "operatorPrincipalId": "00000000-0000-0000-0000-000000000000",
+  "operatorPrincipalType": "User"
+}

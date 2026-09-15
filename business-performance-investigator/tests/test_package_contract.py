@@ -25,7 +25,8 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(service["codeConfiguration"]["dependencyResolution"], "remote_build")
         self.assertEqual(service["protocols"], [{"protocol": "responses", "version": "2.0.0"}])
         variables = {entry["name"]: entry["value"] for entry in service["environmentVariables"]}
-        for name in ["AZURE_SQL_SERVER", "AZURE_SQL_DATABASE", "AZURE_AI_MODEL_DEPLOYMENT_NAME"]:
+        for name in ["AZURE_SQL_SERVER", "AZURE_SQL_DATABASE", "AZURE_AI_MODEL_DEPLOYMENT_NAME",
+                     "AZURE_AI_MODEL_ENDPOINT", "AZURE_AI_MODEL_API"]:
             self.assertEqual(variables[name], "${" + name + "}")
         self.assertEqual(variables["APP_LOCAL_DEVELOPMENT"], "false")
         self.assertNotIn("AZURE_CLIENT_ID", variables)
@@ -59,6 +60,7 @@ class LifecycleBicepInterfaceTests(unittest.TestCase):
                 "environmentName", "location", "deploymentId", "modelName",
                 "modelVersion", "modelSku", "modelCapacity", "operatorPrincipalId",
                 "deploymentPrincipalType", "sqlAdminMode", "sqlAdminObjectId", "sqlAdminLogin",
+                "deployModel", "modelEndpoint", "modelApi",
             },
             "bootstrap": {
                 "environmentName", "location", "deploymentId",
@@ -76,6 +78,7 @@ class LifecycleBicepInterfaceTests(unittest.TestCase):
         expected = {
             "AZURE_AI_PROJECT_ENDPOINT", "AZURE_AI_PROJECT_NAME", "AZURE_AI_ACCOUNT_NAME",
             "AZURE_AI_PROJECT_ID", "AZURE_AI_MODEL_DEPLOYMENT_NAME",
+            "AZURE_AI_MODEL_ENDPOINT", "AZURE_AI_MODEL_API",
             "AZURE_SQL_SERVER", "AZURE_SQL_DATABASE", "INITIALIZER_CLIENT_ID",
             "sqlServerId", "sqlServerName",
         }

@@ -39,6 +39,7 @@ SQL publicly. Review this addition and the revised cost subtotal before approval
 | `scripts/` | Local validation, preflight, approval-gated lifecycle, cloud evidence validation |
 | `tests/` | Local runtime and lifecycle contracts; no live database required |
 | `config.example.json` | Non-deployable placeholders; copy and review before use |
+| `config.existing-model.example.json` | Reuse an externally managed Azure model deployment without creating or resizing it |
 | `docs/deployment-approval.md` | Resources, permissions, cost assumptions, and approval checklist |
 | `docs/validation.md` | Local versus cloud checks and failure investigation |
 
@@ -67,6 +68,48 @@ Only for a separately approved cloud experiment:
 The supplied region/model/version are examples, not promises of subscription
 availability. Confirm them and cost assumptions before deployment.
 
+## Reuse an existing model
+
+Use `config.existing-model.example.json` for an already-deployed model such as
+`DeepSeek-V4-Flash-0731`. Set `modelMode` to `existing`, the exact deployment
+name/resource ID, `modelApi` to `chat_completions`, and the shared account's
+HTTPS `/openai/v1/` endpoint. Replace the example subscription/operator IDs.
+The shared deployment must be in the selected subscription but **outside**
+the disposable experiment group. This phase supports account-name endpoints
+under `openai.azure.com` or `services.ai.azure.com`, reachable through approved
+public Entra-authenticated access; it does not alter shared-account firewalls.
+
+Do not set `modelVersion`, `modelSku` or `modelCapacity` in existing mode:
+the model owner controls those settings. Bicep skips model deployment, and
+the shared account/model is excluded from experiment ownership and cleanup.
+The runtime uses its own managed identity and a refreshing Entra token with
+scope `https://ai.azure.com/.default`; it does not retrieve account keys.
+The hosted agent still exposes **Responses/2.0.0**. Only its internal model
+transport changes to Chat Completions, with at most two calls and at most one
+validated SQL tool execution. No automatic API or model fallback is used.
+
+**Shared-model permission is a separate approval.** The newly deployed
+agent's actual object ID needs inference access to the shared model account.
+The operator's successful login and the new project's default access do not
+grant this to the runtime. After verifying that identity, the shared-model
+owner can review and run the following command under their authorization:
+
+```powershell
+az role assignment create --assignee-object-id '<actual-agent-object-id>' `
+    --assignee-principal-type ServicePrincipal `
+    --role '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd' `
+    --scope '<existing-model-account-resource-id>'
+```
+
+This is the documented **Cognitive Services OpenAI User** role for the v1 API;
+confirm its accepted scope and actual DeepSeek inference access in the cloud
+experiment. The template does not run this command, change shared permissions
+or broaden roles automatically. Record any newly created assignment ID and
+have the model owner remove only that assignment after the experiment if
+appropriate; `cleanup.ps1` does not manage external assignments.
+Model calls still consume the shared deployment's capacity and incur its
+normal inference charges. See [Azure OpenAI v1](https://learn.microsoft.com/en-us/azure/foundry/openai/api-version-lifecycle).
+
 ## Local-only quickstart
 
 Run from this folder. On Windows, use `py -3.13` if `python` is a Store alias.
@@ -93,6 +136,7 @@ for organizational authorization.
 
 ```powershell
 Copy-Item .\config.example.json .\config.local.json
+# For an existing model, copy config.existing-model.example.json instead.
 # Replace every placeholder; confirm the model, region, capacity and operator ID.
 .\scripts\preflight.ps1 -ConfigPath .\config.local.json -CheckAzure
 

@@ -395,16 +395,25 @@ with the explicit tenant before asking the operator to authenticate again.
 
 Read-only checks found an enabled subscription, broad management permissions,
 readable directory object IDs, documented East US 2 hosted/private-network
-support, and GlobalStandard model quota headroom. `Microsoft.Sql` is
-**NotRegistered**; the SQL regional capabilities endpoint returned
-`SubscriptionNotFound`, so SQL Basic readiness remains unverified.
-No provider registration or resource creation was performed.
+support, and model quota headroom. The operator then selected the existing
+`DeepSeek-V4-Flash-0731` deployment (version `2026-07-31`, East US) instead of
+creating another model. The existing-model configuration now uses Chat
+Completions internally while keeping the hosted Responses protocol.
+Shared account/model resources are never included in experiment ownership
+or cleanup. Actual agent inference authorization is an explicit model-owner
+step; no external roles are automatically granted.
 
-The immediate next gate is explicit SQL provider-registration approval,
-followed by another provider/SQL-capability check. See
-[deployment approval](docs/deployment-approval.md) for the full findings,
-model-capacity caveat and remaining decisions. Actual identifiers and the
-unapproved candidate configuration are in ignored `.artifacts/preflight/`.
+The authorized `Microsoft.Sql` provider registration completed. The following
+capability checks returned **Visible / provisioning restricted** in both
+East US 2 and East US. No databases or Foundry resources were created.
+Preflight rejects this state rather than treating a catalog listing as
+deployment availability.
+
+The immediate next gate is an approved SQL-capable region or a subscription
+limit exception, followed by topology/cost review and actual shared-model
+runtime access. See [deployment approval](docs/deployment-approval.md) for the
+full findings and remaining decisions. Actual identifiers and the unapproved
+candidate configuration are in ignored `.artifacts/preflight/`.
 The USD 10 spending-response threshold, maximum 24-hour duration and cleanup
 ownership still require approval; they are not a guaranteed billing cap.
 

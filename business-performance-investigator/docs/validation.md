@@ -42,6 +42,8 @@ project sessions when cleaning up one probe.
 | Symptom | Check / required response |
 |---|---|
 | Python command opens Store or is missing | Use installed `py -3.13`; create the project virtual environment. |
+| SQL capabilities return `Visible` | The SKU can be listed while provisioning is restricted. Use an approved available region or obtain a subscription-limit exception; do not treat the listing as availability. |
+| Existing model rejects inference | Verify the actual agent identity has the model owner's approved inference role, the configured API is advertised, and the endpoint is reachable. Never retrieve keys or substitute another identity. |
 | Extension appears in the azd catalog but preflight rejects it | Inspect `installedVersion`, not the catalog's `version`. Install or update the extension to the manifest's required minimum. |
 | Agent SDK or TLS dependency import fails | Check exact package versions and platform wheels. Do not switch to a new runtime/image silently. |
 | No agent principal in azd metadata | Inspect extension/runtime versions. Do not look up a similarly named principal or substitute the project identity. |
@@ -93,11 +95,20 @@ returned `unauthenticated` while the scoped check returned `success`.
 A live ARM subscription read and limited management/directory permission
 checks passed. Regional catalog/quota reads were performed without inference.
 
-The read-only deployment preflight remains **blocked** because
-`Microsoft.Sql` is `NotRegistered`. SQL capabilities returned
-`SubscriptionNotFound`; the ARM subscription itself exists and is enabled.
-No registration was attempted. Detailed findings and capacity limitations
-are recorded in [deployment approval](deployment-approval.md).
+After explicit authorization, `Microsoft.Sql` registration completed.
+Preflight remains **blocked** because East US 2 and East US SQL capabilities
+return `Visible` with provisioning restricted. Regression coverage rejects
+that state instead of interpreting listed SQL Basic support as availability.
+Detailed findings are in [deployment approval](deployment-approval.md).
+
+Existing-model reuse was then implemented and the integrated offline suite
+passed **84 tests**, including compiled Bicep checks. The selected deployment
+is `DeepSeek-V4-Flash-0731`, called through Chat Completions; the external
+hosted-agent protocol stays Responses/2.0.0. Tests cover endpoint validation,
+SDK request shapes, bounded calls, malformed/multiple tools, private reasoning
+continuation, model errors, exact SQL evidence, skipped model provisioning
+and shared-model ownership boundaries. Read-only checks confirmed the actual
+deployment metadata and allowed account endpoint; no inference call was run.
 
 No resources were deployed or hosted agents invoked. Hosted Linux dependencies,
 real agent token identity/SID mapping, actual private routing, model access,

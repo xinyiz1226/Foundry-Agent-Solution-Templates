@@ -38,6 +38,8 @@ class Settings:
     connect_timeout: int = 15
     local_development: bool = False
     client_id: str | None = None
+    model_endpoint: str | None = None
+    model_api: str = "responses"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -69,6 +71,33 @@ class Settings:
         model = _required(env, "AZURE_AI_MODEL_DEPLOYMENT_NAME")
         if len(model) > 128:
             raise ConfigurationError("AZURE_AI_MODEL_DEPLOYMENT_NAME must be at most 128 characters.")
+        model_endpoint = env.get("AZURE_AI_MODEL_ENDPOINT") or None
+        if model_endpoint is not None:
+            model_endpoint = _required(env, "AZURE_AI_MODEL_ENDPOINT")
+            try:
+                parsed_model = urlsplit(model_endpoint)
+                valid_model_endpoint = (
+                    parsed_model.scheme == "https"
+                    and re.fullmatch(
+                        r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:openai|services\.ai)\.azure\.com",
+                        parsed_model.hostname or "",
+                    )
+                    and parsed_model.port in (None, 443)
+                    and parsed_model.username is None
+                    and parsed_model.password is None
+                    and "?" not in model_endpoint
+                    and "#" not in model_endpoint
+                    and "\x7f" not in model_endpoint
+                    and parsed_model.path in ("/openai/v1", "/openai/v1/")
+                )
+            except ValueError:
+                valid_model_endpoint = False
+            if not valid_model_endpoint:
+                raise ConfigurationError("AZURE_AI_MODEL_ENDPOINT must be an HTTPS Azure account-level /openai/v1 endpoint.")
+        # Empty manifest substitutions preserve the original Responses route.
+        model_api = env.get("AZURE_AI_MODEL_API") or "responses"
+        if model_api not in ("responses", "chat_completions"):
+            raise ConfigurationError("AZURE_AI_MODEL_API must be responses or chat_completions.")
         local = env.get("APP_LOCAL_DEVELOPMENT", "false").lower()
         if local not in ("true", "false"):
             raise ConfigurationError("APP_LOCAL_DEVELOPMENT must be true or false.")
@@ -87,4 +116,6 @@ class Settings:
             connect_timeout=_timeout(env, "AZURE_SQL_CONNECT_TIMEOUT_SECONDS"),
             local_development=local == "true",
             client_id=client_id,
+            model_endpoint=model_endpoint,
+            model_api=model_api,
         )

@@ -28,7 +28,7 @@ function Read-BpiConfig {
     param([Parameter(Mandatory)][string]$Path)
     $config = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -AsHashtable
     foreach ($key in @('environmentName', 'subscriptionId', 'resourceGroupName',
-            'location', 'modelName', 'modelVersion', 'modelSku', 'operatorPrincipalId',
+            'location', 'modelName', 'operatorPrincipalId',
             'operatorPrincipalType')) {
         if (-not $config.ContainsKey($key) -or
             [string]::IsNullOrWhiteSpace([string]$config[$key])) {
@@ -50,18 +50,134 @@ function Read-BpiConfig {
     if ($config.location -cnotmatch '^[a-z][a-z0-9]+$') {
         throw 'location must be an Azure region identifier.'
     }
-    if (-not $config.ContainsKey('modelCapacity') -or
-        ($config.modelCapacity -isnot [long] -and $config.modelCapacity -isnot [int]) -or
-        $config.modelCapacity -lt 1 -or $config.modelCapacity -gt 10) {
-        throw 'modelCapacity must be an integer from 1 to 10 for this probe.'
-    }
-    if ($config.modelSku -notin @('GlobalStandard', 'Standard', 'DataZoneStandard')) {
-        throw 'modelSku must be a pay-as-you-go Standard deployment type, not provisioned throughput.'
-    }
+    Get-BpiModelConfiguration $config | Out-Null
     if ($config.operatorPrincipalType -notin @('User', 'ServicePrincipal')) {
         throw 'operatorPrincipalType must match the actual User or ServicePrincipal object.'
     }
     return $config
+}
+
+function Get-BpiModelConfiguration {
+    param([Parameter(Mandatory)][hashtable]$Config)
+    $mode = if ($Config.ContainsKey('modelMode')) { [string]$Config.modelMode } else { 'new' }
+    $api = if ($Config.ContainsKey('modelApi')) { [string]$Config.modelApi } else { 'responses' }
+    if ($mode -cnotin @('new', 'existing')) { throw 'modelMode must be new or existing.' }
+    if ($api -cnotin @('responses', 'chat_completions')) {
+        throw 'modelApi must be responses or chat_completions.'
+    }
+    if ($Config.modelName -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$') {
+        throw 'modelName must be an Azure model deployment name.'
+    }
+    if ($mode -ceq 'new') {
+        foreach ($key in @('modelVersion', 'modelSku')) {
+            if (-not $Config.ContainsKey($key) -or [string]::IsNullOrWhiteSpace([string]$Config[$key])) {
+                throw "Configuration field '$key' is required when modelMode is new."
+            }
+        }
+        if (-not $Config.ContainsKey('modelCapacity') -or
+            ($Config.modelCapacity -isnot [long] -and $Config.modelCapacity -isnot [int]) -or
+            $Config.modelCapacity -lt 1 -or $Config.modelCapacity -gt 10) {
+            throw 'modelCapacity must be an integer from 1 to 10 for this probe.'
+        }
+        if ($Config.modelSku -notin @('GlobalStandard', 'Standard', 'DataZoneStandard')) {
+            throw 'modelSku must be a pay-as-you-go Standard deployment type, not provisioned throughput.'
+        }
+        foreach ($key in @('existingModelResourceId', 'modelEndpoint')) {
+            if ($Config.ContainsKey($key) -and -not [string]::IsNullOrEmpty([string]$Config[$key])) {
+                throw "Do not set '$key' when modelMode is new."
+            }
+        }
+        return @{
+            mode = $mode; api = $api; endpoint = ''; deployModel = $true
+            version = $Config.modelVersion; sku = $Config.modelSku; capacity = $Config.modelCapacity
+        }
+    }
+    foreach ($key in @('existingModelResourceId', 'modelEndpoint', 'modelApi')) {
+        if (-not $Config.ContainsKey($key) -or [string]::IsNullOrWhiteSpace([string]$Config[$key])) {
+            throw "Configuration field '$key' is required when modelMode is existing."
+        }
+    }
+    foreach ($key in @('modelVersion', 'modelSku', 'modelCapacity')) {
+        if ($Config.ContainsKey($key)) {
+            throw "Do not configure '$key' for an externally managed model deployment."
+        }
+    }
+    $resourceId = [string]$Config.existingModelResourceId
+    $pattern = '^/subscriptions/(?<subscription>[0-9a-f-]{36})/resourceGroups/(?<group>[^/\x00-\x1f]+)/providers/Microsoft.CognitiveServices/accounts/(?<account>[a-z0-9][a-z0-9-]{1,63})/deployments/(?<deployment>[A-Za-z0-9][A-Za-z0-9._-]{0,127})$'
+    if ($resourceId -notmatch $pattern) { throw 'existingModelResourceId must identify an Azure Cognitive Services model deployment.' }
+    $parts = $Matches.Clone()
+    if ($parts.subscription -ine $Config.subscriptionId) {
+        throw 'This probe only reuses models in the explicitly selected subscription.'
+    }
+    if ($parts.group -ieq $Config.resourceGroupName) {
+        throw 'An existing shared model must be outside the disposable experiment resource group.'
+    }
+    if ($parts.deployment -cne $Config.modelName) {
+        throw 'modelName must match the deployment name in existingModelResourceId.'
+    }
+    $endpoint = [string]$Config.modelEndpoint
+    $uri = $null
+    if ($endpoint -ne $endpoint.Trim() -or $endpoint -match '[\x00-\x1f]' -or
+        -not [uri]::TryCreate($endpoint, [UriKind]::Absolute, [ref]$uri) -or
+        $uri.Scheme -cne 'https' -or $uri.Port -ne 443 -or $uri.UserInfo -or
+        $uri.Query -or $uri.Fragment -or $uri.AbsolutePath -cnotmatch '^/openai/v1/?$' -or
+        $uri.DnsSafeHost -inotin @("$($parts.account).openai.azure.com", "$($parts.account).services.ai.azure.com")) {
+        throw 'modelEndpoint must be the matching Azure account HTTPS /openai/v1 endpoint, without credentials or query parameters.'
+    }
+    return @{
+        mode = $mode; api = $api; endpoint = $endpoint.TrimEnd('/') + '/'; deployModel = $false
+        resourceId = $resourceId; accountId = $resourceId.Substring(0, $resourceId.LastIndexOf('/deployments/', [StringComparison]::OrdinalIgnoreCase))
+        version = ''; sku = ''; capacity = 1
+    }
+}
+
+function Get-BpiExistingModel {
+    param([Parameter(Mandatory)][hashtable]$Config)
+    $model = Get-BpiModelConfiguration $Config
+    if ($model.mode -ne 'existing') { throw 'Existing-model checks require modelMode existing.' }
+    $deployment = Invoke-BpiNative az @('resource', 'show', '--ids', $model.resourceId,
+        '--api-version', '2025-04-01-preview', '--output', 'json') -Json
+    if ($deployment.id -ine $model.resourceId -or $deployment.name -cne $Config.modelName -or
+        $deployment.properties.provisioningState -cne 'Succeeded') {
+        throw 'The existing model deployment is missing, mismatched or not successfully provisioned.'
+    }
+    $capability = if ($model.api -eq 'chat_completions') { 'chatCompletion' } else { 'responses' }
+    if (-not $deployment.properties.ContainsKey('capabilities') -or
+        [string]$deployment.properties.capabilities[$capability] -ine 'true') {
+        throw "The existing deployment does not advertise '$capability'. Verify the chosen API before deployment."
+    }
+    $account = Invoke-BpiNative az @('resource', 'show', '--ids', $model.accountId,
+        '--api-version', '2025-04-01-preview', '--output', 'json') -Json
+    if ($account.id -ine $model.accountId -or $account.properties.publicNetworkAccess -cne 'Enabled') {
+        throw 'Existing-model reuse currently requires its approved public Entra-authenticated endpoint; no shared network settings will be changed.'
+    }
+    if ($account.properties.ContainsKey('networkAcls') -and $null -ne $account.properties.networkAcls -and
+        $account.properties.networkAcls.defaultAction -cne 'Allow') {
+        throw 'The shared model account restricts outbound callers. Obtain an approved route; preflight will not modify its firewall.'
+    }
+    return @{
+        resourceId = $deployment.id; endpoint = $model.endpoint; api = $model.api
+        name = $deployment.properties.model.name; version = $deployment.properties.model.version
+        accountLocation = $account.location
+    }
+}
+
+function Assert-BpiSqlAvailability {
+    param([Parameter(Mandatory)][hashtable]$Capabilities)
+    $available = @('Available', 'Default')
+    if ($Capabilities.status -cnotin $available) {
+        throw 'SQL provisioning is not available in the selected region. Review SQL capabilities with the subscription owner; no resources were created.'
+    }
+    $editions = @(
+        foreach ($version in $Capabilities.supportedServerVersions) {
+            if ($version.name -ceq '12.0' -and $version.status -cin $available) {
+                foreach ($edition in $version.supportedEditions) {
+                    if ($edition.name -ceq 'Basic' -and $edition.status -cin $available) { $edition }
+                }
+            }
+        }
+    )
+    if ($editions.Count -eq 0) { throw 'SQL Basic on server version 12.0 is not available in the selected region.' }
 }
 
 function Get-BpiStatePath {
@@ -131,10 +247,10 @@ function Assert-BpiInventory {
 }
 
 function Get-BpiOutput {
-    param([hashtable]$State, [string]$Name)
+    param([hashtable]$State, [string]$Name, [switch]$AllowEmpty)
     if (-not $State.ContainsKey('outputs') -or -not $State.outputs.ContainsKey($Name) -or
         $null -eq $State.outputs[$Name].value -or
-        [string]::IsNullOrWhiteSpace([string]$State.outputs[$Name].value)) {
+        (-not $AllowEmpty -and [string]::IsNullOrWhiteSpace([string]$State.outputs[$Name].value))) {
         throw "Deployment output '$Name' is missing. Infrastructure provisioning may be incomplete."
     }
     return $State.outputs[$Name].value

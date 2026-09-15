@@ -10,6 +10,7 @@ param(
 . "$PSScriptRoot/common.ps1"
 Assert-BpiAzureApproval -Approved:$ApproveAzureChanges
 $config = Read-BpiConfig $ConfigPath
+$model = Get-BpiModelConfiguration $config
 if ($RetryInitialization -and $Stage -ne 'Initialize') {
     throw '-RetryInitialization is only valid for the Initialize stage.'
 }
@@ -46,9 +47,12 @@ try {
                 location = @{ value = $config.location }
                 deploymentId = @{ value = $state.deploymentId }
                 modelName = @{ value = $config.modelName }
-                modelVersion = @{ value = $config.modelVersion }
-                modelSku = @{ value = $config.modelSku }
-                modelCapacity = @{ value = $config.modelCapacity }
+                modelVersion = @{ value = $model.version }
+                modelSku = @{ value = $model.sku }
+                modelCapacity = @{ value = $model.capacity }
+                deployModel = @{ value = $model.deployModel }
+                modelEndpoint = @{ value = $model.endpoint }
+                modelApi = @{ value = $model.api }
                 operatorPrincipalId = @{ value = $config.operatorPrincipalId }
                 deploymentPrincipalType = @{ value = $config.operatorPrincipalType }
                 sqlAdminMode = @{ value = 'initializer' }
@@ -101,10 +105,17 @@ try {
         }
         foreach ($key in @('AZURE_AI_PROJECT_ENDPOINT', 'AZURE_AI_PROJECT_NAME',
                 'AZURE_AI_ACCOUNT_NAME', 'AZURE_AI_PROJECT_ID',
-                'AZURE_AI_MODEL_DEPLOYMENT_NAME', 'AZURE_SQL_SERVER', 'AZURE_SQL_DATABASE')) {
+                'AZURE_AI_MODEL_DEPLOYMENT_NAME', 'AZURE_AI_MODEL_API', 'AZURE_SQL_SERVER', 'AZURE_SQL_DATABASE')) {
             $value = [string](Get-BpiOutput $state $key)
             Invoke-BpiNative azd @('env', 'set', $key, $value, '-e', $config.environmentName) | Out-Null
         }
+        $modelEndpoint = [string](Get-BpiOutput $state 'AZURE_AI_MODEL_ENDPOINT' -AllowEmpty)
+        Invoke-BpiNative azd @('env', 'set', 'AZURE_AI_MODEL_ENDPOINT', $modelEndpoint,
+            '-e', $config.environmentName) | Out-Null
+        $account = Invoke-BpiNative az @('account', 'show', '--subscription',
+            $config.subscriptionId, '--output', 'json') -Json
+        Invoke-BpiNative azd @('env', 'set', 'AZURE_TENANT_ID', $account.tenantId,
+            '-e', $config.environmentName) | Out-Null
         Invoke-BpiNative azd @('env', 'set', 'AZURE_RESOURCE_GROUP', $config.resourceGroupName,
             '-e', $config.environmentName) | Out-Null
         Invoke-BpiNative azd @('deploy', 'sql-probe', '--no-prompt', '-e',
@@ -166,6 +177,9 @@ try {
         Save-BpiState $config $state
     }
     Write-Host 'Private SQL initialization completed. Run agent validation before claiming connectivity works.'
+    if ($model.mode -eq 'existing') {
+        Write-Host "Shared model access is externally managed. Before validation, its owner must authorize agent object ID $principalId for inference at $($model.accountId). See README; this script did not grant shared-resource roles."
+    }
 }
 finally {
     Pop-Location

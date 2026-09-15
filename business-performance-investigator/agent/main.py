@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from contextlib import ExitStack
 
 from azure.ai.agentserver.responses import (
     CreateResponse,
@@ -13,10 +14,12 @@ from azure.ai.agentserver.responses import (
     TextResponse,
 )
 from azure.ai.projects import AIProjectClient
+from azure.identity import get_bearer_token_provider
+from openai import OpenAI
 
 from probe_agent.config import ConfigurationError, Settings
 from probe_agent.credentials import create_credential
-from probe_agent.orchestrator import ProbeAgent, error_answer
+from probe_agent.orchestrator import ChatProbeAgent, ProbeAgent, error_answer
 from probe_agent.sql_probe import SqlProbe
 
 
@@ -62,15 +65,28 @@ def main() -> None:
         logger.setLevel(logging.CRITICAL + 1)
     credential = create_credential(settings)
     try:
-        with AIProjectClient(
-            endpoint=settings.project_endpoint,
-            credential=credential,
-            user_agent="business-performance-sql-probe-v1",
-        ) as project:
-            with project.get_openai_client(timeout=60.0, max_retries=0) as openai:
-                probe = SqlProbe(settings, credential)
-                agent = ProbeAgent(openai.responses, settings.model, probe.run)
-                create_app(agent).run()
+        with ExitStack() as clients:
+            if settings.model_endpoint:
+                openai = clients.enter_context(OpenAI(
+                    base_url=settings.model_endpoint,
+                    api_key=get_bearer_token_provider(credential, "https://ai.azure.com/.default"),
+                    timeout=60.0,
+                    max_retries=0,
+                ))
+            else:
+                project = clients.enter_context(AIProjectClient(
+                    endpoint=settings.project_endpoint,
+                    credential=credential,
+                    user_agent="business-performance-sql-probe-v1",
+                ))
+                openai = clients.enter_context(project.get_openai_client(timeout=60.0, max_retries=0))
+            probe = SqlProbe(settings, credential)
+            agent = (
+                ChatProbeAgent(openai.chat.completions, settings.model, probe.run)
+                if settings.model_api == "chat_completions"
+                else ProbeAgent(openai.responses, settings.model, probe.run)
+            )
+            create_app(agent).run()
     finally:
         credential.close()
 

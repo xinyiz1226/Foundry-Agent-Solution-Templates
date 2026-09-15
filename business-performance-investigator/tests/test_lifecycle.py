@@ -94,6 +94,111 @@ class LifecycleTests(unittest.TestCase):
                     result = self.run_ps(f"Read-BpiConfig '{path}' | Out-Null")
                     self.assertEqual(result.returncode == 0, valid, result.stderr)
 
+    def test_existing_model_configuration_is_explicit_and_external(self):
+        config = json.loads((ROOT / "config.existing-model.example.json").read_text())
+        config["subscriptionId"] = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        config["operatorPrincipalId"] = "11111111-2222-3333-4444-555555555555"
+        config["existingModelResourceId"] = config["existingModelResourceId"].replace(
+            "00000000-0000-0000-0000-000000000000", config["subscriptionId"]
+        )
+        cases = [
+            ({}, True),
+            ({"modelEndpoint": "http://shared-model-account.openai.azure.com/openai/v1/"}, False),
+            ({"modelEndpoint": "https://another-account.openai.azure.com/openai/v1/"}, False),
+            ({"modelEndpoint": "https://shared-model-account.openai.azure.com.attacker.test/openai/v1/"}, False),
+            ({"modelEndpoint": "https://shared-model-account.openai.azure.com/openai/v1/?token=fake-secret"}, False),
+            ({"modelEndpoint": "https://shared-model-account.openai.azure.com:8443/openai/v1/"}, False),
+            ({"modelCapacity": 1}, False),
+            ({"modelApi": "automatic"}, False),
+            ({"modelName": "different-deployment"}, False),
+            ({"existingModelResourceId": config["existingModelResourceId"].replace(
+                "rg-shared-models", config["resourceGroupName"])}, False),
+            ({"existingModelResourceId": config["existingModelResourceId"].replace(
+                config["subscriptionId"], "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee")}, False),
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.json"
+            for changes, valid in cases:
+                with self.subTest(changes=changes):
+                    path.write_text(json.dumps({**config, **changes}))
+                    result = self.run_ps(f"Read-BpiConfig '{path}' | Out-Null")
+                    self.assertEqual(result.returncode == 0, valid, result.stderr)
+                    self.assertNotIn("fake-secret", result.stderr)
+            path.write_text(json.dumps(config))
+            result = self.run_ps(
+                f"$model=Get-BpiModelConfiguration (Read-BpiConfig '{path}');"
+                "if ($model.deployModel -or $model.sku -or $model.version) { throw 'would create a model' };"
+                "if ($model.endpoint -notlike 'https://*/openai/v1/') { throw 'bad endpoint' }"
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_existing_model_metadata_checks_are_read_only_and_fail_closed(self):
+        config = json.loads((ROOT / "config.existing-model.example.json").read_text())
+        config["subscriptionId"] = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        config["existingModelResourceId"] = config["existingModelResourceId"].replace(
+            "00000000-0000-0000-0000-000000000000", config["subscriptionId"])
+        deployment_id = config["existingModelResourceId"]
+        deployment = {
+            "id": deployment_id, "name": config["modelName"],
+            "properties": {
+                "provisioningState": "Succeeded", "capabilities": {"chatCompletion": "true"},
+                "model": {"name": config["modelName"], "version": "2026-07-31"},
+            },
+        }
+        account = {
+            "id": deployment_id.rsplit("/deployments/", 1)[0], "location": "eastus",
+            "properties": {"publicNetworkAccess": "Enabled", "networkAcls": {"defaultAction": "Allow"}},
+        }
+        for state, public, capability, valid in [
+            ("Succeeded", "Enabled", "true", True),
+            ("Failed", "Enabled", "true", False),
+            ("Succeeded", "Disabled", "true", False),
+            ("Succeeded", "Enabled", "false", False),
+        ]:
+            with self.subTest(state=state, public=public, capability=capability):
+                deployment["properties"]["provisioningState"] = state
+                deployment["properties"]["capabilities"]["chatCompletion"] = capability
+                account["properties"]["publicNetworkAccess"] = public
+                result = self.run_ps(
+                    f"$config='{json.dumps(config)}' | ConvertFrom-Json -AsHashtable;"
+                    f"$deployment='{json.dumps(deployment)}' | ConvertFrom-Json -AsHashtable;"
+                    f"$account='{json.dumps(account)}' | ConvertFrom-Json -AsHashtable;"
+                    "function Invoke-BpiNative { param($Command,$Arguments,[switch]$Json);"
+                    "if ($Command -ne 'az' -or $Arguments[0] -ne 'resource' -or $Arguments[1] -ne 'show')"
+                    "{ throw 'unexpected write or query' };"
+                    "if ($Arguments[3] -eq $deployment.id) { return $deployment }; return $account };"
+                    "Get-BpiExistingModel $config | Out-Null"
+                )
+                self.assertEqual(result.returncode == 0, valid, result.stderr)
+
+    def test_sql_visible_is_not_available(self):
+        for region_status, edition_status, valid in [
+            ("Available", "Available", True), ("Available", "Default", True),
+            ("Visible", "Available", False), ("Available", "Visible", False),
+        ]:
+            with self.subTest(region=region_status, edition=edition_status):
+                capabilities = {
+                    "status": region_status,
+                    "supportedServerVersions": [{
+                        "name": "12.0", "status": "Available",
+                        "supportedEditions": [{"name": "Basic", "status": edition_status}],
+                    }],
+                }
+                result = self.run_ps(
+                    f"Assert-BpiSqlAvailability ('{json.dumps(capabilities)}' | ConvertFrom-Json -AsHashtable)"
+                )
+                self.assertEqual(result.returncode == 0, valid, result.stderr)
+
+    def test_empty_output_requires_explicit_optional_contract(self):
+        result = self.run_ps("Get-BpiOutput @{outputs=@{endpoint=@{value=''}}} 'endpoint'")
+        self.assertNotEqual(result.returncode, 0)
+        result = self.run_ps(
+            "Get-BpiOutput @{outputs=@{endpoint=@{value=''}}} 'endpoint' -AllowEmpty"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        result = self.run_ps("Get-BpiOutput @{outputs=@{}} 'endpoint' -AllowEmpty")
+        self.assertNotEqual(result.returncode, 0)
+
     def test_resource_ownership_and_extra_resources_fail_closed(self):
         result = self.run_ps(
             "$config=@{subscriptionId='s';resourceGroupName='rg-bpi-test';environmentName='test'};"

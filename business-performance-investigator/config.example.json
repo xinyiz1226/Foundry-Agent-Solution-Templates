@@ -3,6 +3,8 @@
   "subscriptionId": "00000000-0000-0000-0000-000000000000",
   "resourceGroupName": "rg-bpi-probe",
   "location": "eastus2",
+  "modelMode": "new",
+  "modelApi": "responses",
   "modelName": "gpt-4.1-mini",
   "modelVersion": "2025-04-14",
   "modelSku": "GlobalStandard",

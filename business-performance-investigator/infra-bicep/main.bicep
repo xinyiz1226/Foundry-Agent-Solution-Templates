@@ -43,6 +43,15 @@ param modelSku string
 @minValue(1)
 param modelCapacity int
 param modelDeploymentName string = modelName
+@description('False reuses an externally owned model endpoint; this template never manages or authorizes that shared account.')
+param deployModel bool = true
+@description('Explicit existing Azure account /openai/v1/ endpoint, or empty for the new project model route.')
+param modelEndpoint string = ''
+@allowed([
+  'responses'
+  'chat_completions'
+])
+param modelApi string = 'responses'
 
 param vnetAddressPrefix string = '10.72.0.0/16'
 param foundrySubnetPrefix string = '10.72.0.0/24'
@@ -203,7 +212,7 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-0
   }
 }
 
-resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = {
+resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = if (deployModel) {
   parent: foundryAccount
   name: modelDeploymentName
   sku: {
@@ -397,8 +406,8 @@ output foundryAccountName string = foundryAccount.name
 output foundryProjectId string = foundryProject.id
 output foundryProjectName string = foundryProject.name
 output foundryProjectEndpoint string = 'https://${foundryAccount.name}.services.ai.azure.com/api/projects/${foundryProject.name}'
-output modelDeploymentId string = modelDeployment.id
-output modelDeploymentName string = modelDeployment.name
+output modelDeploymentId string = deployModel ? modelDeployment!.id : ''
+output modelDeploymentName string = modelDeploymentName
 output sqlServerId string = sqlServer.id
 output sqlServerName string = sqlServer.name
 output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
@@ -425,7 +434,9 @@ output AZURE_AI_PROJECT_ENDPOINT string = 'https://${foundryAccount.name}.servic
 output AZURE_AI_PROJECT_NAME string = foundryProject.name
 output AZURE_AI_PROJECT_ID string = foundryProject.id
 output AZURE_AI_ACCOUNT_NAME string = foundryAccount.name
-output AZURE_AI_MODEL_DEPLOYMENT_NAME string = modelDeployment.name
+output AZURE_AI_MODEL_DEPLOYMENT_NAME string = modelDeploymentName
+output AZURE_AI_MODEL_ENDPOINT string = modelEndpoint
+output AZURE_AI_MODEL_API string = modelApi
 output AZURE_SQL_SERVER string = sqlServer.properties.fullyQualifiedDomainName
 output AZURE_SQL_DATABASE string = sqlDatabase.name
 output SQL_SERVER_NAME string = sqlServer.name
@@ -447,7 +458,6 @@ output ownedResourceIds array = concat([
   vnet.id
   foundryAccount.id
   foundryProject.id
-  modelDeployment.id
   projectModelAccess.id
   deploymentFoundryAccess.id
   sqlServer.id
@@ -455,4 +465,4 @@ output ownedResourceIds array = concat([
   sqlDatabase.id
   initializerStorage.id
   initializerStorageAccess.id
-], endpointIds, zoneIds, linkIds, zoneGroupIds)
+], deployModel ? [modelDeployment!.id] : [], endpointIds, zoneIds, linkIds, zoneGroupIds)

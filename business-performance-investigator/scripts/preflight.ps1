@@ -28,6 +28,9 @@ if (-not $CheckAzure) {
 $account = Invoke-BpiNative az @('account', 'show', '--subscription',
     $config.subscriptionId, '--output', 'json') -Json
 if ($account.state -ne 'Enabled') { throw 'Selected Azure subscription is not enabled.' }
+if ((Get-BpiModelConfiguration $config).mode -eq 'existing') {
+    Get-BpiExistingModel $config | Out-Null
+}
 foreach ($namespace in @('Microsoft.CognitiveServices', 'Microsoft.App', 'Microsoft.Sql',
         'Microsoft.Network', 'Microsoft.ManagedIdentity', 'Microsoft.Storage',
         'Microsoft.ContainerInstance')) {
@@ -37,4 +40,8 @@ foreach ($namespace in @('Microsoft.CognitiveServices', 'Microsoft.App', 'Micros
         throw "Provider '$namespace' must be registered by an authorized operator. Preflight will not register it."
     }
 }
-Write-Host 'Read-only account/provider checks passed. Verify model availability/quota, azd agent extension and operator permissions separately.'
+$sqlCapabilities = Invoke-BpiNative az @('rest', '--method', 'get', '--url',
+    "https://management.azure.com/subscriptions/$($config.subscriptionId)/providers/Microsoft.Sql/locations/$($config.location)/capabilities?api-version=2023-08-01",
+    '--output', 'json') -Json
+Assert-BpiSqlAvailability $sqlCapabilities
+Write-Host 'Read-only account/provider/SQL availability checks passed. Model invocation, runtime identity permissions and actual deployment capacity remain unverified.'
