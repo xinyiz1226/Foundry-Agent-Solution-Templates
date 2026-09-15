@@ -47,18 +47,24 @@ permissions and spending approval remain separate gates.
 | Directory lookup | Current user object ID and an existing service principal's object/application IDs were readable; actual agent identity is not yet created |
 | Required providers | All checked providers are now registered, including `Microsoft.Sql` after explicit authorization |
 | Proposed new resource group | `rg-bpi-probe` does not exist; ownership guards must recheck immediately before creation |
-| Hosted agents/private networking | Microsoft documentation lists East US 2 support; actual subscription session capacity and routing remain unverified |
+| Hosted agents/private networking | Central US selected by the operator and listed as supported; actual session capacity and routing remain unverified |
 | Selected model | Existing `DeepSeek-V4-Flash-0731`, version `2026-07-31`, Succeeded, GlobalStandard capacity 20, East US; Chat Completions is advertised |
 | Model ownership | The existing model replaces the prior GPT deployment proposal. Do not create, resize, delete, or claim ownership of the shared account/model |
-| Initializer quota | East US 2: 0/100 container groups and 0/10 Standard cores |
-| Network quota | East US 2: 0/1000 VNets, 0/20 Standard IPv4 public IPs, 0/100 NAT gateways, 0/65536 private endpoints |
-| SQL regional capabilities | After registration, both East US 2 and East US returned `Visible`, with an explicit provisioning restriction. Basic is listed but also `Visible`, not available for provisioning |
+| Initializer quota | Central US: 0/100 container groups and 0/10 Standard cores |
+| Network quota | Central US: 0/1000 VNets, 0/20 Standard IPv4 public IPs, 0/100 NAT gateways, 0/65536 private endpoints |
+| SQL regional capabilities | Central US is `Available`: SQL 12.0, Basic 5 DTU, 2 GB and LRS backup are supported. East US and East US 2 remain restricted |
+| Selected-region preflight | The existing script passed account, providers, shared-model metadata and SQL availability checks using the Central US candidate configuration |
 
-**Immediate blocker:** SQL provisioning is restricted in both checked US
-regions. Obtain an approved subscription-limit exception, or select and
-approve a region with actual SQL provisioning availability and recheck the
-entire regional topology. Do not treat `Visible` as `Available` or attempt a
-deployment to work around the restriction. Preflight now fails on this state.
+**Region decision completed:** the operator selected Central US after a
+read-only survey found SQL Basic available there, in West US 3, Canada Central,
+Japan East, Australia East and West Europe. The local candidate now places
+the new Foundry account/project, VNet and SQL in Central US. The existing
+DeepSeek model stays in East US; it is not migrated or recreated.
+
+**Remaining gates:** approve the complete resource/egress inventory, spending
+response, maximum duration and cleanup responsibility, plus inference access
+for the actual agent identity on the shared account. Read-only availability
+and quota checks do not reserve capacity or prove the runtime works.
 
 The selected local configuration now uses `modelMode: existing` and
 `modelApi: chat_completions`, with the verified shared account's OpenAI v1
@@ -86,7 +92,7 @@ inference or automatic permissions changes were run.
 | Approver and approval date | Not yet supplied |
 | Subscription, tenant, and operator principal | Verified for read-only checks; actual IDs remain in ignored local artifacts |
 | New resource group and environment | Choose a dedicated `rg-bpi-*` group; no reuse |
-| Region | East US 2 and East US SQL provisioning restricted; approve a usable region or an authorized exception |
+| Region | Central US explicitly selected for new resources; existing shared model remains in East US |
 | Model, version, deployment SKU/capacity | Existing DeepSeek Flash selected; no new model deployment or capacity change |
 | Shared-model runtime access | The model owner must approve the actual agent's inference role; no shared-role changes performed |
 | Experiment duration and cleanup owner | Not yet supplied |
@@ -102,7 +108,8 @@ compile and inspect them and perform an approved Azure what-if/preflight.
 | Component | Purpose / cost consideration |
 |---|---|
 | Dedicated resource group | Ownership boundary; refuse pre-existing groups |
-| Foundry account, project, model deployment | Source hosted-agent execution and model availability; inference separately billed |
+| New Foundry account and project | Source hosted-agent execution; the selected existing-model mode skips model deployment |
+| Existing shared model | Externally owned, no deployment or resize; inference is still billed and requires approved runtime access |
 | Foundry hosted agent | CPU/memory consumption and session idle time |
 | VNet and separate delegated subnets | Foundry runtime, private endpoints, temporary initializer |
 | Azure SQL logical server and Basic probe DB | Tiny fixture only; Basic is not a performance choice for the full DW |
@@ -154,8 +161,10 @@ must be coordinated rather than done implicitly.
 
 ## Cost estimate boundaries
 
-Illustrative September 15, 2026 public retail prices. SQL Basic and the static
-public IP were additionally checked for East US 2; NAT uses a global meter.
+Illustrative September 15, 2026 USD public retail prices. SQL Basic and the
+Standard IPv4 static public IP were rechecked for the selected Central US
+region; global Standard NAT and Private DNS rates were also rechecked.
+This is not the subscription's negotiated bill or a complete deployment quote.
 
 | Meter | Reference rate |
 |---|---|
@@ -163,7 +172,7 @@ public IP were additionally checked for East US 2; NAT uses a global meter.
 | Private endpoint | $0.01/hour per endpoint, plus processed data |
 | Private DNS | $0.50/zone-month, plus queries |
 | Standard NAT gateway | $0.045/hour, plus $0.045/GB processed |
-| Standard static IPv4, East US 2 | $0.005/hour |
+| Standard static IPv4, Central US | $0.005/hour |
 | Hosted-agent CPU | $0.0994/vCPU-hour |
 | Hosted-agent memory | $0.0118/GiB-hour |
 
@@ -186,9 +195,9 @@ Do not present it as the total bill or a guaranteed experiment cap.
 
 Reproducible retail queries:
 
-- [East US 2 SQL Basic](https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27eastus2%27%20and%20productName%20eq%20%27SQL%20Database%20Single%20Basic%27%20and%20skuName%20eq%20%27B%27)
+- [Central US SQL Basic](https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27centralus%27%20and%20productName%20eq%20%27SQL%20Database%20Single%20Basic%27%20and%20skuName%20eq%20%27B%27)
 - [Standard NAT gateway](https://prices.azure.com/api/retail/prices?$filter=productName%20eq%20%27NAT%20Gateway%27%20and%20skuName%20eq%20%27Standard%27%20and%20armRegionName%20eq%20%27Global%27)
-- [East US 2 static IP](https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27eastus2%27%20and%20productName%20eq%20%27IP%20Addresses%27%20and%20skuName%20eq%20%27Standard%27)
+- [Central US static IP](https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27centralus%27%20and%20productName%20eq%20%27IP%20Addresses%27%20and%20skuName%20eq%20%27Standard%27)
 
 Account for supporting storage, every private endpoint/zone, initializer
 compute and egress, any NAT/public-IP charges, source-build charges if

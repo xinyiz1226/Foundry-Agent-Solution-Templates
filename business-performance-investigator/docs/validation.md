@@ -96,9 +96,12 @@ A live ARM subscription read and limited management/directory permission
 checks passed. Regional catalog/quota reads were performed without inference.
 
 After explicit authorization, `Microsoft.Sql` registration completed.
-Preflight remains **blocked** because East US 2 and East US SQL capabilities
-return `Visible` with provisioning restricted. Regression coverage rejects
-that state instead of interpreting listed SQL Basic support as availability.
+East US 2 and East US SQL capabilities returned `Visible` with provisioning
+restricted. Regression coverage rejects that state instead of interpreting
+listed SQL Basic support as availability. The operator then selected Central
+US, where the existing read-only preflight **passed** with the shared-model
+configuration; SQL Basic 5 DTU/2 GB/LRS and initializer/network quota were
+checked. Actual provisioning and model invocation were not performed.
 Detailed findings are in [deployment approval](deployment-approval.md).
 
 Existing-model reuse was then implemented and the integrated offline suite

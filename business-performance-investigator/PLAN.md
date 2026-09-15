@@ -409,9 +409,14 @@ East US 2 and East US. No databases or Foundry resources were created.
 Preflight rejects this state rather than treating a catalog listing as
 deployment availability.
 
-The immediate next gate is an approved SQL-capable region or a subscription
-limit exception, followed by topology/cost review and actual shared-model
-runtime access. See [deployment approval](docs/deployment-approval.md) for the
+The operator subsequently selected **Central US**. The local candidate now
+places the new Foundry account/project, VNet and SQL there; the existing
+DeepSeek model remains in East US. Central US SQL Basic (5 DTU, 2 GB, LRS)
+is available, initializer/network quota has headroom, and the existing
+read-only preflight passed. No resources were created or models invoked.
+
+The immediate next gates are final inventory/egress/spending/cleanup approval
+and actual shared-model runtime access. See [deployment approval](docs/deployment-approval.md) for the
 full findings and remaining decisions. Actual identifiers and the unapproved
 candidate configuration are in ignored `.artifacts/preflight/`.
 The USD 10 spending-response threshold, maximum 24-hour duration and cleanup
