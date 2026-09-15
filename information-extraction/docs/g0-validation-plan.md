@@ -7,11 +7,12 @@ explicitly resume a durable Foundry-hosted extraction job without making the
 UI or a conversational model responsible for batch progression.
 
 This document defines the complete G0 validation plan. The local execution
-subset now has synthetic evidence, alongside separate live model and Azure
-Blob probes, as recorded below; the full G0 gate has not passed. A dedicated
+subset now has synthetic evidence, alongside separate live model, Azure Blob,
+and hosted probes, as recorded below; the full G0 gate has not passed. A dedicated
 storage slice has been deployed. Foundry native resilient tasks Preview is
-selected for a [model-free batch feasibility slice](batch-hosting-feasibility.md);
-the hosted path is not deployed or validated. Web hosting remains unselected,
+selected for a [model-free batch feasibility slice](batch-hosting-feasibility.md).
+A [bounded hosted probe](hosted-smoke-results.md) completed and its agent was
+disabled afterward. Web hosting remains unselected,
 and maintainer alignment is also still pending.
 
 Read alongside the [implementation plan](implementation-plan.md) and
@@ -22,8 +23,8 @@ Read alongside the [implementation plan](implementation-plan.md) and
 The [offline execution core](../README.md) is a new, standard-library Python
 implementation using a real local SQLite ledger and an injected synthetic
 model. The base offline path does not use Azure; optional model and Blob
-adapters are exercised separately. There is no Agent Framework or Invocations
-integration yet.
+adapters are exercised separately. This initial core evidence does not cover
+the later Invocations integration or Agent Framework.
 
 Separately, the optional Responses model adapter has
 [bounded live evidence](model-smoke-results.md): both synthetic chunks
@@ -37,8 +38,9 @@ separate processes created and advanced the fixture, committed a controlled
 failure, resumed to revision 3, and replayed all saved requests with no new
 model work. This used real Azure Blob storage and a synthetic model, not the
 real Foundry model. The [storage deployment](storage-deployment.md) confirmed
-Entra operator access and anonymous denial; managed identities and hosted
-operator authorization remain unverified.
+Entra operator access and anonymous denial. Hosted identity/gateway
+observations are recorded separately below; workbench operator authorization
+remains unverified.
 
 The suite covers one-attempt commits, two explicitly advanced chunks,
 historical request replay, independent connection ownership, subprocess
@@ -48,13 +50,14 @@ corruption, source evidence resolution, and unknown versus observed usage.
 
 | Probes | Current evidence | Remaining scope |
 | --- | --- | --- |
-| G0-01 | Local public-host startup/shutdown and an allowlisted source ZIP's isolated wheel-build/entrypoint-import check succeed with installed dependencies. | Remote dependency resolution, deployed startup and managed readiness remain unverified. |
-| G0-02 through G0-06 | Offline SQLite/Blob contract tests cover ownership, replay, failure and interruption. Live Blob smoke covers commits, fresh processes, historical replay and handled failure/resume. | Live concurrency/unknown-interruption injection and actual hosted workflow recovery remain unverified. |
-| G0-07 | Offline identity/revision and Blob digest/length/ETag checks exercised; valid live Blob history restored successfully. | No live corruption injection or hosted restoration proof. |
-| G0-08 | Local native SDK smoke: one start reaches an attempt limit; explicit resume completes the fixture. Offline contracts cover durable limits, handler reentry, and obsolete-round blocking. | No managed Foundry backend/disconnect or live Blob batch verification. |
-| G0-09/11 | Not run. | No browser or hosted lifecycle proof. |
-| G0-10 | Storage controls, Entra CLI operator access, and unauthenticated data-plane denial verified. | Designated web-operator authorization and downstream managed identities remain unverified. |
-| G0-12 | Storage ownership and costs documented; account and synthetic prefix intentionally retained. | Cloud cleanup has not been exercised. |
+| G0-01 | Isolated source build/import, platform remote build, and deployed Invocations startup succeeded. | Complete clean-environment Bicep/azd deployment remains unverified. |
+| G0-02 through G0-06 | Offline ownership/failure/interruption contracts; live hosted commits, saved-request replay, and replacement-instance restoration after a known limit. Earlier Blob smoke covers controlled failure/resume. | No live concurrency or unknown-interruption injection; hosted failure/resume is not established by the limit/resume case. |
+| G0-07 | Offline identity/revision and Blob integrity checks; valid history restored in a replacement hosted application. | No live corruption injection. |
+| G0-08 | Native hosted task reached a persisted limit; explicit resume completed the remaining chunk through real Blob persistence. | Two chunks from one uninterrupted cloud start and browser-disconnect timing remain unverified. |
+| G0-09 | Not run. | No browser workbench/reconnect proof. |
+| G0-10 | Scoped runtime-identity Blob grant followed by successful hosted Blob/task operations; authenticated gateway calls and unauthenticated HTTP 401. | No designated web-operator allowlist, unauthorized signed-in-user test, or full effective-permissions audit. |
+| G0-11 | Owned session stop, different hosted application UUID, unchanged durable status, explicit resume, and endpoint disable observed. | Unexpected in-flight crash/lease recovery, hard cancellation, and real-model lifecycle remain unverified. |
+| G0-12 | Probe endpoint disabled and four session stops acknowledged; records report `idle`. | Source version, role, sessions and storage intentionally retained; deletion and final billing are not verified. |
 
 Run the exact local command from the README to reproduce the suite. The
 offline evidence alone does not establish Azure behavior; the live probes
@@ -84,9 +87,8 @@ blocking an unresolved claim. The Blob batch checks use a fake data plane;
 the earlier live Blob evidence covers the one-attempt execution ledger, not
 these new batch authorization records.
 
-No new cloud resource or real model call was used for this slice. Hosted
-lease recovery, operator authentication, downstream managed identities, and
-cloud lifecycle probes are still outstanding.
+No new cloud resource or real model call was used for this local slice.
+Subsequent hosted observations are recorded separately below.
 
 ### Synthetic Invocations and packaging evidence
 
@@ -107,8 +109,20 @@ evidence that the managed task service is available.
 
 The source archive excludes real-model code and private environment state.
 Its isolated build/import check does not install fresh cloud dependencies or
-pass the deployed-startup portion of G0-01. Actual hosted observations must
-be recorded separately.
+pass the deployed-startup portion of G0-01.
+
+### Hosted evidence: September 15, 2026
+
+The [hosted smoke record](hosted-smoke-results.md) documents the actual source
+deployment and gateway/native-task/Blob path. A one-attempt round reached
+`limited` at revision 1. After the owned session was stopped, a new session
+returned a different application UUID and the identical first candidate.
+Explicit resume completed revision 2; saved start/resume replay changed no
+committed result. No real model calls were made.
+
+The agent was disabled and its four listed sessions stopped, with preserved
+records reporting `idle`. This is bounded live evidence, not a full G0 pass
+or a claim of automatic recovery from an unknown in-flight outcome.
 
 ## 1. Smallest demonstration
 

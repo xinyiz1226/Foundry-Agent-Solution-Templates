@@ -1,6 +1,6 @@
 # Information extraction: G0 execution core and optional Azure adapters
 
-This is a **new local implementation** of the execution invariants described in
+This is a **new implementation** of the execution invariants described in
 the [migration inventory](docs/migration-inventory.md), not a copy of DataFlowMVP
 or a drop-in replacement for its hosted SDK interface. It is one step toward the
 [implementation plan](docs/implementation-plan.md). **G0 is not complete.**
@@ -9,8 +9,9 @@ The core uses an injected storage and model interface. Transactional SQLite
 is the standard-library local implementation; an optional **Azure Blob ledger**
 provides create-only cloud persistence. An optional **Foundry Responses adapter**
 can invoke an explicitly selected deployment. Azure SDKs are opt-in. A
-[storage-only Bicep template](docs/storage-deployment.md) is available, but
-there is no hosted workflow or workbench deployment yet.
+[storage-only Bicep template](docs/storage-deployment.md) and a
+[synthetic hosted source-deployment path](docs/hosted-deployment.md) are
+available. The full workbench deployment is not implemented.
 
 A [bounded live model smoke](docs/model-smoke-results.md) completed both
 synthetic chunks on an existing DeepSeek deployment after an explicit prompt
@@ -26,8 +27,11 @@ not yet been exercised together.
 
 An optional [native batch driver](docs/native-batch.md) now provides durable
 start/status/explicit-resume semantics around the execution core, using
-Foundry resilient tasks Preview. It has model-free local SDK evidence, not a
-deployed Foundry lifecycle result. **G0 remains incomplete.**
+Foundry resilient tasks Preview. A [bounded hosted smoke](docs/hosted-smoke-results.md)
+reached an attempt limit, restored committed state in a replacement
+application instance, and completed through explicit resume with no real
+model calls. The probe agent was then disabled and its sessions stopped.
+**G0 remains incomplete.**
 
 ## Run the offline checks
 
@@ -393,14 +397,13 @@ are cumulative, and reads verify full history: this is a bounded G0 ledger,
 not a large-document storage design. See [Blob contracts and smoke commands](docs/blob-store.md)
 for ambiguous-write handling, integrity checks, and retention limitations.
 
-Not yet verified or completed: deployed Foundry hosting, Agent Framework
-integration, managed-identity access, browser/UI, a deployed batch
-worker, total-token or billed-cost enforcement, input normalization, generalized
+Not yet verified or completed: unexpected-crash recovery in the managed host,
+real-model-plus-hosted-Blob execution, Agent Framework integration, browser/UI,
+designated-operator authorization, total-token or billed-cost enforcement, input normalization, generalized
 schemas, evaluation, semantic validation, or review operations.
 
-The offline suites, local native-batch smoke, and separate live model/storage
-probes provide partial evidence for G0-02 through G0-08 and storage access
-controls. They do **not**
-pass the full [G0 validation gate](docs/g0-validation-plan.md), hosted startup,
-browser/operator authorization, managed-identity lifecycle, cost limits,
-maintainer alignment, or cleanup of cloud resources.
+The offline suites and bounded live model, storage, and hosted probes provide
+partial evidence for the [G0 matrix](docs/g0-validation-plan.md), including
+hosted startup, persistence, and replacement-instance restoration. They do
+**not** pass the full gate, browser/operator authorization, unknown-outcome
+recovery, cost limits, maintainer alignment, or full resource cleanup.

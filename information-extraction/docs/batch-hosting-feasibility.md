@@ -9,10 +9,10 @@ Functions coordinator unless this path fails its compatibility or lifecycle
 checks.
 
 The [native batch implementation](native-batch.md) now has model-free local
-SDK evidence, not a deployed result. This decision does not authorize new
-Azure resources, real model calls, or production use. The
-existing live model and Blob probes do not establish resilient-task behavior
-in the target Foundry environment.
+SDK evidence and a separately approved [bounded hosted probe](hosted-smoke-results.md).
+The original design choice alone did not authorize cloud resources; the later
+probe received explicit scope/cost approval. Neither constitutes production
+certification or permission for real model calls or further deployments.
 
 The public validation surface is **start, inspect, and explicit resume**.
 The intended result is a single accepted start that advances a bounded batch
@@ -70,8 +70,9 @@ JSON-compatible inputs are necessary to retry registration without generating
 new application identities. These names were checked against source, and the
 implemented adapter was subsequently exercised against the installed 2.1.0
 package's local task manager and public `AgentServerHost` lifespan with an
-explicit local provider. Managed backend support and deployed startup remain
-unverified.
+explicit local provider. The later hosted probe establishes deployed startup
+and native task operation for its tested environment, not universal preview
+availability or unknown-crash recovery.
 
 Two non-obvious behaviors directly affect the public interface:
 

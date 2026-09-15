@@ -6,9 +6,10 @@ registers that work with Foundry resilient tasks. Application authorizations,
 attempt admissions, committed results, and terminal decisions remain in the
 SQLite or Blob ledger, not SDK task outputs.
 
-This slice has **model-free local SDK evidence**. It is not a deployed hosted
-agent, an authenticated workbench endpoint, or proof of managed Foundry task
-recovery. See the [hosting decision and primary sources](batch-hosting-feasibility.md)
+This slice has **model-free local SDK evidence** and a separate
+[bounded hosted smoke](hosted-smoke-results.md) through its Invocations entry
+point. It is not a complete authenticated workbench or proof of unknown
+in-flight outcome recovery. See the [hosting decision and primary sources](batch-hosting-feasibility.md)
 and the [remaining G0 probes](g0-validation-plan.md).
 
 ## Install and run the synthetic smoke
@@ -92,9 +93,10 @@ entry point must independently authenticate and authorize the operator.
 For cloud application persistence, substitute
 `BlobStore(container, prefix=...)`, using an already configured authenticated
 `ContainerClient`, and pass that store to both `Execution` and the factory.
-The current batch tests use a fake Blob data plane; live validation of these
-new authorization records remains separate from the earlier
-[one-attempt Blob smoke](blob-store.md#observed-live-storage-evidence).
+The offline batch tests use a fake Blob data plane. A separate
+[hosted smoke](hosted-smoke-results.md) exercises real batch authorization
+records; it does not replace the corruption/concurrency tests or broaden the
+earlier [one-attempt Blob evidence](blob-store.md#observed-live-storage-evidence).
 
 | Operation | Result and contract |
 | --- | --- |
@@ -215,7 +217,10 @@ Additional focused SDK tests retain private task-manager injection to inspect
 terminal-record deletion; production task registration uses public SDK
 exports.
 
-Neither local harness establishes managed preview availability, cloud lease recovery,
-authenticated hosted entry points, live Blob batch records, and downstream
-managed identity. Those remain unverified. The string task input makes no claim to
-restore the original operator's delegated caller identity.
+Neither local harness alone establishes managed preview availability or cloud
+behavior. The separate hosted probe verifies its particular
+gateway/task/Blob path and replacement-application restoration after a known
+limit. Unknown-crash lease recovery, delegated caller identity, real-model
+integration, and designated-operator web authorization remain unverified.
+The deployed entry point's pinned private lifecycle adapter is documented in
+the [deployment guide](hosted-deployment.md).

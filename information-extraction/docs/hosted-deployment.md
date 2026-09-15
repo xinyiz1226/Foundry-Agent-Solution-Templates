@@ -8,6 +8,10 @@ deployment. It uses an existing Foundry project and dedicated Blob container.
 The operator must separately approve agent creation, hosted compute charges,
 runtime identity permissions, and the validation/stop procedure.
 
+The [September 15 hosted smoke record](hosted-smoke-results.md) documents the
+observed source deployment, limit/replacement-session/resume path, and final
+disabled endpoint. It is bounded evidence, not a full G0 gate.
+
 The initial probe accepts the existing Foundry endpoint authorization
 boundary: **callers effectively authorized to invoke the agent in the shared
 project can use its synthetic operations**. It is not a designated-operator
@@ -300,6 +304,12 @@ Source versions, agent identity/role assignments, and synthetic Blob records
 can remain after endpoint disablement. Deletion is a separate approval, not
 part of this stop procedure. Never delete the shared project, resource group,
 or existing agents. Full resource cleanup remains a G0 gate.
+
+In the recorded probe, stopped sessions remained visible as `idle`; the live
+status enum had no `stopped` member. Repeating a stop returned HTTP 409
+`session_already_stopped`. Recognize that exact confirmed condition rather
+than swallowing arbitrary conflicts or assuming all repeated stops return
+204.
 
 Sources: [hosted-agent lifecycle management](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/manage-hosted-agent)
 and [stop-session semantics](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/manage-hosted-sessions#stop-a-session).
