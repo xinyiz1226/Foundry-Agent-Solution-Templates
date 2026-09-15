@@ -14,7 +14,9 @@ if ($ConfirmResourceGroup -cne $config.resourceGroupName) {
 $state = Read-BpiState $config
 if ($state.status -eq 'deleted') { throw 'This experiment is already recorded as deleted.' }
 Get-BpiGroup $config $state | Out-Null
-Assert-BpiInventory $state (Get-BpiResources $config)
+$resources = Get-BpiResources $config
+Assert-BpiInventory $state $resources
+Assert-BpiCleanupReady $resources
 if ($PSCmdlet.ShouldProcess(
         "$($config.subscriptionId)/$($config.resourceGroupName)",
         'Delete the entire isolated probe resource group and all recorded resources')) {

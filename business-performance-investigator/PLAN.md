@@ -375,9 +375,10 @@ while idle; stopping an application is not equivalent to deleting its plan.
    repeatable deploy/validate/cleanup flows.
 
 Do not equate the full-template scope with authorization to skip the early gates.
-Step 1 has local implementation evidence. The immediate resume point is the
-deployment-approval review in step 2, not automatic cloud deployment. Resolve
-any local integration issues found in review before requesting that approval.
+Step 1 has local implementation evidence and the first approved Central US
+infrastructure deployment succeeded. Agent deployment is blocked on the
+effective azd login context; finish cleanup and resolve that context before
+another experiment. Do not skip the remaining runtime validation gates.
 
 ### Published checkpoint and deployment blocker
 
@@ -415,12 +416,29 @@ DeepSeek model remains in East US. Central US SQL Basic (5 DTU, 2 GB, LRS)
 is available, initializer/network quota has headroom, and the existing
 read-only preflight passed. No resources were created or models invoked.
 
-The immediate next gates are final inventory/egress/spending/cleanup approval
-and actual shared-model runtime access. See [deployment approval](docs/deployment-approval.md) for the
-full findings and remaining decisions. Actual identifiers and the unapproved
-candidate configuration are in ignored `.artifacts/preflight/`.
-The USD 10 spending-response threshold, maximum 24-hour duration and cleanup
-ownership still require approval; they are not a guaranteed billing cap.
+The operator then approved the bounded experiment: USD 10 stop-response
+threshold, maximum 24 hours and immediate session-executed cleanup. These are
+not a guaranteed billing cap. Central US provisioning succeeded. The first
+agent-stage failure exposed Azure CLI camel-cased output keys; the corrected
+lookup passes against the actual saved state. The next attempt failed with
+`AADSTS530036`: scoped azd tokens succeed but its default authentication
+context fails. No shared model role was created and no inference ran.
+
+Immediate group cleanup exposed a second live limitation: Foundry Capability
+Host/account deletion and service association release are asynchronous.
+SQL, private endpoints/DNS, initializer storage/identity and NAT/public IP have
+been removed. Azure subsequently completed account deletion and released the
+subnet link; active resource-group deletion was confirmed at
+2026-09-15 07:45:14 UTC. The new Foundry account remains soft-deleted, without
+approval to purge it. Group-deletion guards now require ordered Foundry teardown first,
+but automating that sequence remains unfinished. Do not repeat bulk group
+deletion or directly mutate the service-owned link. The integrated offline
+suite now passes 90 tests. Actual cost is not yet available: the Cost Management
+query was throttled, not a zero-cost result.
+
+See [deployment approval](docs/deployment-approval.md) for current evidence,
+manual teardown requirements and remaining blockers. Actual identifiers,
+approval, logs and ownership state remain in ignored artifacts.
 
 ## Primary references
 

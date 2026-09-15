@@ -80,6 +80,54 @@ class LifecycleTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Azure execution is disabled", result.stderr)
 
+    def test_cloud_preflight_checks_azd_tokens_not_cached_login_status(self):
+        config = json.loads((ROOT / "config.example.json").read_text())
+        config["subscriptionId"] = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        config["operatorPrincipalId"] = "11111111-2222-3333-4444-555555555555"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.json"
+            path.write_text(json.dumps(config))
+            for authenticated in ["none", "scoped_only", "both"]:
+                with self.subTest(authenticated=authenticated):
+                    result = self.run_ps(
+                        "$global:authScopes=@(); $global:scopedRequests=0;"
+                        "function az { $global:LASTEXITCODE=0;"
+                        "switch ($args[0]) {"
+                        "'version' { '{}' }"
+                        "'account' { '{\"state\":\"Enabled\",\"tenantId\":\"test-tenant\"}' }"
+                        "'provider' { '{\"registrationState\":\"Registered\"}' }"
+                        "'rest' { '{\"status\":\"Available\",\"supportedServerVersions\":["
+                        "{\"name\":\"12.0\",\"status\":\"Available\",\"supportedEditions\":["
+                        "{\"name\":\"Basic\",\"status\":\"Available\"}]}]}' }"
+                        "default { throw 'Unexpected Azure command' } } };"
+                        "function azd { $global:LASTEXITCODE=0;"
+                        "switch ($args[0]) {"
+                        "'version' { 'mock azd' }"
+                        "'extension' { '[{\"id\":\"azure.ai.agents\",\"installedVersion\":\"1.0.0-beta.15\"},"
+                        "{\"id\":\"azure.ai.projects\",\"installedVersion\":\"1.0.0-beta.10\"}]' }"
+                        "'auth' {"
+                        "if ($args[1] -ne 'token' -or "
+                        "$args -notcontains '--no-prompt') { throw 'Wrong authentication check' };"
+                        "if ($args -contains '--tenant-id') {"
+                        "if ($args -notcontains 'test-tenant') { throw 'Wrong tenant' };"
+                        "$global:scopedRequests++ };"
+                        "$global:authScopes += $args[([array]::IndexOf($args,'--scope')+1)];"
+                        f"if ('{authenticated}' -eq 'both' -or "
+                        f"('{authenticated}' -eq 'scoped_only' -and $args -contains '--tenant-id')) {{"
+                        "'{\"token\":\"fake-secret-do-not-print\",\"expiresOn\":\"2999-01-01T00:00:00Z\"}'"
+                        "} else { $global:LASTEXITCODE=1; 'AADSTS530036 fake-secret-do-not-print' }"
+                        + " } default { throw 'Unexpected azd command' } } };"
+                        f"& '{ROOT / 'scripts' / 'preflight.ps1'}' -ConfigPath '{path}' -CheckAzure;"
+                        "if ($global:authScopes.Count -ne 4 -or $global:scopedRequests -ne 2 -or "
+                        "$global:authScopes -notcontains 'https://management.azure.com/.default' -or "
+                        "$global:authScopes -notcontains 'https://ai.azure.com/.default') "
+                        "{ throw 'Required azd scopes were not checked' }"
+                    )
+                    self.assertEqual(result.returncode == 0, authenticated == "both", result.stderr)
+                    if authenticated != "both":
+                        self.assertIn("AADSTS530036", result.stderr)
+                    self.assertNotIn("fake-secret-do-not-print", result.stdout + result.stderr)
+
     def test_valid_config_and_capacity_bounds(self):
         config = json.loads((ROOT / "config.example.json").read_text())
         config["subscriptionId"] = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -189,6 +237,33 @@ class LifecycleTests(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode == 0, valid, result.stderr)
 
+    def test_persisted_outputs_accept_azure_cli_key_casing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.run_ps(
+                f"$script:ProjectRoot='{directory}';"
+                "$config=@{environmentName='probe';subscriptionId='sub';resourceGroupName='rg'};"
+                "$outputs='{\"azurE_AI_PROJECT_ENDPOINT\":{\"value\":\"https://probe.services.ai.azure.com/api/projects/pilot\"},"
+                "\"initializeR_CLIENT_ID\":{\"value\":\"11111111-2222-3333-4444-555555555555\"}}'"
+                " | ConvertFrom-Json -AsHashtable;"
+                "$state=@{environmentName='probe';subscriptionId='sub';resourceGroupName='rg';"
+                "configuration=$config;outputs=$outputs};"
+                "Save-BpiState $config $state; $saved=Read-BpiState $config;"
+                "if ((Get-BpiOutput $saved 'AZURE_AI_PROJECT_ENDPOINT') -cne "
+                "'https://probe.services.ai.azure.com/api/projects/pilot') { throw 'Wrong endpoint' };"
+                "if ((Get-BpiOutput $saved 'INITIALIZER_CLIENT_ID') -cne "
+                "'11111111-2222-3333-4444-555555555555') { throw 'Wrong initializer' }"
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_output_lookup_rejects_case_ambiguous_json_keys(self):
+        result = self.run_ps(
+            "$state='{\"outputs\":{\"endpoint\":{\"value\":\"first\"},"
+            "\"ENDPOINT\":{\"value\":\"second\"}}}' | ConvertFrom-Json -AsHashtable;"
+            "Get-BpiOutput $state 'endpoint'"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("ambiguous", result.stderr)
+
     def test_empty_output_requires_explicit_optional_contract(self):
         result = self.run_ps("Get-BpiOutput @{outputs=@{endpoint=@{value=''}}} 'endpoint'")
         self.assertNotEqual(result.returncode, 0)
@@ -223,6 +298,44 @@ class LifecycleTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("exit code 7", result.stderr)
+
+    def test_cleanup_requires_foundry_teardown_before_group_deletion(self):
+        result = self.run_ps(
+            "function Invoke-BpiNative { throw 'Unexpected Azure mutation or query' };"
+            "Assert-BpiCleanupReady @(@{type='Microsoft.CognitiveServices/accounts';id='/owned/account'})"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("ordered Foundry", result.stderr)
+        self.assertIn("No resource-group deletion", result.stderr)
+        self.assertNotIn("Unexpected Azure", result.stderr)
+
+    def test_cleanup_waits_for_service_managed_subnet_links(self):
+        for links, ready in [
+            ([], True), (None, True),
+            ([{"name": "legionservicelink", "allowDelete": False}], False),
+        ]:
+            with self.subTest(links=links):
+                vnet = {"subnets": [{"serviceAssociationLinks": links}]}
+                result = self.run_ps(
+                    "function Invoke-BpiNative { param($Command,$Arguments,[switch]$Json);"
+                    "if (($Arguments[0..2] -join ' ') -ne 'network vnet show') "
+                    "{ throw 'Unexpected Azure mutation' };"
+                    f"'{json.dumps(vnet)}' | ConvertFrom-Json -AsHashtable }};"
+                    "Assert-BpiCleanupReady @(@{type='Microsoft.Network/virtualNetworks';id='/owned/vnet'})"
+                )
+                self.assertEqual(result.returncode == 0, ready, result.stderr)
+                if not ready:
+                    self.assertIn("service-managed subnet association", result.stderr)
+
+    def test_native_auth_failure_reports_only_safe_error_code(self):
+        result = self.run_ps(
+            "function fake { $global:LASTEXITCODE=1; "
+            "'AADSTS530036 secret-that-must-not-appear'; };"
+            "Invoke-BpiNative fake @('auth','token') -Json"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("AADSTS530036", result.stderr)
+        self.assertNotIn("secret-that-must-not-appear", result.stdout + result.stderr)
 
     def test_agent_identity_is_not_guessed(self):
         object_id = "11111111-2222-3333-4444-555555555555"

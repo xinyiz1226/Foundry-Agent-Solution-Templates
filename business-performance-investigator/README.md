@@ -171,7 +171,16 @@ scripts intentionally reject existing resource groups.
 
 ## Cleanup and ownership
 
-After preserving the needed evidence:
+**Complete ordered Foundry teardown before deleting the resource group.**
+The first cloud experiment exposed a race in bulk group deletion: Foundry
+account/Capability Host deletion is asynchronous, and `legionservicelink`
+can keep the VNet in use. `cleanup.ps1` now refuses group deletion while an
+active Foundry account or a subnet service association remains.
+
+Follow the [teardown requirements](docs/deployment-approval.md#ordered-teardown-required)
+using only this experiment's recorded resource IDs. Ordered Foundry teardown
+is currently a manual prerequisite, not automated by this probe package.
+After preserving evidence and verifying those prerequisites:
 
 ```powershell
 .\scripts\cleanup.ps1 -ConfigPath .\config.local.json `

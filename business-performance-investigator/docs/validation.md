@@ -101,7 +101,7 @@ restricted. Regression coverage rejects that state instead of interpreting
 listed SQL Basic support as availability. The operator then selected Central
 US, where the existing read-only preflight **passed** with the shared-model
 configuration; SQL Basic 5 DTU/2 GB/LRS and initializer/network quota were
-checked. Actual provisioning and model invocation were not performed.
+checked. At that checkpoint, provisioning and model invocation had not run.
 Detailed findings are in [deployment approval](deployment-approval.md).
 
 Existing-model reuse was then implemented and the integrated offline suite
@@ -113,6 +113,30 @@ continuation, model errors, exact SQL evidence, skipped model provisioning
 and shared-model ownership boundaries. Read-only checks confirmed the actual
 deployment metadata and allowed account endpoint; no inference call was run.
 
-No resources were deployed or hosted agents invoked. Hosted Linux dependencies,
-real agent token identity/SID mapping, actual private routing, model access,
-private initialization, idle/resume, costs and cleanup remain unverified.
+The subsequent approved Central US infrastructure deployment succeeded, but
+agent deployment did not. Azure CLI camel-cased output names caused an initial
+lookup failure; case-insensitive, unambiguous lookup fixed the original
+persisted-state reproduction. `azd deploy` then failed with `AADSTS530036`.
+Explicit-tenant ARM/Foundry tokens succeed, while the default-context ARM
+request fails. Preflight now tests both contexts without retaining tokens.
+
+Immediate cleanup hit asynchronous Foundry and network dependencies. SQL,
+private endpoints/DNS, initializer storage/identity and NAT/public IP were
+removed. Azure subsequently finished account/Capability Host deletion and
+released the subnet association. Guarded deletion of the active resource group
+was confirmed at 2026-09-15 07:45:14 UTC. The new Foundry account remains
+soft-deleted; no permanent purge or external role changes were performed.
+Group deletion now refuses active Foundry accounts and service-managed subnet
+links; ordered teardown is a manual prerequisite.
+
+The updated integrated offline suite passed **90 tests**, including compiled
+Bicep checks, JSON-persisted output casing, configured/default authentication
+contexts, secret-safe error-code reporting, and teardown guards. The real
+default-context authentication failure is now caught by preflight before
+resource creation. A Cost Management query was throttled (HTTP 429); actual
+billed cost remains unknown.
+
+No hosted agents were invoked. Hosted Linux dependencies, real agent token
+identity/SID mapping, actual private routing, model access, private
+initialization, idle/resume and final costs remain unverified. Active resource
+group deletion is verified; soft-deleted-account retention remains explicit.

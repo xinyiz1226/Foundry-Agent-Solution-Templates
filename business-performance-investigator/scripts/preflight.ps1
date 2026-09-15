@@ -28,6 +28,25 @@ if (-not $CheckAzure) {
 $account = Invoke-BpiNative az @('account', 'show', '--subscription',
     $config.subscriptionId, '--output', 'json') -Json
 if ($account.state -ne 'Enabled') { throw 'Selected Azure subscription is not enabled.' }
+foreach ($context in @('configured-tenant', 'default')) {
+    foreach ($scope in @('https://management.azure.com/.default', 'https://ai.azure.com/.default')) {
+        Write-Host "Checking $context azd token acquisition for $scope."
+        $arguments = @('auth', 'token', '--scope', $scope, '--output', 'json', '--no-prompt')
+        if ($context -eq 'configured-tenant') {
+            $arguments += @('--tenant-id', $account.tenantId)
+        }
+        try {
+            $token = Invoke-BpiNative azd $arguments -Json
+            if ($token -isnot [hashtable] -or -not $token.ContainsKey('token') -or
+                [string]::IsNullOrWhiteSpace([string]$token.token)) {
+                throw 'azd did not return a usable access token. Resolve tenant authentication before provisioning.'
+            }
+        }
+        finally {
+            $token = $null
+        }
+    }
+}
 if ((Get-BpiModelConfiguration $config).mode -eq 'existing') {
     Get-BpiExistingModel $config | Out-Null
 }
@@ -44,4 +63,4 @@ $sqlCapabilities = Invoke-BpiNative az @('rest', '--method', 'get', '--url',
     "https://management.azure.com/subscriptions/$($config.subscriptionId)/providers/Microsoft.Sql/locations/$($config.location)/capabilities?api-version=2023-08-01",
     '--output', 'json') -Json
 Assert-BpiSqlAvailability $sqlCapabilities
-Write-Host 'Read-only account/provider/SQL availability checks passed. Model invocation, runtime identity permissions and actual deployment capacity remain unverified.'
+Write-Host 'Read-only account/azd token/provider/SQL availability checks passed. Model invocation, runtime identity permissions and actual deployment capacity remain unverified.'

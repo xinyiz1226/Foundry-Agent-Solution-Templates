@@ -1,6 +1,6 @@
 # Minimal experiment: deployment approval
 
-Status: **preflight and authorized SQL provider registration completed; resource provisioning not approved or run**.
+Status: **Central US infrastructure provisioned; agent deployment blocked on azd authentication context; active experiment resource group deleted, soft-deleted Foundry account retained**.
 
 Local build/test evidence must be reviewed separately from the Azure checks.
 Passing tests does not certify SDK/runtime compatibility or private SQL access.
@@ -15,13 +15,14 @@ passed, and tenant-scoped azd status returned `success`. An unscoped azd
 status check returned `unauthenticated` for the same local installation;
 always check the tenant used for sign-in before asking the user to sign in again.
 
-The proposed USD 10 spending-response threshold, maximum 24-hour experiment,
-and immediate cleanup still require approval. Subscription/tenant and operator
+The operator approved the USD 10 spending-response threshold, maximum 24-hour
+experiment, immediate cleanup, and new-agent shared-model access on 2026-09-15.
+The threshold is not a hard billing cap. Subscription/tenant and operator
 IDs were verified and retained only in ignored local preflight artifacts.
 The operator subsequently authorized reuse of an existing DeepSeek Flash model
 and the next step, SQL provider registration. `Microsoft.Sql` is now registered.
-No SQL database, Foundry resource, or shared-resource role assignment was created.
-General resource provisioning and inference spending remain separate approvals.
+The subsequent approved resource deployment and its blockers are recorded below.
+No shared-resource role assignment or inference call was performed.
 
 On the deployment workstation, first make `az` and `azd` available on the
 current shell's PATH and complete interactive sign-in with the intended tenant:
@@ -38,7 +39,7 @@ operator identity in an ignored `config.local.json`, and run read-only
 Keep credentials and local configuration out of Git. Region/model/quota,
 permissions and spending approval remain separate gates.
 
-### Read-only findings, 2026-09-15
+### Pre-deployment read-only findings, 2026-09-15
 
 | Check | Observed result |
 |---|---|
@@ -61,10 +62,11 @@ Japan East, Australia East and West Europe. The local candidate now places
 the new Foundry account/project, VNet and SQL in Central US. The existing
 DeepSeek model stays in East US; it is not migrated or recreated.
 
-**Remaining gates:** approve the complete resource/egress inventory, spending
-response, maximum duration and cleanup responsibility, plus inference access
-for the actual agent identity on the shared account. Read-only availability
-and quota checks do not reserve capacity or prove the runtime works.
+**Current gates:** resolve the effective azd authentication context and review
+the retained soft-deleted account before considering another deployment. The
+actual runtime identity and its shared-model role remain unverified.
+Read-only availability and quota checks do not reserve capacity or prove the
+runtime works.
 
 The selected local configuration now uses `modelMode: existing` and
 `modelApi: chat_completions`, with the verified shared account's OpenAI v1
@@ -80,25 +82,86 @@ See [existing-model setup](../README.md#reuse-an-existing-model) for the
 documented role and cleanup responsibilities. No model invocation has been
 performed; real Flash tool-call compatibility and authorization remain live gates.
 
-The local evidence and candidate configuration are under `.artifacts/preflight/`.
-They are not ownership state or a deployment approval. The only cloud write
-performed was the explicitly authorized SQL provider registration. No model
-inference or automatic permissions changes were run.
+The local evidence and configuration are under `.artifacts/preflight/`.
+The chat approval is recorded separately in `experiment-approval.json`;
+deployment ownership state is under `.artifacts/<environment>/state.json`.
+No model inference or shared-model permissions changes were run.
+
+### First approved cloud attempt, 2026-09-15
+
+Central US infrastructure provisioning succeeded. Agent deployment initially
+failed because Azure CLI returned output names such as
+`azurE_AI_PROJECT_ENDPOINT`, while the JSON-backed lookup was case-sensitive.
+The lookup now accepts one case-insensitive match and rejects ambiguous keys;
+the original persisted deployment state passes the corrected lookup.
+
+The subsequent `azd deploy` failed with `AADSTS530036`: the refresh token was
+rejected by Conditional Access authentication-flow checks. Tenant-explicit
+ARM and Foundry token acquisition succeeds, but default-context ARM token
+acquisition fails with the same error. Setting `AZURE_TENANT_ID` in the azd
+environment did not prevent the deployment failure. The effective deployment
+login context remains unresolved; do not describe this as all tenant-scoped
+authentication failing or circumvent the tenant's policy.
+
+Preflight now checks actual azd token acquisition for ARM and Foundry in both
+the configured-tenant and default contexts, not just cached login status.
+Tokens are discarded, not printed or saved. Native command errors preserve
+safe `AADSTS` codes without copying arbitrary token-bearing output.
+
+Immediate cleanup was attempted, but bulk resource-group deletion raced
+Foundry service cleanup. SQL, private endpoints/DNS, initializer storage and
+identity were removed. After verifying ownership and the exact initializer
+subnet association, its NAT was detached and the NAT/public IP were deleted.
+The account and account-level Capability Host subsequently completed deletion,
+and Azure released `legionservicelink`. After the new guards passed, deletion
+of the entire active experiment resource group was confirmed at
+**2026-09-15 07:45:14 UTC**. The 24-hour fallback automation was then cleared.
+The exact new Foundry account remains soft-deleted; permanent purge was not
+approved or performed. No shared model resource or external role was changed.
+The post-experiment Cost Management query returned HTTP 429, so final billed
+cost is unknown, not zero.
+There is no successful hosted-agent invocation, SQL initialization, runtime
+identity validation, or idle/resume result.
 
 ## Approval record
 
 | Decision | Required value |
 |---|---|
-| Approver and approval date | Not yet supplied |
+| Approver and approval date | Operator approval in chat, 2026-09-15; local approval record retained |
 | Subscription, tenant, and operator principal | Verified for read-only checks; actual IDs remain in ignored local artifacts |
-| New resource group and environment | Choose a dedicated `rg-bpi-*` group; no reuse |
+| New resource group and environment | Dedicated experiment group was created with ownership tags and an inventory; no pre-existing group was adopted |
 | Region | Central US explicitly selected for new resources; existing shared model remains in East US |
 | Model, version, deployment SKU/capacity | Existing DeepSeek Flash selected; no new model deployment or capacity change |
-| Shared-model runtime access | The model owner must approve the actual agent's inference role; no shared-role changes performed |
-| Experiment duration and cleanup owner | Not yet supplied |
-| Spending limit and response to threshold | Not yet supplied; budgets are alerts, not hard caps |
+| Shared-model runtime access | New-agent inference access approved in principle; no runtime identity was verified and no shared-role changes were performed |
+| Experiment duration and cleanup owner | Current session executes and verifies immediate cleanup; maximum 24 hours from approval, deadline in ignored record |
+| Spending limit and response to threshold | USD 10 stop-response threshold approved; billing delays mean this is not a hard cap |
 | Required directory/resource permissions | Broad management access and basic directory lookup observed; no automatic tenant consent or provider registration |
-| Required package/image egress | Explicitly review; private SQL is not zero-internet execution |
+| Required package/image egress | Reviewed initializer/source-build egress only; private SQL is not zero-internet execution |
+
+## Ordered teardown required
+
+Do not begin another teardown with bulk group deletion. Use the
+[repository's Foundry cleanup sequence](../../private-network-hosted-agent/docs/cleanup.md#supported-manual-order)
+as a manual reference, with **this probe's** recorded IDs and ownership checks.
+Do not run that other template's script or adopt its environment.
+
+Delete and verify absence of project Capability Hosts before account
+Capability Hosts, then projects and the account. If a resource is already
+`Deleting`, observe its progress rather than repeatedly issuing deletion.
+Account deletion and subnet-link release are separate asynchronous operations.
+Never directly delete or patch a service association link.
+
+This package does not automatically purge soft-deleted Foundry accounts or
+delete directory objects. If an exact soft-deleted account requires purge to
+finish cleanup, obtain explicit approval before that irreversible operation.
+Do not claim complete teardown while residual Foundry resources or links
+remain; retain the evidence and escalate stalled platform cleanup.
+
+Only after active Foundry accounts and subnet service associations are absent
+can `cleanup.ps1` delete the remaining owned group. Its new guards enforce
+those prerequisites. The initializer NAT association may be removed only
+after verifying its exact owned subnet/NAT IDs and that no initializer work
+remains. Full ordered Foundry teardown automation is still a package gap.
 
 ## Resources to review
 

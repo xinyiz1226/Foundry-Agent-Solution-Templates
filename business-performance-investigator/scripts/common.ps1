@@ -15,7 +15,13 @@ function Invoke-BpiNative {
     }
     $result = @(& $Command @Arguments)
     if ($LASTEXITCODE -ne 0) {
-        throw "'$Command $($Arguments[0])' failed with exit code $LASTEXITCODE. No later stage was run."
+        $message = "'$Command $($Arguments[0])' failed with exit code $LASTEXITCODE. No later stage was run."
+        $authCodes = @([regex]::Matches(($result -join "`n"), '\bAADSTS\d+\b') |
+            ForEach-Object { $_.Value } | Select-Object -Unique)
+        if ($authCodes.Count -gt 0) {
+            $message += " Authentication error: $($authCodes -join ', '). Follow the tenant's approved sign-in policy."
+        }
+        throw $message
     }
     if ($Json) {
         if ($result.Count -eq 0) { throw "'$Command' returned no JSON." }
@@ -248,12 +254,39 @@ function Assert-BpiInventory {
 
 function Get-BpiOutput {
     param([hashtable]$State, [string]$Name, [switch]$AllowEmpty)
-    if (-not $State.ContainsKey('outputs') -or -not $State.outputs.ContainsKey($Name) -or
-        $null -eq $State.outputs[$Name].value -or
-        (-not $AllowEmpty -and [string]::IsNullOrWhiteSpace([string]$State.outputs[$Name].value))) {
+    if (-not $State.ContainsKey('outputs') -or $State.outputs -isnot [System.Collections.IDictionary]) {
         throw "Deployment output '$Name' is missing. Infrastructure provisioning may be incomplete."
     }
-    return $State.outputs[$Name].value
+    # Azure CLI camel-cases ARM output names; JSON hashtables preserve that casing.
+    $keys = @($State.outputs.Keys | Where-Object { $_ -ieq $Name })
+    if ($keys.Count -gt 1) {
+        throw "Deployment output '$Name' is ambiguous. Inspect the deployment outputs."
+    }
+    if ($keys.Count -eq 0 -or $null -eq $State.outputs[$keys[0]].value -or
+        (-not $AllowEmpty -and [string]::IsNullOrWhiteSpace([string]$State.outputs[$keys[0]].value))) {
+        throw "Deployment output '$Name' is missing. Infrastructure provisioning may be incomplete."
+    }
+    return $State.outputs[$keys[0]].value
+}
+
+function Assert-BpiCleanupReady {
+    param([object[]]$Resources)
+    if (@($Resources | Where-Object {
+        $_.type -ieq 'Microsoft.CognitiveServices/accounts'
+    }).Count -gt 0) {
+        throw 'Complete ordered Foundry capability-host, project and account teardown first. See docs/deployment-approval.md. No resource-group deletion was requested.'
+    }
+    foreach ($resource in $Resources) {
+        if ($resource.type -ine 'Microsoft.Network/virtualNetworks') { continue }
+        $vnet = Invoke-BpiNative az @('network', 'vnet', 'show', '--ids',
+            $resource.id, '--output', 'json') -Json
+        foreach ($subnet in $vnet.subnets) {
+            if ($subnet.ContainsKey('serviceAssociationLinks') -and
+                @($subnet.serviceAssociationLinks | Where-Object { $null -ne $_ }).Count -gt 0) {
+                throw 'A service-managed subnet association still exists. Wait for Foundry cleanup; never delete or patch the link directly. No resource-group deletion was requested.'
+            }
+        }
+    }
 }
 
 function Assert-BpiAzureApproval {
