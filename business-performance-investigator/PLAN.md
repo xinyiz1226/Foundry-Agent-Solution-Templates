@@ -4,17 +4,21 @@ Last updated: 2026-09-15.
 
 ## Status and authorization
 
-**This project is in planning, not implementation or deployment.**
+**The Phase 1 validation package is implemented and locally checked; no cloud
+deployment has been performed. The complete analyst application is not built.**
 
 - The product scope and the next technical-validation milestone were agreed
   with the project owner.
-- Public documentation and reference-template source were inspected. No
-  end-to-end deployment, SQL connection, driver compatibility test, or
-  application evaluation has been performed.
+- Public documentation and reference-template source were inspected. The local
+  package now includes the minimal runtime, Bicep, lifecycle scripts, tests and
+  deployment-approval materials. No end-to-end Azure deployment, real SQL
+  connection, or business-analysis evaluation has been performed.
 - No Azure resources have been created for this project.
-- This plan is being committed to preserve decisions and conversation context.
-- The agreed next step is to prepare a minimal validation package and deployment
-  approval materials. Cloud deployment requires separate, explicit approval.
+- The original plan was committed as `a49097b`. Implementation followed explicit
+  approval to prepare the package without deploying Azure resources.
+- See `docs/validation.md` for recorded local evidence and
+  `docs/deployment-approval.md` for the next approval gate. Cloud deployment
+  requires separate, explicit approval.
 - Recording or committing this plan does not authorize resource creation,
   tenant permission changes, paid services, or production database changes.
 
@@ -22,6 +26,19 @@ Project folder: `business-performance-investigator`.
 
 Working branch: `xinyiz1226-business-performance-investigator`, created from
 `main`. The baseline at project creation was `c6f4d1d`.
+
+### Implementation clarifications
+
+- Phase 1 owns a new disposable resource group only. Existing customer SQL
+  remains a later full-template path and is rejected by the probe lifecycle.
+- The initializer is the new probe server's Entra administrator. The agent is
+  a distinct contained user with approved-view SELECT plus object-scoped
+  metadata visibility needed for permission checks.
+- The proposed infrastructure includes an initializer-only NAT gateway and
+  static public IP to make private ACI outbound access explicit. This addition
+  and its hourly cost require review before deployment.
+- Source deployment, `python-tds`, and the deterministic evidence protocol
+  passed local dependency and behavior checks, not a hosted Linux/SQL test.
 
 ## Purpose and positioning
 
@@ -358,7 +375,9 @@ while idle; stopping an application is not equivalent to deleting its plan.
    repeatable deploy/validate/cleanup flows.
 
 Do not equate the full-template scope with authorization to skip the early gates.
-The immediate resume point is step 1, not cloud deployment.
+Step 1 has local implementation evidence. The immediate resume point is the
+deployment-approval review in step 2, not automatic cloud deployment. Resolve
+any local integration issues found in review before requesting that approval.
 
 ## Primary references
 

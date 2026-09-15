@@ -1,0 +1,11 @@
+.venv/
+.azure/
+.artifacts/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+config.local.json
+*.local.json
+infra-bicep/main.json
+infra-bicep/bootstrap.json

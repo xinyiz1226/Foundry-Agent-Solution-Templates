@@ -1,0 +1,202 @@
+"""Local lifecycle contracts: no Azure commands are permitted in these tests."""
+
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+PWSH = shutil.which("pwsh")
+
+
+@unittest.skipUnless(PWSH, "PowerShell 7 is required for lifecycle contract tests")
+class LifecycleTests(unittest.TestCase):
+    def run_ps(self, body):
+        result = subprocess.run(
+            [PWSH, "-NoProfile", "-NonInteractive", "-Command",
+             f". '{ROOT / 'scripts' / 'common.ps1'}'; {body}"],
+            capture_output=True, text=True, check=False,
+        )
+        return result
+
+    def test_all_powershell_files_parse(self):
+        root = str(ROOT / "scripts").replace("'", "''")
+        result = self.run_ps(
+            f"Get-ChildItem '{root}' -Filter *.ps1 -Recurse | ForEach-Object {{ "
+            "$tokens=$null; $errors=$null; "
+            "[System.Management.Automation.Language.Parser]::ParseFile("
+            "$_.FullName,[ref]$tokens,[ref]$errors) | Out-Null; "
+            "if ($errors.Count) { throw ($errors.Message -join '; ') } }"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_example_config_cannot_deploy(self):
+        result = self.run_ps(f"Read-BpiConfig '{ROOT / 'config.example.json'}'")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("placeholder", result.stderr)
+
+    def test_azure_execution_requires_explicit_approval(self):
+        result = self.run_ps("Assert-BpiAzureApproval")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Azure execution is disabled", result.stderr)
+
+    def test_valid_config_and_capacity_bounds(self):
+        config = json.loads((ROOT / "config.example.json").read_text())
+        config["subscriptionId"] = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        config["operatorPrincipalId"] = "11111111-2222-3333-4444-555555555555"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.json"
+            for value, valid in [(1, True), (10, True), (0, False), (11, False),
+                                 ("1", False), (1.5, False)]:
+                with self.subTest(capacity=value):
+                    config["modelCapacity"] = value
+                    path.write_text(json.dumps(config))
+                    result = self.run_ps(f"Read-BpiConfig '{path}' | Out-Null")
+                    self.assertEqual(result.returncode == 0, valid, result.stderr)
+
+    def test_resource_ownership_and_extra_resources_fail_closed(self):
+        result = self.run_ps(
+            "$config=@{subscriptionId='s';resourceGroupName='rg-bpi-test';environmentName='test'};"
+            "$state=@{deploymentId='mine';resourceIds=@('/known')};"
+            "$group=@{id='/subscriptions/s/resourceGroups/rg-bpi-test';"
+            "tags=@{bpiTemplate='business-performance-investigator';"
+            "bpiEnvironment='test';bpiDeploymentId='someone-else'}};"
+            "Assert-BpiOwnership $config $state $group"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("ownership", result.stderr)
+        result = self.run_ps(
+            "Assert-BpiInventory @{resourceIds=@('/known')} @(@{id='/unexpected'})"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Unrecorded resources", result.stderr)
+
+    def test_native_failures_do_not_become_json_success(self):
+        result = self.run_ps(
+            "function fake { $global:LASTEXITCODE=7; '{\"ok\":true}' };"
+            "Invoke-BpiNative fake @('show') -Json"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exit code 7", result.stderr)
+
+    def test_agent_identity_is_not_guessed(self):
+        object_id = "11111111-2222-3333-4444-555555555555"
+        result = self.run_ps(
+            f"Get-BpiAgentPrincipalId @{{identity=@{{principalId='{object_id}'}}}}"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), object_id)
+        for metadata in [
+            "@{name='sql-probe'}",
+            "@{identity=@{principalId='11111111-2222-3333-4444-555555555555'};"
+            "agent_identity=@{principal_id='aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'}}",
+        ]:
+            result = self.run_ps(f"Get-BpiAgentPrincipalId {metadata}")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("unambiguous", result.stderr)
+
+    def test_write_entrypoints_refuse_without_approval(self):
+        for name, extra in [
+            ("deploy.ps1", ["-Stage", "Provision"]),
+            ("cleanup.ps1", ["-ConfirmResourceGroup", "rg-bpi-test"]),
+            ("validate-agent.ps1", []),
+        ]:
+            with self.subTest(script=name):
+                result = subprocess.run(
+                    [PWSH, "-NoProfile", "-NonInteractive", "-File",
+                     str(ROOT / "scripts" / name), "-ConfigPath", "not-a-file.json", *extra],
+                    capture_output=True, text=True, check=False,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Azure execution is disabled", result.stderr)
+
+    def test_missing_output_does_not_use_a_default(self):
+        result = self.run_ps("Get-BpiOutput @{outputs=@{}} 'AZURE_SQL_SERVER'")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("missing", result.stderr)
+
+    def test_configuration_cannot_change_after_provisioning(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = str(Path(directory)).replace("'", "''")
+            result = self.run_ps(
+                f"$script:ProjectRoot='{root}';"
+                "$config=@{environmentName='test';subscriptionId='sub';"
+                "resourceGroupName='rg-bpi-test';location='eastus2'};"
+                "$state=@{environmentName='test';subscriptionId='sub';"
+                "resourceGroupName='rg-bpi-test';configuration=$config.Clone()};"
+                "Save-BpiState $config $state;"
+                "$config.location='westus';Read-BpiState $config"
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Configuration changed", result.stderr)
+
+    def test_probe_requires_exactly_one_machine_evidence_marker(self):
+        for text, valid in [
+            ('A convincing answer with 42.00', False),
+            ('BPI_PROBE_RESULT={"ok":true}', True),
+            ('BPI_PROBE_RESULT={"ok":true}\nBPI_PROBE_RESULT={"ok":true}', False),
+        ]:
+            encoded = text.replace("'", "''")
+            result = self.run_ps(f"ConvertFrom-BpiProbeEvidence '{encoded}' | Out-Null")
+            self.assertEqual(result.returncode == 0, valid, result.stderr)
+
+    def test_runtime_evidence_format_matches_cli_validator(self):
+        sys.path.insert(0, str(ROOT / "agent"))
+        try:
+            from probe_agent.orchestrator import render_evidence
+        finally:
+            sys.path.pop(0)
+        text = render_evidence({"schema_version": 1, "ok": False})
+        result = self.run_ps(
+            f"$e=ConvertFrom-BpiProbeEvidence '{text.replace(chr(39), chr(39)*2)}';"
+            "if ($e.schema_version -ne 1 -or $e.ok -cne $false) { throw 'Evidence changed' }"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_probe_evidence_checks_actual_identity_and_permissions(self):
+        permissions = dict.fromkeys([
+            "base_select", "base_insert", "base_update", "base_delete",
+            "view_select", "view_insert", "view_update", "view_delete", "view_alter",
+            "view_control", "schema_alter", "schema_control", "database_create_table",
+            "database_create_view", "database_alter_any_schema", "database_control",
+        ], 0)
+        permissions["view_select"] = 1
+        evidence = {
+            "schema_version": 1, "ok": True, "server": "sample.database.windows.net",
+            "database": "probe", "authenticated_database": "probe",
+            "identity_mode": "managed_identity", "database_principal": "bpi_probe_agent",
+            "database_principal_sid": "11111111-2222-3333-4444-555555555555",
+            "principal_sid_status": "available",
+            "fixture": {"probe_id": 1, "label": "private-sql-probe", "amount": "42.00"},
+            "fixture_matches": True,
+            "tls": {"hostname_verification": True, "full_session_encryption": True},
+            "dns": {"all_candidates_private": True, "candidates": ["10.72.1.4"]},
+            "permission_check": {"status": "passed"}, "permissions": permissions,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "evidence.json"
+            for variation in ["valid", "unknown", "wrong_identity", "wrong_ip", "write"]:
+                candidate = json.loads(json.dumps(evidence))
+                if variation == "unknown":
+                    candidate["permissions"]["base_select"] = None
+                elif variation == "wrong_identity":
+                    candidate["database_principal"] = "dbo"
+                elif variation == "wrong_ip":
+                    candidate["dns"]["candidates"] = ["10.73.1.4"]
+                elif variation == "write":
+                    candidate["permissions"]["view_update"] = 1
+                path.write_text(json.dumps(candidate))
+                result = self.run_ps(
+                    f"$e=Get-Content '{path}' -Raw | ConvertFrom-Json -AsHashtable;"
+                    "Assert-BpiProbeEvidence $e 'sample.database.windows.net' 'probe' "
+                    "'11111111-2222-3333-4444-555555555555' @('10.72.1.4')"
+                )
+                self.assertEqual(result.returncode == 0, variation == "valid", result.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()

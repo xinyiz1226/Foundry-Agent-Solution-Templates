@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: business-performance-investigator
+metadata:
+  template: business-performance-investigator@validation-v1
+requiredVersions:
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.4'
+    azure.ai.projects: '>=1.0.0-beta.1'
+services:
+  ai-project:
+    host: azure.ai.project
+  sql-probe:
+    project: agent
+    host: azure.ai.agent
+    language: python
+    uses:
+      - ai-project
+    name: sql-probe
+    displayName: Business Performance Investigator - SQL Probe
+    description: Validates the isolated private SQL connection and approved-view permissions.
+    kind: hosted
+    codeConfiguration:
+      dependencyResolution: remote_build
+      entryPoint: main.py
+      runtime: python_3_13
+    container:
+      resources:
+        cpu: "0.5"
+        memory: 1Gi
+    protocols:
+      - protocol: responses
+        version: 2.0.0
+    environmentVariables:
+      - name: AZURE_AI_MODEL_DEPLOYMENT_NAME
+        value: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      - name: AZURE_SQL_SERVER
+        value: ${AZURE_SQL_SERVER}
+      - name: AZURE_SQL_DATABASE
+        value: ${AZURE_SQL_DATABASE}
+      - name: APP_LOCAL_DEVELOPMENT
+        value: "false"
+      - name: AZURE_SQL_CONNECT_TIMEOUT_SECONDS
+        value: "15"
+      - name: AZURE_SQL_QUERY_TIMEOUT_SECONDS
+        value: "15"
+infra:
+  provider: bicep
+  path: infra-bicep
