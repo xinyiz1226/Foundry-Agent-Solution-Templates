@@ -147,6 +147,31 @@ function Assert-BpiAzureApproval {
     }
 }
 
+function Assert-BpiExtensions {
+    param([Parameter(Mandatory)][AllowEmptyCollection()][hashtable[]]$Extensions)
+    $minimumVersions = @{
+        'azure.ai.agents' = '1.0.0-beta.4'
+        'azure.ai.projects' = '1.0.0-beta.1'
+    }
+    foreach ($id in $minimumVersions.Keys) {
+        $matches = @($Extensions | Where-Object { $_.id -eq $id })
+        if ($matches.Count -ne 1 -or
+            -not $matches[0].ContainsKey('installedVersion') -or
+            [string]::IsNullOrWhiteSpace([string]$matches[0].installedVersion)) {
+            throw "Install the '$id' azd extension. A catalog entry is not an installed extension."
+        }
+        try {
+            $installed = [semver]$matches[0].installedVersion
+        }
+        catch {
+            throw "The '$id' installed version is not valid semantic version metadata."
+        }
+        if ($installed -lt [semver]$minimumVersions[$id]) {
+            throw "Update '$id' to at least $($minimumVersions[$id]); installed version is $installed."
+        }
+    }
+}
+
 function Get-BpiAgentPrincipalId {
     param([Parameter(Mandatory)][hashtable]$Agent)
     $candidates = @(

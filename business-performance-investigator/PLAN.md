@@ -379,6 +379,22 @@ Step 1 has local implementation evidence. The immediate resume point is the
 deployment-approval review in step 2, not automatic cloud deployment. Resolve
 any local integration issues found in review before requesting that approval.
 
+### Published checkpoint and deployment blocker
+
+The private SQL validation package is published on
+`xinyiz1226-business-performance-investigator` in the `xinyiz1226` fork
+(implementation commit `7c9ef6f`). Azure CLI 2.90.0 and azd 1.34.0 were
+prepared locally, with `azure.ai.agents` beta.15 and `azure.ai.projects`
+beta.10 installed. Local CLI preflight now checks installed extension
+versions, not just catalog entries.
+
+Azure CLI returned no signed-in subscriptions and azd reported
+`unauthenticated`. No resources were deployed. A proposed USD 10 spending
+response threshold and 24-hour duration were not confirmed; neither is
+approval or a guaranteed cap. Resume with interactive Azure/azd sign-in,
+then settle the approval record and run read-only account/provider,
+region/model/quota and permission checks before any provisioning.
+
 ## Primary references
 
 - [Fabric data agent](https://learn.microsoft.com/en-us/fabric/data-science/concept-data-agent)

@@ -6,6 +6,31 @@ Local build/test evidence must be reviewed separately from the Azure checks.
 Passing tests does not certify SDK/runtime compatibility or private SQL access.
 All entries below must be settled before running approval-gated scripts.
 
+## Current preparation checkpoint
+
+The package has been committed and pushed. Local Azure CLI 2.90.0 and azd
+1.34.0 are available for this session, with the required Foundry agent/project
+extensions installed. Local preflight passed, but Azure CLI returned no
+signed-in subscriptions and azd reported `unauthenticated`.
+
+The proposed USD 10 spending-response threshold, maximum 24-hour experiment,
+and immediate cleanup were **not confirmed**. No subscription was selected
+and no Azure resources were created. User unavailability is not approval.
+
+On the deployment workstation, first make `az` and `azd` available on the
+current shell's PATH and complete interactive sign-in with the intended tenant:
+
+```powershell
+az login --tenant '<approved-tenant-id>' --use-device-code
+azd auth login --tenant-id '<approved-tenant-id>' --use-device-code
+```
+
+Sign-in does not approve deployment. Complete the record below, use the actual
+operator identity in an ignored `config.local.json`, and run read-only
+`scripts\preflight.ps1 -ConfigPath .\config.local.json -CheckAzure`.
+Keep credentials and local configuration out of Git. Region/model/quota,
+permissions and spending approval remain separate gates.
+
 ## Approval record
 
 | Decision | Required value |

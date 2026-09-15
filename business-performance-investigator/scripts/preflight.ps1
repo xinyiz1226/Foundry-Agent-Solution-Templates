@@ -14,11 +14,7 @@ foreach ($command in @('az', 'azd')) {
 Invoke-BpiNative az @('version', '--output', 'json') -Json | Out-Null
 Invoke-BpiNative azd @('version') | Write-Host
 $extensions = @(Invoke-BpiNative azd @('extension', 'list', '--output', 'json') -Json)
-foreach ($id in @('azure.ai.agents', 'azure.ai.projects')) {
-    if (@($extensions | Where-Object { $_.id -eq $id }).Count -ne 1) {
-        throw "Install the '$id' azd extension before deployment. Preflight will not install extensions."
-    }
-}
+Assert-BpiExtensions $extensions
 if (-not $ConfigPath) {
     if ($CheckAzure) { throw '-ConfigPath is required with -CheckAzure.' }
     Write-Host 'Local CLI checks passed. No Azure login, quota, or connectivity was checked.'

@@ -42,6 +42,7 @@ project sessions when cleaning up one probe.
 | Symptom | Check / required response |
 |---|---|
 | Python command opens Store or is missing | Use installed `py -3.13`; create the project virtual environment. |
+| Extension appears in the azd catalog but preflight rejects it | Inspect `installedVersion`, not the catalog's `version`. Install or update the extension to the manifest's required minimum. |
 | Agent SDK or TLS dependency import fails | Check exact package versions and platform wheels. Do not switch to a new runtime/image silently. |
 | No agent principal in azd metadata | Inspect extension/runtime versions. Do not look up a similarly named principal or substitute the project identity. |
 | Directory service-principal lookup denied | Ask the authorized operator for the required directory access; scripts do not grant consent. |
@@ -82,6 +83,12 @@ The SQL driver's certificate helper emits upstream pyOpenSSL deprecation
 warnings. Its version is pinned; rejection tests pass, but this remains an
 upgrade-maintenance item rather than a reason to disable validation.
 
-Azure CLI/azd cloud execution was not performed. Hosted Linux dependencies,
+Subsequent local preflight passed with Azure CLI 2.90.0, azd 1.34.0,
+`azure.ai.agents` 1.0.0-beta.15 and `azure.ai.projects` 1.0.0-beta.10.
+The extension regression test rejects absent, outdated and malformed installed
+versions; catalog availability alone must not pass preflight.
+Account checks found no Azure CLI login and an unauthenticated azd session.
+
+No resources were deployed or hosted agents invoked. Hosted Linux dependencies,
 real agent token identity/SID mapping, actual private routing, model access,
 private initialization, idle/resume, costs and cleanup remain unverified.

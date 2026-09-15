@@ -39,6 +39,42 @@ class LifecycleTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("placeholder", result.stderr)
 
+    def test_available_extensions_are_not_mistaken_for_installed(self):
+        for version, valid in [
+            ("", False), ("1.0.0-beta.3", False), ("1.0.0-beta.15", True),
+            ("invalid", False),
+        ]:
+            with self.subTest(version=version):
+                result = self.run_ps(
+                    "Assert-BpiExtensions @("
+                    f"@{{id='azure.ai.agents';installedVersion='{version}'}},"
+                    "@{id='azure.ai.projects';installedVersion='1.0.0-beta.10'})"
+                )
+                self.assertEqual(result.returncode == 0, valid, result.stderr)
+
+    def test_preflight_requires_installed_extensions(self):
+        for installed in [False, True]:
+            with self.subTest(installed=installed):
+                extensions = [
+                    {"id": name, "version": version,
+                     "installedVersion": version if installed else ""}
+                    for name, version in [
+                        ("azure.ai.agents", "1.0.0-beta.15"),
+                        ("azure.ai.projects", "1.0.0-beta.10"),
+                    ]
+                ]
+                result = self.run_ps(
+                    "function az { $global:LASTEXITCODE=0; '{}' };"
+                    "function azd { $global:LASTEXITCODE=0;"
+                    "if ($args[0] -eq 'extension') {"
+                    f"'{json.dumps(extensions)}'"
+                    "} else { 'azd mock version' } };"
+                    f"& '{ROOT / 'scripts' / 'preflight.ps1'}'"
+                )
+                self.assertEqual(result.returncode == 0, installed, result.stderr)
+                if not installed:
+                    self.assertIn("catalog entry", result.stderr)
+
     def test_azure_execution_requires_explicit_approval(self):
         result = self.run_ps("Assert-BpiAzureApproval")
         self.assertNotEqual(result.returncode, 0)
