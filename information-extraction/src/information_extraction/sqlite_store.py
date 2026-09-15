@@ -43,8 +43,32 @@ class SQLiteStore:
                     request_id TEXT NOT NULL UNIQUE REFERENCES requests(request_id),
                     action TEXT NOT NULL, chunk_id TEXT NOT NULL,
                     PRIMARY KEY(job_id, revision))""",
+                """CREATE TABLE IF NOT EXISTS batch_records (
+                    key TEXT PRIMARY KEY, payload TEXT NOT NULL, digest TEXT NOT NULL)""",
             ):
                 connection.execute(statement)
+
+    def read_batch_record(self, key: str) -> str | None:
+        with self._transaction(write=False) as connection:
+            row = connection.execute(
+                "SELECT payload, digest FROM batch_records WHERE key = ?", (key,),
+            ).fetchone()
+            if row is None:
+                return None
+            if _hash(row["payload"]) != row["digest"]:
+                raise IntegrityError("batch_record_digest_mismatch")
+            return row["payload"]
+
+    def create_batch_record(self, key: str, payload: str) -> str:
+        with self._transaction() as connection:
+            connection.execute(
+                "INSERT OR IGNORE INTO batch_records VALUES (?, ?, ?)",
+                (key, payload, _hash(payload)),
+            )
+        result = self.read_batch_record(key)
+        if result is None:
+            raise IntegrityError("batch_record_missing")
+        return result
 
     @contextmanager
     def _transaction(self, *, write: bool = True) -> Iterator[sqlite3.Connection]:

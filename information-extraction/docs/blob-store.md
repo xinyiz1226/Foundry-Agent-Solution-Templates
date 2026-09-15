@@ -5,6 +5,11 @@ as SQLite. `Execution.create`, `read`, and one-attempt `advance`/explicit
 `Action.RESUME` do not depend on a host or browser. This is a real create-only
 Blob coordination ledger, **not an uploaded SQLite database**.
 
+The store also supports the [bounded native batch module](native-batch.md)
+through separate create-only batch records. The live evidence below covers
+the one-attempt execution ledger; the new batch record protocol currently has
+offline Blob-contract evidence only.
+
 **Evidence:** offline synthetic tests, real `azure-storage-blob` SDK pipeline
 tests using an in-memory HTTP transport, and an explicitly authorized
 [live storage smoke](#observed-live-storage-evidence) with a synthetic model.
@@ -64,6 +69,7 @@ The full logical identity remains inside verified JSON:
 | `jobs/<job-hash>/claims/<20-digit-revision>.json` | Unique revision owner and binding to the previous checkpoint |
 | `jobs/<job-hash>/snapshots/<20-digit-revision>.json` | Full immutable cumulative result |
 | `jobs/<job-hash>/checkpoints/<20-digit-revision>.json` | **Commit marker written last**, referencing snapshot, previous checkpoint (manifest for revision zero), and revision claim |
+| `batch/<record-key>.json` | Optional batch authorization, ownership, admission, result, registration, and terminal records; see the separate batch protocol |
 
 Objects use canonical JSON envelopes bound to their name, kind and format,
 with payload byte length and SHA-256. References additionally bind the exact

@@ -24,6 +24,11 @@ committed progress, resumed a handled failure, and replayed saved requests
 without repeating model work. Real Foundry calls and Blob persistence have
 not yet been exercised together.
 
+An optional [native batch driver](docs/native-batch.md) now provides durable
+start/status/explicit-resume semantics around the execution core, using
+Foundry resilient tasks Preview. It has model-free local SDK evidence, not a
+deployed Foundry lifecycle result. **G0 remains incomplete.**
+
 ## Run the offline checks
 
 Prerequisite: Python **3.13 or newer**. From the repository root, in PowerShell:
@@ -89,8 +94,8 @@ second = execution.advance("job-1", 1, "advance-2")
 
 The two explicit calls above demonstrate the one-attempt interface; they are
 **not a batch driver**. An `advance` call runs in its caller's synchronous
-process. No work progresses after `create`, on inspection, or independently
-of that process.
+process. `Execution.create` and inspection do not schedule work. Use the
+separate optional batch interface below for bounded task-backed progression.
 
 ### Identity, replay, and ownership
 
@@ -302,6 +307,38 @@ The separate [live smoke record](docs/model-smoke-results.md) documents the
 limited observed outcome. No semantic validation, approval, full G0 pass,
 or hosted background batch execution is claimed.
 
+## Optional bounded native batch driver (Preview)
+
+`Batch` adds durable authorization rounds with **at most five attempts per
+round**, an absolute scheduling deadline, and explicit resume after a
+committed failure or limit. Both SQLite and Blob support its create-only
+records. Limits are not reset by task recovery or transport retry; ambiguous
+execution claims stay blocked rather than triggering another model call.
+
+The native adapter uses pinned `azure-ai-agentserver-core==2.1.0` with
+resilience explicitly enabled and framework exception retries disabled.
+The application ledger, not SDK task-record retention, protects completed
+work. Status is read-only and does not call an SDK reconnection method.
+
+From `information-extraction`, run the bounded **synthetic-only** SDK smoke:
+
+```powershell
+& .\.venv\Scripts\python.exe -m pip install -e '.[hosted]'
+& .\.venv\Scripts\python.exe .\scripts\batch_smoke.py
+```
+
+This uses the actual SDK's public `AgentServerHost` lifespan with its local
+JSON-file task provider and local execution ledger. It demonstrates a one-attempt limit followed by explicit
+resume: `limited` then `completed`, revision 2, two synthetic calls, zero
+real model calls. It shuts down its local runtime and removes temporary
+files. It needs no Azure login or resource configuration.
+
+The harness explicitly selects local state and does not bind an HTTP server.
+It validates local host startup/shutdown, not a deployed invocation route,
+managed task-service recovery, browser disconnection, or managed-identity
+authorization. See [native batch usage and limitations](docs/native-batch.md)
+and the [hosting feasibility decision](docs/batch-hosting-feasibility.md).
+
 ## Storage and scope limitations
 
 `Store` is the narrow internal storage seam implemented by `SQLiteStore` and
@@ -330,12 +367,13 @@ not a large-document storage design. See [Blob contracts and smoke commands](doc
 for ambiguous-write handling, integrity checks, and retention limitations.
 
 Not implemented: Foundry hosting, Agent Framework/Invocations integration,
-managed-identity deployment, browser/UI/HTTP transport, a daemon or
-bounded batch driver, deadlines/budgets, input normalization, generalized
+managed-identity deployment, browser/UI/HTTP transport, a deployed batch
+worker, total-token or billed-cost enforcement, input normalization, generalized
 schemas, evaluation, semantic validation, or review operations.
 
-The offline suites and separate live model/storage probes provide partial
-evidence for G0-02 through G0-07 and storage access controls. They do **not**
+The offline suites, local native-batch smoke, and separate live model/storage
+probes provide partial evidence for G0-02 through G0-08 and storage access
+controls. They do **not**
 pass the full [G0 validation gate](docs/g0-validation-plan.md), hosted startup,
 browser/operator authorization, managed-identity lifecycle, cost limits,
 maintainer alignment, or cleanup of cloud resources.

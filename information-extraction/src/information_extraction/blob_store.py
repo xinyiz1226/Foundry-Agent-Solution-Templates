@@ -37,6 +37,21 @@ class BlobStore:
     def _job(self, job_id):
         return f"{self.prefix}/jobs/{_hash(job_id)}"
 
+    def read_batch_record(self, key: str) -> str | None:
+        validate_identifier(key)
+        saved = self._load(f"{self.prefix}/batch/{key}.json", "batch", optional=True)
+        return None if saved is None else _json(saved[0])
+
+    def create_batch_record(self, key: str, payload: str) -> str:
+        validate_identifier(key)
+        self._put(
+            f"{self.prefix}/batch/{key}.json", "batch", json.loads(payload), exclusive=True,
+        )
+        saved = self.read_batch_record(key)
+        if saved is None:
+            raise IntegrityError("batch_record_missing")
+        return saved
+
     def _name(self, job_id, kind, revision=None):
         base = self._job(job_id)
         return f"{base}/{kind}.json" if revision is None else f"{base}/{kind}/{revision:020d}.json"

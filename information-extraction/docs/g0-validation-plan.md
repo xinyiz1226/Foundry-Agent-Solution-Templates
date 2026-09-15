@@ -9,8 +9,10 @@ UI or a conversational model responsible for batch progression.
 This document defines the complete G0 validation plan. The local execution
 subset now has synthetic evidence, alongside separate live model and Azure
 Blob probes, as recorded below; the full G0 gate has not passed. A dedicated
-storage slice has been deployed. No workflow/web hosting service has been
-selected. Maintainer alignment is also still pending.
+storage slice has been deployed. Foundry native resilient tasks Preview is
+selected for a [model-free batch feasibility slice](batch-hosting-feasibility.md);
+the hosted path is not deployed or validated. Web hosting remains unselected,
+and maintainer alignment is also still pending.
 
 Read alongside the [implementation plan](implementation-plan.md) and
 [source migration inventory](migration-inventory.md).
@@ -46,16 +48,45 @@ corruption, source evidence resolution, and unknown versus observed usage.
 
 | Probes | Current evidence | Remaining scope |
 | --- | --- | --- |
-| G0-01 | Source imports succeed in local Python 3.13.15. | Clean package build, hosted startup and readiness remain unverified. |
+| G0-01 | Source imports succeed in local Python 3.13.15; the batch smoke enters and exits the public `AgentServerHost` lifespan with an explicitly local task provider. | Clean package build, deployed startup and managed readiness remain unverified. |
 | G0-02 through G0-06 | Offline SQLite/Blob contract tests cover ownership, replay, failure and interruption. Live Blob smoke covers commits, fresh processes, historical replay and handled failure/resume. | Live concurrency/unknown-interruption injection and actual hosted workflow recovery remain unverified. |
 | G0-07 | Offline identity/revision and Blob digest/length/ETag checks exercised; valid live Blob history restored successfully. | No live corruption injection or hosted restoration proof. |
-| G0-08/09/11 | Not run. | No durable batch driver, browser, or hosted lifecycle proof. |
+| G0-08 | Local native SDK smoke: one start reaches an attempt limit; explicit resume completes the fixture. Offline contracts cover durable limits, handler reentry, and obsolete-round blocking. | No managed Foundry backend/disconnect or live Blob batch verification. |
+| G0-09/11 | Not run. | No browser or hosted lifecycle proof. |
 | G0-10 | Storage controls, Entra CLI operator access, and unauthenticated data-plane denial verified. | Designated web-operator authorization and downstream managed identities remain unverified. |
 | G0-12 | Storage ownership and costs documented; account and synthetic prefix intentionally retained. | Cloud cleanup has not been exercised. |
 
 Run the exact local command from the README to reproduce the suite. The
 offline evidence alone does not establish Azure behavior; the live probes
 cover only their stated paths. Neither establishes exactly-once model execution.
+
+### Native batch evidence: September 15, 2026
+
+The [native batch slice](native-batch.md) passed the local suite with the
+actual installed AgentServer Core 2.1.0 SDK. Its model-free smoke moved from
+`limited` to `completed` through explicit resume, reaching revision 2 with
+two synthetic calls and zero real model calls. The task runtime and temporary
+files were cleaned up after the command.
+
+The developer smoke uses the public `AgentServerHost` lifespan with an
+explicitly local JSON-file provider, without starting an HTTP server. Its
+compatibility test rejects network/DNS/server-bind operations and verifies
+cleanup after success and controlled failure. This proves local host
+startup/shutdown, not managed provider availability. Separate private
+task-manager tests wait for terminal SDK task-record deletion and confirm
+that application inspection and duplicate start still do not repeat work.
+
+Offline SQLite/Blob contracts exercise persisted deadlines and attempt
+allowances, registration uncertainty, concurrent requests, handled
+failure/resume, and old-round redelivery after a newer round advances.
+Subprocess checks distinguish recovery after a known committed attempt from
+blocking an unresolved claim. The Blob batch checks use a fake data plane;
+the earlier live Blob evidence covers the one-attempt execution ledger, not
+these new batch authorization records.
+
+No new cloud resource or real model call was used for this slice. Hosted
+lease recovery, operator authentication, downstream managed identities, and
+cloud lifecycle probes are still outstanding.
 
 ## 1. Smallest demonstration
 
@@ -85,7 +116,7 @@ Responses wrapper, or a full deployment template merely to prove this path.
 | --- | --- | --- |
 | Web hosting | Evaluate an Azure-managed web host for the existing Streamlit process; App Service is a candidate, not a selection. | Startup/dependency support, interactive connection behavior, Entra integration, identity, restart behavior, costs, and cleanup |
 | Batch driver lifetime | Prefer deterministic bounded progression outside browser-request and page-rerun lifetimes. | A supported host lifecycle that survives client disconnect and has documented cancellation/deadline behavior |
-| Driver placement | First investigate whether the chosen Foundry hosting contract can own the required lifecycle. If not, assess a durable Azure orchestration module. | Real start/status/resume behavior and failure recovery; explicitly approve any additional infrastructure before adding it |
+| Driver placement | Operator selected Foundry native resilient tasks Preview for model-free feasibility; Durable Functions remains a fallback, not an approved deployment. | Real SDK compatibility, persisted application limits, and later hosted start/status/resume and process recovery; approve resource changes separately |
 | Deployment interface | Preserve the existing Invocations approach unless evidence requires a change. | Clean package readiness and a supported source deployment/invocation path; confirm what azd can express |
 | Identity | Entra operator access plus server-side managed identities. | Separate operator authorization and downstream resource roles; do not assume login alone grants mutation permission |
 

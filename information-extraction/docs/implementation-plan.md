@@ -8,7 +8,10 @@ A preliminary [offline execution core](../README.md) is now implemented;
 the cloud workflow, workbench, and complete G0 gate remain outstanding.
 
 Execution planning is detailed in the [minimal migration inventory](migration-inventory.md)
-and [G0 technical validation plan](g0-validation-plan.md). These documents
+and [G0 technical validation plan](g0-validation-plan.md). The
+[batch hosting feasibility decision](batch-hosting-feasibility.md) selects
+Foundry native resilient tasks Preview for a model-free G0 implementation,
+subject to later hosted verification. These documents
 distinguish inspected source behavior from proposed work and unverified cloud
 capabilities.
 
