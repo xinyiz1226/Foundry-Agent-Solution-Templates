@@ -59,8 +59,10 @@ The installed Invocations 1.1.0 endpoint populates request context by copying
 The opaque call identifier is specific to container protocol 2.0.0; the
 historical deployment recorded an Invocations `ProtocolVersionRecord` of
 `1.0.0`. That record is not evidence of the protocol-2.0.0 identity contract.
-Reconcile the documented version requirements with the observed deployment
-before selecting a declaration for the next probe.
+The subsequent [guarded update](guarded-deployment.md) reconciled the SDK
+field and recorded service acceptance of an explicit `2.0.0` declaration
+for version 2. Its endpoint remains disabled; runtime identity propagation
+still needs a bounded probe.
 
 Consequently, do not implement an operator allowlist by comparing
 `request.state.user_id` with an Entra object ID, parsing the call identifier,
@@ -207,9 +209,12 @@ network-private endpoints require a separately approved network design.
 
 Steps 2-3 now have code and local fixture evidence. A separately approved
 identity slice configured the existing resources, with readback evidence.
-Repeatable deployment definitions, web packaging/deployment, the necessary
-backend update and the live acceptance matrix remain separate work and
-approvals; the existing deployed agent has not been changed.
+The subsequent [guarded deployment slice](guarded-deployment.md) added web
+packaging and created backend version 2 without enabling or invoking it.
+Repeatable deployment definitions, private web upload/build/startup, and
+the live acceptance matrix remain unfinished. A separate trusted artifact
+container and any necessary upload grant require approval; the web host
+remains stopped/public-access-disabled.
 
 Cloud transport must distinguish a durable job ID from the gateway's
 ephemeral `agent_session_id` routing selector. Reuse a known selector within

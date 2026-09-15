@@ -150,8 +150,13 @@ Azure Identity, and PyJWT's cryptographic support. It excludes the hosted
 worker and real-model SDK extras. A future App Service startup must launch
 Streamlit against **`cloud_workbench.py`**, with the approved host/port and
 CORS/XSRF settings. It must not run the local launcher or hosted `main.py`.
-Web source packaging/deployment wiring and identity resource definitions
-are still separate work; the hosted source ZIP allowlist is unchanged.
+The [separate web source target](guarded-deployment.md#separate-source-artifacts)
+is available through `scripts/package_source.py --target web --check`.
+It maps `requirements-web.txt` to the ZIP root `requirements.txt`; the
+hosted target and its 14-file allowlist are unchanged. Web upload, remote
+build/startup wiring, and repeatable identity resource definitions remain
+separate work. The same guarded slice created backend version 2 without
+enabling or invoking it.
 
 ## Reproduce the local checks
 

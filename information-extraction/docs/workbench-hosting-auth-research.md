@@ -2,7 +2,9 @@
 
 **Sources retrieved:** September 15, 2026. **Scope:** primary-source research
 and local SDK inspection, not deployment or a target-resource permissions
-audit. No Azure resource changes or real model calls were made.
+audit. The original research round made no Azure resource changes or real
+model calls. The protocol section links a subsequent, separately recorded
+guarded deployment result; it does not turn research into runtime evidence.
 
 ## Recommendation
 
@@ -168,8 +170,23 @@ identify supporting SDK minimums. They include deprecation dates for older
 protocol/backend paths. Meanwhile, this repository's historical successful
 probe records `ProtocolVersionRecord(protocol="invocations",
 version="1.0.0")` with Projects 2.4.0. That record does not establish the
-new identity guarantee, and the documentary version/timeline discrepancy
-has not been reconciled with the target service. [S16][S18]
+new identity guarantee. The initial documentary discrepancy required
+reconciliation with the target service. [S16][S18]
+
+Subsequent inspection found that official azd YAML mapping copies each
+`protocol.Version` directly into `ProtocolVersionRecord.Version`, then uses
+the same list for code and container definitions. Its omitted-protocol
+default is Responses `2.0.0`; the authoring/reference examples also declare
+version `2.0.0`. There is no need to invent a separate
+`container_protocol_version` SDK field. [S25][S26]
+
+The [guarded backend update](guarded-deployment.md) then submitted
+`ProtocolVersionRecord(protocol="invocations", version="2.0.0")`.
+The target service returned version 2 `active` with that exact record and
+the verified source hash, while retaining endpoint disablement. This
+establishes accepted configuration, not live caller identity, downstream
+context forwarding, or resilient-task compatibility. Version 1 and its
+historical `1.0.0` evidence remain unchanged.
 
 REST API `v1`, SDK package versions, protocol records, and the platform's
 container identity contract must not be treated as interchangeable version
@@ -267,3 +284,5 @@ with the explicit caveats above.
 - **[S22]** [Container-scoped Blob data roles](https://github.com/MicrosoftDocs/azure-docs/blob/main/articles/storage/blobs/assign-azure-role-data-access.md#L79-L103).
 - **[S23]** [Storage private endpoint versus public endpoint](https://github.com/MicrosoftDocs/azure-docs/blob/main/articles/storage/common/storage-private-endpoints.md#L23-L45).
 - **[S24]** [Hosted-agent lifecycle](https://github.com/MicrosoftDocs/azure-ai-docs/blob/main/articles/foundry/agents/how-to/manage-hosted-agent.md).
+- **[S25]** [Official azd hosted protocol mapping for code and image deployment](https://github.com/Azure/azure-dev/blob/main/cli/azd/extensions/azure.ai.agents/internal/pkg/agents/agent_yaml/map.go).
+- **[S26]** [Foundry azure.yaml authoring](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/author-azure-yaml) and [azure.yaml reference](https://learn.microsoft.com/en-us/azure/foundry/agents/reference/azure-yaml-reference).

@@ -76,8 +76,13 @@ The empty site is stopped with public access disabled; its retained B1 plan
 continues billing. A subsequent [approved identity slice](docs/web-identity-configuration.md)
 configured single-operator Easy Auth, its protected login credential, and an
 agent-scoped web managed identity. Application deployment and live
-authorization checks remain separate approvals; the old hosted backend
-also needs an approved update for the `current` interface. Protecting only
+authorization checks remain separate gates. A [guarded deployment slice](docs/guarded-deployment.md)
+added distinct web packaging and created backend version 2 with the
+`current` interface and an explicit Invocations `2.0.0` declaration, while
+keeping its endpoint disabled. The web ZIP is prepared but not uploaded:
+an isolated private deployment container and any necessary operator upload
+grant still need approval. No version-2 runtime or browser acceptance is
+claimed. Protecting only
 the web login does not protect a separately callable Foundry endpoint.
 
 ## Run the offline checks

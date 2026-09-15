@@ -86,8 +86,10 @@ reuse the same identifier and deadline, not generate a fresh allowance.
 Compatible saved mutations retain their original deadlines after expiration.
 
 The current source adds read-only current-job discovery for the
-[local workbench](local-workbench.md). **This addition has not been redeployed**
-to the previously observed hosted agent. `current` returns:
+[local workbench](local-workbench.md). The [guarded backend update](guarded-deployment.md)
+uploaded it as version 2, with the endpoint still disabled and no live
+`current` invocation. The historical version-1 smoke predates this action.
+`current` returns:
 
 ```json
 {
@@ -167,7 +169,7 @@ definition = HostedAgentDefinition(
         dependency_resolution="remote_build",
     ),
     protocol_versions=[
-        ProtocolVersionRecord(protocol="invocations", version="1.0.0"),
+        ProtocolVersionRecord(protocol="invocations", version="2.0.0"),
     ],
     environment_variables={
         **application_settings,
@@ -185,6 +187,11 @@ with Path(source_zip).open("rb") as code:
         metadata=ownership_metadata,
     )
 ```
+
+This is the explicitly updated declaration accepted for version 2, not a
+relabelling of the historical `1.0.0` smoke. Acceptance of the definition
+does not verify protocol-2 identity forwarding or native-task behavior;
+see the [guarded update evidence](guarded-deployment.md).
 
 **Creation starts provisioning; there is no separate compute-start step.**
 Choose the existing project through the client endpoint, not a new region

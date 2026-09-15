@@ -151,6 +151,22 @@ No Azure resource, deployment, or real model was used. This is local UI and
 reconnect evidence, not hosted authentication, an unexpected in-flight crash
 probe, a live browser-disconnect timing test, or a completed G0 gate.
 
+### Guarded deployment evidence: September 15, 2026
+
+The [guarded update](guarded-deployment.md) produced distinct 14-file hosted
+and 15-file web archives with isolated package checks. Foundry accepted
+backend version 2 with the verified current-source digest and an explicit
+Invocations `2.0.0` declaration, preserving settings, runtime identity and
+endpoint disablement. Its four historical sessions still report `idle`.
+No version-2 invocation or real-model call was made.
+
+The web host has its separately configured identity/login controls but
+remains stopped/public-access-disabled without application code. Private
+web deployment needs approval for a trusted artifact container and any
+necessary upload grant. Protocol-2 runtime behavior, negative caller
+tests, web startup and browser acceptance remain open; provisioning
+status and local packaging checks do not close G0-10.
+
 ## 1. Smallest demonstration
 
 Use a pre-registered, approved sample, a fixed extraction configuration, and
@@ -177,7 +193,7 @@ Responses wrapper, or a full deployment template merely to prove this path.
 
 | Decision | Candidate direction | Evidence needed before selection |
 | --- | --- | --- |
-| Web hosting | A Linux B1 plan and empty site were created in operator-selected West US 2 after East US quota rejection. Python 3.13 is configured; the site is stopped/public-access-disabled, with no code or identity deployed. | Application/dependency startup, interactive connection behavior, Entra integration, identity, restart behavior, and cleanup |
+| Web hosting | A Linux B1 plan and site were created in operator-selected West US 2 after East US quota rejection. Python 3.13, Easy Auth and a web managed identity are configured; the site is stopped/public-access-disabled without application code. | Approved private artifact staging, application/dependency startup, live Entra/identity behavior, interactive connections, restart behavior, and cleanup |
 | Batch driver lifetime | Prefer deterministic bounded progression outside browser-request and page-rerun lifetimes. | A supported host lifecycle that survives client disconnect and has documented cancellation/deadline behavior |
 | Driver placement | Operator selected Foundry native resilient tasks Preview for model-free feasibility; Durable Functions remains a fallback, not an approved deployment. | Real SDK compatibility, persisted application limits, and later hosted start/status/resume and process recovery; approve resource changes separately |
 | Deployment interface | Preserve the existing Invocations approach unless evidence requires a change. | Clean package readiness and a supported source deployment/invocation path; confirm what azd can express |

@@ -21,6 +21,20 @@ ALLOWED_FILES = (
         "execution.py", "hosted_app.py", "hosted_lifecycle.py", "native_batch.py", "sample.py", "sqlite_store.py",
     )),
 )
+WEB_ALLOWED_FILES = (
+    Path("cloud_workbench.py"),
+    Path("requirements.txt"),
+    Path("pyproject.toml"),
+    *(Path("src") / "information_extraction" / name for name in (
+        "__init__.py", "batch.py", "codec.py", "contracts.py", "execution.py",
+        "sample.py", "sqlite_store.py", "cloud_workbench_client.py", "workbench_auth.py",
+        "workbench_client.py", "workbench_cloud.py", "workbench_ui.py",
+    )),
+)
+TARGETS = {
+    "hosted": (ALLOWED_FILES, Path("requirements.txt")),
+    "web": (WEB_ALLOWED_FILES, Path("requirements-web.txt")),
+}
 MAX_SOURCE_FILE_BYTES = 1024 * 1024
 MAX_TOTAL_SOURCE_BYTES = 4 * 1024 * 1024
 
@@ -36,7 +50,9 @@ import sys
 import json
 from zipfile import ZipFile
 
+target = sys.argv[1]
 network_attempts = 0
+service_attempts = 0
 
 def deny_network(*args, **kwargs):
     global network_attempts
@@ -47,6 +63,17 @@ socket.socket.connect = deny_network
 socket.socket.connect_ex = deny_network
 socket.socket.bind = deny_network
 socket.getaddrinfo = deny_network
+socket.socket.sendto = deny_network
+if hasattr(socket.socket, "sendmsg"):
+    socket.socket.sendmsg = deny_network
+if target == "web":
+    # urllib3 otherwise probes IPv6 support by binding localhost during SDK import.
+    socket.has_ipv6 = False
+
+def deny_service(*args, **kwargs):
+    global service_attempts
+    service_attempts += 1
+    raise RuntimeError("package_check_service_forbidden")
 
 try:
     import setuptools.build_meta
@@ -60,27 +87,56 @@ try:
     with ZipFile(wheels / wheel_name) as wheel:
         wheel.extractall(installed)
     sys.path.insert(0, str(installed))
-    spec = importlib.util.spec_from_file_location("packaged_main", root / "main.py")
-    if spec is None or spec.loader is None:
-        raise RuntimeError("entrypoint_loader_missing")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    if not callable(module.main):
-        raise RuntimeError("entrypoint_missing")
-    for name, loaded in tuple(sys.modules.items()):
-        if name == "information_extraction" or name.startswith("information_extraction."):
-            if not Path(loaded.__file__).resolve().is_relative_to(installed.resolve()):
-                raise RuntimeError("ambient_source_imported")
-    if network_attempts:
-        raise RuntimeError("package_check_network_attempted")
     result = {
         "wheel_built": True,
         "entrypoint_imported": True,
         "isolated": bool(sys.flags.isolated),
         "network_calls": 0,
-        "core_version": importlib.metadata.version("azure-ai-agentserver-core"),
-        "invocations_version": importlib.metadata.version("azure-ai-agentserver-invocations"),
     }
+    if target == "hosted":
+        spec = importlib.util.spec_from_file_location("packaged_main", root / "main.py")
+        if spec is None or spec.loader is None:
+            raise RuntimeError("entrypoint_loader_missing")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        if not callable(module.main):
+            raise RuntimeError("entrypoint_missing")
+        result.update(
+            core_version=importlib.metadata.version("azure-ai-agentserver-core"),
+            invocations_version=importlib.metadata.version("azure-ai-agentserver-invocations"),
+        )
+    else:
+        import httpx
+        from azure.identity import ManagedIdentityCredential
+        httpx.Client.send = deny_service
+        httpx.AsyncClient.send = deny_service
+        ManagedIdentityCredential.__init__ = deny_service
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            from streamlit.testing.v1 import AppTest
+            from information_extraction.workbench_auth import OperatorAuthorizer
+            # This transport is lazy-imported by the page after login; verify it too.
+            from information_extraction.cloud_workbench_client import CloudWorkbenchClient
+            OperatorAuthorizer.__init__ = deny_service
+            OperatorAuthorizer.authorize = deny_service
+            CloudWorkbenchClient.__init__ = deny_service
+            page = AppTest.from_file(str(root / "cloud_workbench.py"), default_timeout=15).run()
+        if (
+            page.exception or len(page.error) != 1
+            or page.error[0].value != "Cloud authorization configuration is missing or invalid. Access is blocked."
+            or page.table or page.code or page.selectbox or page.button
+            or "information_extraction.workbench_cloud" not in sys.modules
+        ):
+            raise RuntimeError("entrypoint_not_fail_closed")
+        result.update(
+            target="web", login_configuration_blocked=True, service_calls=0,
+            streamlit_version=importlib.metadata.version("streamlit"),
+        )
+    for name, loaded in tuple(sys.modules.items()):
+        if name == "information_extraction" or name.startswith("information_extraction."):
+            if not Path(loaded.__file__).resolve().is_relative_to(installed.resolve()):
+                raise RuntimeError("ambient_source_imported")
+    if network_attempts or service_attempts:
+        raise RuntimeError("package_check_network_attempted")
 except ModuleNotFoundError as error:
     print(json.dumps({"error": "package_check_missing_dependency", "dependency": error.name}))
     sys.exit(1)
@@ -103,7 +159,21 @@ def _no_links(path: Path) -> None:
             raise PackageError("links_not_allowed")
 
 
-def build_package(project_root: Path, output: Path) -> dict:
+def _target_files(target: str) -> tuple:
+    try:
+        return TARGETS[target]
+    except KeyError:
+        raise PackageError("unknown_package_target") from None
+
+
+def _check_web_requirements(content: bytes) -> None:
+    if content not in (b".[cloud-workbench]\n", b".[cloud-workbench]\r\n"):
+        raise PackageError("web_requirements_mismatch")
+
+
+def build_package(project_root: Path, output: Path, *, target: str = "hosted") -> dict:
+    """Build one target; web maps requirements-web.txt to root requirements.txt."""
+    allowed_files, requirements_source = _target_files(target)
     project_root, output = project_root.absolute(), output.absolute()
     _no_links(project_root)
     _no_links(output)
@@ -116,8 +186,8 @@ def build_package(project_root: Path, output: Path) -> dict:
         raise PackageError("artifact_path_must_be_outside_source")
     files = []
     total = 0
-    for relative in sorted((Path(name) for name in ALLOWED_FILES), key=lambda path: path.as_posix()):
-        source = project_root / relative
+    for relative in sorted((Path(name) for name in allowed_files), key=lambda path: path.as_posix()):
+        source = project_root / (requirements_source if relative == Path("requirements.txt") else relative)
         _no_links(source)
         if not source.is_file():
             raise PackageError("source_file_missing")
@@ -128,6 +198,8 @@ def build_package(project_root: Path, output: Path) -> dict:
         total += len(content)
         if len(content) > MAX_SOURCE_FILE_BYTES or total > MAX_TOTAL_SOURCE_BYTES:
             raise PackageError("source_size_limit_exceeded")
+        if target == "web" and relative == Path("requirements.txt"):
+            _check_web_requirements(content)
         files.append((relative.as_posix(), content))
     buffer = io.BytesIO()
     with ZipFile(buffer, "w", compression=ZIP_STORED) as archive:
@@ -159,13 +231,14 @@ def build_package(project_root: Path, output: Path) -> dict:
     }
 
 
-def check_package(artifact: Path) -> dict:
+def check_package(artifact: Path, *, target: str = "hosted") -> dict:
     """Build in isolation and import the wheel's entrypoint with preinstalled SDKs."""
+    allowed_files, _ = _target_files(target)
     artifact = artifact.absolute()
     _no_links(artifact)
     if artifact.stat().st_size > MAX_TOTAL_SOURCE_BYTES + 65536:
         raise PackageError("archive_size_limit_exceeded")
-    expected = {Path(name).as_posix() for name in ALLOWED_FILES}
+    expected = {Path(name).as_posix() for name in allowed_files}
     with TemporaryDirectory(prefix="package-check-", dir=artifact.parent) as temporary:
         source = Path(temporary).resolve() / "source"
         source.mkdir()
@@ -181,16 +254,28 @@ def check_package(artifact: Path) -> dict:
                     for entry in entries
                 ) or sum(entry.file_size for entry in entries) > MAX_TOTAL_SOURCE_BYTES:
                     raise PackageError("archive_member_invalid")
+                if target == "web":
+                    _check_web_requirements(archive.read("requirements.txt"))
                 archive.extractall(source)
         except BadZipFile:
             raise PackageError("invalid_source_archive") from None
         environment = dict(os.environ)
         environment.pop("PYTHONPATH", None)
         environment.pop("PYTHONHOME", None)
+        if target == "web":
+            # No live identity, endpoint, telemetry or secret configuration reaches the page.
+            environment = {
+                key: value for key, value in environment.items()
+                if key.upper() in {"SYSTEMROOT", "WINDIR", "SYSTEMDRIVE", "COMSPEC", "PATH"}
+            }
+            environment.update({
+                key: str(source.parent) for key in ("HOME", "USERPROFILE", "TEMP", "TMP")
+            })
+            environment["STREAMLIT_BROWSER_GATHER_USAGE_STATS"] = "false"
         environment.update(PIP_NO_INDEX="1", PIP_DISABLE_PIP_VERSION_CHECK="1", PIP_CONFIG_FILE=os.devnull)
         try:
             checked = subprocess.run(
-                [sys.executable, "-I", "-c", BUILD_AND_IMPORT],
+                [sys.executable, "-I", "-c", BUILD_AND_IMPORT, target],
                 cwd=source, env=environment, capture_output=True, text=True, timeout=60, check=False,
             )
         except subprocess.TimeoutExpired:
@@ -209,13 +294,17 @@ def check_package(artifact: Path) -> dict:
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=root / ".local-data" / "synthetic-agent.zip")
+    parser.add_argument("--target", choices=tuple(TARGETS), default="hosted")
+    parser.add_argument("--output", type=Path)
     parser.add_argument("--check", action="store_true", help="Build/import the artifact offline with installed SDKs")
     args = parser.parse_args()
+    output = args.output or root / ".local-data" / (
+        "cloud-workbench.zip" if args.target == "web" else "synthetic-agent.zip"
+    )
     try:
-        result = build_package(root, args.output)
+        result = build_package(root, output, target=args.target)
         if args.check:
-            result["check"] = check_package(args.output)
+            result["check"] = check_package(output, target=args.target)
     except PackageError as error:
         print(json.dumps({"error": str(error)}))
         return 1

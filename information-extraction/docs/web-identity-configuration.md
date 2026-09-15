@@ -133,13 +133,16 @@ independent effective Foundry invocation grant.
 
 ## Next approval and acceptance gates
 
-The existing agent's source binding is still the historical `c852762`
+At the end of this identity slice, the agent's source binding was the historical `c852762`
 archive recorded in [the hosted smoke](hosted-smoke-results.md). It predates
 the workbench's `current` action and durable HTTP intent discovery.
 **Deploying only the web page would not provide the required backend
 interface.** No agent version was changed in this identity slice.
 
-Before a separately approved synthetic deployment:
+The subsequent [guarded deployment slice](guarded-deployment.md) completed
+item 1 below and uploaded backend version 2 without enabling or invoking it.
+Web deployment remains blocked on approval for trusted private artifact
+staging. The following gates were recorded at the identity handoff:
 
 1. Reconcile the hosted protocol declaration and prepare distinct,
    allowlisted web and updated backend artifacts. Do not substitute the
