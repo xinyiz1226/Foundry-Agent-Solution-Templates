@@ -119,3 +119,16 @@ were not removed or reconfigured.
 Environment-specific endpoints, principal IDs, role-assignment IDs, session
 identifiers, request bodies, and raw operational logs remain outside the
 public contribution.
+
+## Post-probe robustness change
+
+A later lifecycle guard prevents an old task manager's delayed cleanup from
+clearing a replacement manager's SDK singleton. Constructor-failure coverage
+also verifies that owned provider and credential resources close before
+lifespan entry fails.
+
+That change passed the offline suite and isolated package check but **was
+not redeployed**. Its rebuilt archive is 95,482 bytes, SHA-256
+`6eb07d260c94e39bc0383d5cebad7c456b14e0ddaca208fe51e591541b43e87a`.
+The live evidence above remains bound to `c852762` and the original `7d72...`
+archive. The probe endpoint was not re-enabled for this follow-up.

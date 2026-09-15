@@ -1,4 +1,5 @@
 import asyncio
+from functools import wraps
 import logging
 import os
 from pathlib import Path
@@ -228,6 +229,47 @@ class HostedLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.credentials), 1)
         self.credentials[0].close.assert_awaited_once()
         self.assertEqual(self.events, ["native_credential", "blob_http", "blob_credential"])
+
+    async def test_manager_constructor_failure_closes_provider_and_credential_before_yield(self):
+        from azure.ai.agentserver.core.tasks._manager import TaskManager
+
+        @wraps(TaskManager.__init__)
+        def failed_constructor(manager, *args, **kwargs):
+            raise RuntimeError("manager_constructor_failure")
+
+        with (
+            patch.object(TaskManager, "__init__", failed_constructor),
+            self.assertRaisesRegex(ExecutionError, "^synthetic_host_lifecycle_failed$"),
+        ):
+            async with self.app.router.lifespan_context(self.app):
+                self.fail("manager_constructor_must_not_succeed")
+        self.assertEqual(self.events, ["native_http", "native_credential", "blob_http", "blob_credential"])
+
+    async def test_final_cleanup_does_not_clear_a_replacement_manager(self):
+        from azure.ai.agentserver.core.tasks._manager import TaskManager, get_task_manager, set_task_manager
+
+        replacement = TaskManager(self.app.config, provider=Mock())
+        shutdown = TaskManager.shutdown
+
+        async def replace_after_drain(manager):
+            await shutdown(manager)
+            set_task_manager(replacement)
+
+        try:
+            with (
+                patch.object(TaskManager, "shutdown", replace_after_drain),
+                self.assertLogs("information_extraction", level="ERROR") as logs,
+                self.assertRaisesRegex(ExecutionError, "^synthetic_host_lifecycle_failed$"),
+            ):
+                async with self.app.router.lifespan_context(self.app):
+                    pass
+            self.assertIs(get_task_manager(), replacement)
+            self.assertIn("native_host_manager_ownership_changed", str(logs.output))
+            self.assertEqual(self.events, [
+                "manager_drained", "native_http", "native_credential", "blob_http", "blob_credential",
+            ])
+        finally:
+            await shutdown(replacement)
 
     async def test_shutdown_joins_inflight_batch_worker_before_closing_blob_and_native_clients(self):
         import httpx

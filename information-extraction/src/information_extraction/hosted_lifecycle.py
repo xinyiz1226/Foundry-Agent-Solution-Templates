@@ -56,7 +56,7 @@ def _contract(host: InvocationAgentServerHost) -> None:
 def _manager_contract(manager: TaskManager, provider: HostedTaskProvider) -> None:
     try:
         compatible = (
-            manager._provider is provider
+            manager.provider is provider
             and type(manager._active_tasks) is dict
             and type(manager._timeout_watchdogs) is dict
             and isinstance(manager._shutdown_event, asyncio.Event)
@@ -70,6 +70,17 @@ def _manager_contract(manager: TaskManager, provider: HostedTaskProvider) -> Non
         _mismatch()
 
 
+def _owns_singleton(manager: TaskManager) -> bool:
+    try:
+        current = get_task_manager()
+    except TaskManagerNotInitialized:
+        return False
+    if current is not manager:
+        logger.error("native_host_manager_ownership_changed")
+        raise ExecutionError("native_host_manager_ownership_changed")
+    return True
+
+
 async def _drain(manager: TaskManager) -> None:
     # These private ownership fields are specific to Core 2.1.0.
     manager._shutdown_event.set()
@@ -81,7 +92,8 @@ async def _drain(manager: TaskManager) -> None:
         if active.renewal_task is not None:
             pending.add(active.renewal_task)
     try:
-        await manager.shutdown()
+        if _owns_singleton(manager):
+            await manager.shutdown()
     finally:
         for task in pending:
             if not task.done() and not task.cancelling():
@@ -89,7 +101,8 @@ async def _drain(manager: TaskManager) -> None:
         try:
             results = await asyncio.gather(*pending, return_exceptions=True)
         finally:
-            set_task_manager(None)
+            if _owns_singleton(manager):
+                set_task_manager(None)
     if any(isinstance(result, BaseException) and not isinstance(result, asyncio.CancelledError) for result in results):
         raise ExecutionError("native_host_task_drain_failed")
 
