@@ -5,8 +5,9 @@ version **2**, with the current-job discovery and lifecycle fixes. Foundry
 reports that version as `active`, but the agent endpoint remains
 **disabled**. After a subsequent explicit approval, the web ZIP completed
 remote Oryx build and deployment. Its existing Linux App Service remains
-**stopped with public access disabled**; runtime and browser acceptance have
-not been exercised. **G0 is incomplete.**
+**stopped with public access disabled**. A later bounded private probe
+confirmed platform startup, not Streamlit/browser or backend integration
+acceptance. **G0 is incomplete.**
 
 Neither slice enabled an endpoint, invoked a hosted session, called a real
 model, or changed directory configuration. The later approval added only
@@ -161,9 +162,10 @@ does not replace the separate inherited-group/effective-caller audit.
 
 The approved operator grant and source blob remain for subsequent
 deployments; SAS expiry is not resource cleanup or revocation of that role.
-The deployed application has **not been started or browser-tested**.
-Public access/start and agent
-enablement require the finite synthetic probe boundary, including a real
+The source-deployment slice did not start the application. A subsequently
+approved private startup probe is recorded below; browser functionality
+remains unverified. Public access and agent enablement still require the
+finite synthetic probe boundary, including a real
 unapproved non-administrator test identity, direct/alternate-route access
 checks, WebSocket expiry/reconnect, and owned-session stop conditions.
 No real-model invocation is authorized by this slice.
@@ -173,6 +175,60 @@ Sources: [network-secured ZIP deployment](https://learn.microsoft.com/en-us/azur
 and [user-delegation SAS permissions](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-user-delegation-sas-create-cli).
 ARM status and build evidence used [OneDeploy status](https://learn.microsoft.com/en-us/rest/api/appservice/web-apps/get-one-deploy-status?view=rest-appservice-2024-11-01)
 and [deployment logs](https://learn.microsoft.com/en-us/rest/api/appservice/web-apps/list-deployment-log?view=rest-appservice-2024-11-01).
+
+## Bounded private startup: platform confirmed, integration still gated
+
+The operator approved controlled startup and synthetic integration at
+`2026-09-15T19:35:10.633+08:00`. Because no ordinary unapproved test identity
+was available, this round kept public access disabled and the Foundry
+agent disabled. It did not create a test user, loosen permissions, invoke
+the agent, or call a model.
+
+The first private start changed ARM site state to `Running`, but ten
+observations returned worker state `Unknown` and effectively empty
+container logs. This was insufficient startup evidence, not a confirmed
+application error. The site was stopped before the next attempt.
+
+One additional bounded probe temporarily enabled **Always On** to trigger
+platform warmup without public traffic. The worker progressed through
+network setup, Python 3.13 image pull, container creation, warmup, and auth
+container startup. Retained ARM container logs recorded:
+
+| Signal | UTC timestamp |
+| --- | --- |
+| Platform startup probe succeeded | `2026-09-15T11:47:16.3529111Z` |
+| Site started | `2026-09-15T11:47:36.8005197Z` |
+
+Two runtime-status observations then reported `Started` with no recorded
+last error. This supports the explanation that the original no-traffic
+probe did not trigger useful worker startup/telemetry. It does not prove
+that Always On is permanently required.
+
+The original checker incorrectly expected worker state `Ready` and a
+Streamlit banner in the platform-log stream, so its exit code was 1 despite
+the platform success signals. The private checker now separates platform
+startup (`Started` plus the successful platform-probe signal) from
+application functionality. Replay of the captured observations accepts
+the platform result while rejecting unknown, starting, errored, and
+probe-unconfirmed states. Original receipts and their exit outcomes were
+retained rather than relabelled.
+
+Each probe admitted at most ten status/log observations within a
+300-second polling window. HTTP operations and cleanup had their own
+timeouts; this is not a hard wall-clock or billing cap. Cleanup stopped
+the owned site, restored `Always On=false`, and verified public access
+remained disabled and Easy Auth unchanged. The retained B1 plan still bills.
+
+**Platform startup is not a browser acceptance result.** No Streamlit
+session, operator login, expired/reconnected WebSocket, web-identity
+gateway call, or version-2 synthetic round was exercised. A same-tenant,
+non-administrator identity not assigned to the web application was
+requested for negative access tests, but was not supplied. That remains a
+live integration gate; do not replace it with an administrator test,
+invent a test identity, or infer isolation from the stopped/private site.
+
+Sources: [Always On platform requests](https://learn.microsoft.com/en-us/azure/app-service/configure-common#configure-general-settings)
+and [ARM container logs](https://learn.microsoft.com/en-us/rest/api/appservice/web-apps/get-web-site-container-logs?view=rest-appservice-2024-11-01).
 
 ## Local verification
 

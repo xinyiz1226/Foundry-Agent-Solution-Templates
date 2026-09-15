@@ -83,8 +83,9 @@ added distinct web packaging and created backend version 2 with the
 keeping its endpoint disabled. After explicit private-staging approval, the
 web ZIP completed remote Oryx build and ARM OneDeploy deployment through a
 dedicated private container and container-scoped operator grant. The web
-app remains stopped/public-access-disabled. No version-2 runtime or
-browser acceptance is claimed. Protecting only
+app remains stopped/public-access-disabled. A later bounded private probe
+confirmed platform startup, then stopped the site and restored Always On
+to false. No version-2 runtime or browser acceptance is claimed. Protecting only
 the web login does not protect a separately callable Foundry endpoint.
 
 ## Run the offline checks

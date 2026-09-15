@@ -163,10 +163,11 @@ No version-2 invocation or real-model call was made.
 The web host has its separately configured identity/login controls but
 remains stopped/public-access-disabled. After explicit approval, a separate
 trusted artifact container and operator-only upload grant enabled private
-ARM OneDeploy delivery with successful Oryx build. Protocol-2 runtime
-behavior, negative caller tests, actual web startup and browser acceptance
-remain open; deployment success and local packaging checks do not close
-G0-10.
+ARM OneDeploy delivery with successful Oryx build. A later bounded private
+probe confirmed platform startup and restored the stopped/private site
+and `Always On=false`. Protocol-2 runtime behavior, negative caller tests,
+Streamlit session behavior and browser acceptance remain open; platform
+startup and local packaging checks do not close G0-10.
 
 ## 1. Smallest demonstration
 

@@ -156,7 +156,8 @@ is available through `scripts/package_source.py --target web --check`.
 It maps `requirements-web.txt` to the ZIP root `requirements.txt`; the
 hosted target and its 14-file allowlist are unchanged. Private web upload,
 remote build and startup configuration are now recorded in the approved
-deployment; actual startup/browser acceptance and repeatable identity
+deployment. A later private probe confirmed platform startup and restored
+the stopped state; Streamlit/browser acceptance and repeatable identity
 resource definitions remain separate work. The guarded slice also created
 backend version 2 without enabling or invoking it.
 
