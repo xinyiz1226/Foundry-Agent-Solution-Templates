@@ -13,10 +13,11 @@ storage slice has been deployed. Foundry native resilient tasks Preview is
 selected for a [model-free batch feasibility slice](batch-hosting-feasibility.md).
 A [bounded hosted probe](hosted-smoke-results.md) completed and its agent was
 disabled afterward. Linux App Service is now the selected web architecture.
-Creation of an empty B1 plan/site was approved but is
-[blocked by zero B1 worker quota](web-host-deployment.md); no web resource
-was created. Identity configuration and application deployment remain
-unapproved and incomplete. Maintainer alignment is also still pending.
+After an East US quota rejection, the operator approved West US 2, where
+[a B1 plan and empty site were created](web-host-deployment.md) in the same
+resource group. The site is stopped/public-access-disabled and the plan
+is retained and billable. Identity configuration and application deployment
+remain unapproved and incomplete. Maintainer alignment is also still pending.
 
 Read alongside the [implementation plan](implementation-plan.md) and
 [source migration inventory](migration-inventory.md).
@@ -174,7 +175,7 @@ Responses wrapper, or a full deployment template merely to prove this path.
 
 | Decision | Candidate direction | Evidence needed before selection |
 | --- | --- | --- |
-| Web hosting | Operator selected Linux App Service and approved one empty B1 plan/site. Python 3.13 and East US B1 are advertised, but provider validation rejects B1 quota zero. No web resources created. | Quota approval, successful resource creation, actual startup/dependency support, interactive connection behavior, Entra integration, identity, restart behavior, and cleanup |
+| Web hosting | A Linux B1 plan and empty site were created in operator-selected West US 2 after East US quota rejection. Python 3.13 is configured; the site is stopped/public-access-disabled, with no code or identity deployed. | Application/dependency startup, interactive connection behavior, Entra integration, identity, restart behavior, and cleanup |
 | Batch driver lifetime | Prefer deterministic bounded progression outside browser-request and page-rerun lifetimes. | A supported host lifecycle that survives client disconnect and has documented cancellation/deadline behavior |
 | Driver placement | Operator selected Foundry native resilient tasks Preview for model-free feasibility; Durable Functions remains a fallback, not an approved deployment. | Real SDK compatibility, persisted application limits, and later hosted start/status/resume and process recovery; approve resource changes separately |
 | Deployment interface | Preserve the existing Invocations approach unless evidence requires a change. | Clean package readiness and a supported source deployment/invocation path; confirm what azd can express |

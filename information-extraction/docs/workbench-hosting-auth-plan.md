@@ -14,10 +14,12 @@ records the observed prerequisites and remaining approvals. Authentication
 is not yet implemented or deployed.
 
 The operator subsequently approved one empty B1 plan/site in the same
-resource group as the Foundry project. The
-[resource-creation attempt](web-host-deployment.md) is blocked before
-submission by a B1 worker quota of zero; no web resource was created.
-Directory/role changes and agent enablement remain outside that approval.
+resource group as the Foundry project. After an East US quota rejection,
+the operator selected West US 2, where
+[resource creation succeeded](web-host-deployment.md). The empty app is
+stopped with public access disabled; its retained B1 plan continues billing.
+Directory/role changes, application deployment and agent enablement remain
+outside that approval.
 
 The first release remains a **single-operator** reference workbench, as
 agreed in the [implementation plan](implementation-plan.md). The next cloud

@@ -67,11 +67,12 @@ selected architecture and resource/permission checklist, not implemented
 authentication or approval to create resources. The
 [read-only preflight](docs/workbench-hosting-preflight.md) records the runtime,
 scoped resource/role inventory and indicative B1 price. An
-[empty web-host template](docs/web-host-deployment.md) is available, but its
-approved creation attempt was blocked by zero B1 worker quota before any
-plan/site was created. Identity and application deployment still require
-separate approval. Protecting only the web login does not protect a
-separately callable Foundry endpoint.
+[empty web-host slice](docs/web-host-deployment.md) was created in approved
+West US 2 after East US quota rejection, in the same existing resource group.
+The empty site is stopped with public access disabled; its retained B1 plan
+continues billing. Identity and application deployment still require separate
+approval. Protecting only the web login does not protect a separately
+callable Foundry endpoint.
 
 ## Run the offline checks
 

@@ -33,7 +33,51 @@ the separate verified stop step below leaves the owned app stopped.
 Neither a stopped app nor a blocked public endpoint removes the retained
 plan's charges.
 
-## Observed attempt: September 15, 2026
+## Current outcome: created in West US 2
+
+On September 15, 2026, the operator approved changing only the new web
+resources' region to **West US 2**, keeping the existing Foundry resource
+group and the previously approved B1 scope. The existing Foundry project
+and storage were not moved.
+
+The template from `66db832` passed provider-level what-if in the new region:
+four creations for the plan, site and two publishing-policy children;
+nine existing resources were ignored, with no modification/deletion.
+One incremental deployment then succeeded. Its operations recorded the
+four expected creations and a read of the new site.
+
+After verifying the new site's ownership tag, the owned site was stopped.
+Readback established:
+
+| Check | Observed value |
+| --- | --- |
+| Plan | West US 2, Linux (`reserved=true`), Basic B1, capacity 1 |
+| Plan readiness | `Ready`, provisioning `Succeeded` |
+| Site | West US 2, bound to the owned plan, `Stopped` |
+| Public network / HTTPS | `Disabled` / HTTPS-only |
+| Runtime / startup | `PYTHON|3.13` / empty startup command |
+| TLS | Site and SCM minimum 1.2 |
+| FTP / Always On | Disabled / false |
+| Basic publishing credentials | Both FTP and SCM `allow=false` |
+| Configured site identity | None |
+| Public HTTPS request | HTTP 403 while stopped and public access disabled |
+
+The HTTP 403 does not establish Entra authentication or distinguish the
+individual effects of stop and network restriction. No application code,
+managed identity, directory registration or role grant was deployed, and
+no Foundry agent was enabled or model invoked.
+
+**The retained B1 plan now incurs hosting charges even with the site
+stopped.** The observed public West US 2 Linux B1 retail rate was USD 0.017
+per hour, approximately USD 12.41 at 730 hours, excluding other services,
+network, taxes and subscription-specific pricing. This is not a hard cap
+or a measured invoice.
+
+Environment-specific names, resource IDs, parameters and detailed
+verification remain in private session artifacts. This completes only
+the empty-host resource slice, not a deployed workbench or G0.
+
+## Earlier East US attempt: September 15, 2026
 
 The Bicep template compiled successfully with CLI 0.47.16. Proposed plan/site
 names were absent in the intended resource group, and the site name was
@@ -56,9 +100,10 @@ enablement or real model call was performed.
 
 Runtime/region catalog support in the
 [earlier preflight](workbench-hosting-preflight.md) did not establish
-subscription quota. The current blocker requires an approved App Service
-quota increase, or a separately approved alternative; do not retry creation
-blindly or switch to a higher-priced SKU.
+subscription quota. The operator subsequently chose the successful West US 2
+alternative above; no East US quota request was submitted. The quota
+guidance below remains applicable if East US is required in a future,
+separately approved deployment.
 
 ## Resolve the quota gate
 
