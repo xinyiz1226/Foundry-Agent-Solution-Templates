@@ -13,6 +13,7 @@ from uuid import UUID
 
 from information_extraction import Execution, FailureCode, ModelFailure, NotFound, SQLiteStore
 from information_extraction.batch import Batch, BatchLimits
+from information_extraction.codec import _hash, _json
 from information_extraction.sample import synthetic_plan
 from tests.test_batch import QueueScheduler
 from tests.test_execution import SyntheticModel
@@ -80,6 +81,56 @@ class HostedAppTests(unittest.IsolatedAsyncioTestCase):
         response = await self.client.post("/invocations", json={"action": "status", "run_id": run_id})
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()
+
+    async def current(self):
+        response = await self.client.post("/invocations", json={"action": "current"})
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()
+
+    async def test_current_of_missing_or_rootless_job_is_read_only_and_strict(self):
+        with (
+            patch.object(self.store, "create", side_effect=AssertionError("read_must_not_create")),
+            patch.object(self.store, "create_batch_record", side_effect=AssertionError("read_must_not_write")),
+            patch("azure.ai.agentserver.core.tasks.Task.get_active_run", side_effect=AssertionError("read_must_not_schedule")),
+        ):
+            missing = await self.current()
+        self.assertEqual(missing["job_id"], "job")
+        self.assertIsNone(missing["current"])
+        self.assertIsNone(missing["pending_request"])
+        self.assertTrue(missing["synthetic_only"])
+        with self.assertRaises(NotFound):
+            Execution(self.store, self.model).read("job")
+        Execution(self.store, self.model).create("job", synthetic_plan(), "fixture")
+        self.assertEqual(await self.current(), missing)
+        invalid = await self.client.post("/invocations", json={"action": "current", "job_id": "job"})
+        self.assertEqual(invalid.status_code, 400, invalid.text)
+        self.assertEqual(self.model.calls, [])
+
+    async def test_corrupt_discovery_records_neither_look_missing_nor_allow_a_new_start(self):
+        read = self.store.read_batch_record
+        root = _hash(_json(["root", "job"]))
+        intent = _hash(_json(["synthetic-invocation-slot-v1", "job", None]))
+        for key, payload in (
+            (root, "null"),
+            (root, _json({"run_id": "missing"})),
+            (intent, "null"),
+            (intent, _json({
+                "version": 1, "job_id": "job", "body": {**self.request, "job_id": "foreign"},
+            })),
+        ):
+            with (
+                patch.object(
+                    self.store, "read_batch_record",
+                    side_effect=lambda requested: payload if requested == key else read(requested),
+                ),
+                patch.object(self.store, "create", side_effect=AssertionError("corruption_must_not_create")),
+                patch.object(self.store, "create_batch_record", side_effect=AssertionError("corruption_must_not_write")),
+            ):
+                for request in ({"action": "current"}, self.request):
+                    rejected = await self.client.post("/invocations", json=request)
+                    self.assertEqual(rejected.status_code, 500, rejected.text)
+                    self.assertEqual(rejected.json()["error"]["code"], "stored_state_invalid")
+        self.assertEqual(self.model.calls, [])
 
     async def wait_for(self, run_id, state):
         async with asyncio.timeout(5):
@@ -154,7 +205,11 @@ class HostedAppTests(unittest.IsolatedAsyncioTestCase):
         )
         self.addAsyncCleanup(self.client.aclose)
 
-        restored = await self.status(run_id)
+        discovered = await self.current()
+        self.assertEqual(discovered["job_id"], "job")
+        self.assertIsNone(discovered["pending_request"])
+        self.assertEqual(discovered["current"]["authorization"]["run_id"], run_id)
+        restored = await self.status(discovered["current"]["authorization"]["run_id"])
         self.assertNotEqual(restored["app_instance_id"], instance_id)
         self.assertEqual(UUID(restored["app_instance_id"]).version, 4)
         self.assertEqual({**restored, "app_instance_id": instance_id}, limited)
@@ -272,12 +327,190 @@ class HostedAppTests(unittest.IsolatedAsyncioTestCase):
             side_effect=AssertionError("status_must_not_reclaim"),
         ):
             pending = await self.status(run_id)
+            recovered = await self.current()
+        self.assertEqual(recovered["current"]["authorization"]["run_id"], run_id)
+        self.assertEqual(recovered["pending_request"], self.request)
         self.assertFalse(pending["registration_confirmed"])
         self.assertEqual(self.model.calls, [])
         retried = await self.client.post("/invocations", json=self.request)
         self.assertEqual(retried.status_code, 202, retried.text)
         self.assertEqual(retried.json()["authorization"], error["authorization"])
         await self.wait_for(run_id, "completed")
+        self.assertEqual(len(self.model.calls), 2)
+
+    async def test_pre_index_rounds_are_discovered_without_migration_or_scheduling(self):
+        execution = Execution(self.store, self.model)
+        execution.create("job", synthetic_plan(), "legacy-create")
+        scheduler = QueueScheduler()
+        batch = Batch(execution, self.store, scheduler, clock=lambda: self.now)
+        request = {**self.request, "max_attempts": 1}
+        first = await batch.start("job", 0, "start", BatchLimits(max_attempts=1, deadline=1060.0))
+        with patch.object(self.store, "create_batch_record", side_effect=AssertionError("no_migration_writes")):
+            current = await self.current()
+        self.assertEqual(current["pending_request"], request)
+        self.assertEqual(current["current"]["authorization"]["run_id"], first.run_id)
+        batch.run(first.run_id)
+        second = await batch.resume(first.run_id, 1, "resume", BatchLimits(max_attempts=1, deadline=1060))
+        with patch.object(self.store, "create_batch_record", side_effect=AssertionError("no_migration_writes")):
+            resumed = await self.current()
+        self.assertEqual(resumed["pending_request"], {
+            "action": "resume", "run_id": first.run_id, "request_id": "resume",
+            "expected_revision": 1, "max_attempts": 1, "deadline": 1060,
+        })
+        self.assertEqual(resumed["current"]["authorization"]["run_id"], second.run_id)
+        self.assertEqual(len(scheduler.deliveries), 2)
+        self.assertEqual(len(self.model.calls), 1)
+
+    async def test_legacy_committed_start_and_resume_replay_after_deadline_without_new_budget(self):
+        execution = Execution(self.store, self.model)
+        execution.create("job", synthetic_plan(), "legacy-create")
+        batch = Batch(execution, self.store, QueueScheduler(), clock=lambda: self.now)
+        first = await batch.start("job", 0, "start", BatchLimits(max_attempts=1, deadline=1060.0))
+        batch.run(first.run_id)
+        second = await batch.resume(first.run_id, 1, "resume", BatchLimits(max_attempts=1, deadline=1060))
+        batch.run(second.run_id)
+        self.now = 1061
+        for request, run in (
+            ({**self.request, "max_attempts": 1}, first),
+            ({
+                "action": "resume", "run_id": first.run_id, "request_id": "resume",
+                "expected_revision": 1, "max_attempts": 1, "deadline": 1060,
+            }, second),
+        ):
+            replay = await self.client.post("/invocations", json=request)
+            self.assertEqual(replay.status_code, 202, replay.text)
+            self.assertEqual(replay.json()["authorization"]["run_id"], run.run_id)
+        self.assertEqual((await self.current())["current"]["authorization"]["run_id"], second.run_id)
+        self.assertIsNone((await self.current())["pending_request"])
+        self.assertEqual(len(self.model.calls), 2)
+
+    async def test_root_intent_survives_loss_before_per_request_receipt_in_replacement_app(self):
+        await self.lost_root_intent("receipt")
+
+    async def test_root_intent_survives_lost_index_write_ack_in_replacement_app(self):
+        await self.lost_root_intent("index_ack")
+
+    async def lost_root_intent(self, stage):
+        import httpx
+        from information_extraction.hosted_app import create_offline_app
+
+        create = self.store.create_batch_record
+
+        def interrupt(key, payload):
+            value = json.loads(payload)
+            if stage == "receipt" and "request" in value:
+                raise RuntimeError("synthetic_loss_before_receipt")
+            saved = create(key, payload)
+            if stage == "index_ack" and "body" in value:
+                raise RuntimeError("synthetic_lost_index_ack")
+            return saved
+
+        with patch.object(self.store, "create_batch_record", side_effect=interrupt):
+            lost = await self.client.post("/invocations", json=self.request)
+        self.assertEqual(lost.status_code, 503, lost.text)
+        replacement_store = self.make_store()
+        replacement = create_offline_app(
+            replacement_store, model=SyntheticModel(), clock=lambda: self.now, job_id="job",
+        )
+        with (
+            patch.object(replacement_store, "create_batch_record", side_effect=AssertionError("read_must_not_write")),
+            patch.object(replacement_store, "create", side_effect=AssertionError("read_must_not_create")),
+            patch("azure.ai.agentserver.core.tasks.Task.start", side_effect=AssertionError("read_must_not_schedule")),
+            patch("azure.ai.agentserver.core.tasks.Task.get_active_run", side_effect=AssertionError("read_must_not_schedule")),
+        ):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=replacement), base_url="http://replacement",
+            ) as client:
+                recovered = await client.post("/invocations", json={"action": "current"})
+        self.assertEqual(recovered.status_code, 200, recovered.text)
+        pending = recovered.json()
+        self.assertIsNone(pending["current"])
+        self.assertEqual(pending["pending_request"], self.request)
+        with self.assertRaises(NotFound):
+            Execution(replacement_store, self.model).read("job")
+        retry = await self.client.post("/invocations", json=pending["pending_request"])
+        self.assertEqual(retry.status_code, 202, retry.text)
+        await self.wait_for(retry.json()["authorization"]["run_id"], "completed")
+        self.assertIsNone((await self.current())["pending_request"])
+
+    async def test_expired_uncommitted_intent_cannot_be_renewed_or_create_execution(self):
+        with patch.object(self.store, "create", side_effect=RuntimeError("synthetic_loss")):
+            interrupted = await self.client.post("/invocations", json=self.request)
+        self.assertEqual(interrupted.status_code, 503, interrupted.text)
+        self.now = 1061
+        pending = await self.current()
+        with patch.object(self.store, "create", side_effect=AssertionError("expired_must_not_create")):
+            expired = await self.client.post("/invocations", json=pending["pending_request"])
+        self.assertEqual(expired.status_code, 409, expired.text)
+        self.assertEqual(expired.json()["error"]["code"], "saved_request_expired")
+        replacement = await self.client.post(
+            "/invocations", json={**self.request, "request_id": "replacement", "deadline": 1120},
+        )
+        self.assertEqual(replacement.status_code, 409, replacement.text)
+        self.assertEqual((await self.current())["pending_request"], self.request)
+        with self.assertRaises(NotFound):
+            Execution(self.store, self.model).read("job")
+        self.assertEqual(self.model.calls, [])
+
+    async def test_lost_start_before_fixture_is_discoverable_and_only_exact_request_can_retry(self):
+        with patch.object(self.store, "create", side_effect=RuntimeError("synthetic_process_loss")):
+            interrupted = await self.client.post("/invocations", json=self.request)
+        self.assertEqual(interrupted.status_code, 503, interrupted.text)
+        with (
+            patch.object(self.store, "create_batch_record", side_effect=AssertionError("read_must_not_write")),
+            patch("azure.ai.agentserver.core.tasks.Task.get_active_run", side_effect=AssertionError("read_must_not_schedule")),
+        ):
+            pending = await self.current()
+        self.assertIsNone(pending["current"])
+        self.assertEqual(pending["pending_request"], self.request)
+        self.assertEqual(self.model.calls, [])
+        for changes in (
+            {"request_id": "new-tab"}, {"deadline": 1120}, {"max_attempts": 1},
+        ):
+            rejected = await self.client.post("/invocations", json={**self.request, **changes})
+            self.assertEqual(rejected.status_code, 409, rejected.text)
+        retried = await self.client.post("/invocations", json=pending["pending_request"])
+        self.assertEqual(retried.status_code, 202, retried.text)
+        run_id = retried.json()["authorization"]["run_id"]
+        await self.wait_for(run_id, "completed")
+        finished = await self.current()
+        self.assertEqual(finished["current"]["authorization"]["run_id"], run_id)
+        self.assertIsNone(finished["pending_request"])
+        self.assertEqual(len(self.model.calls), 2)
+
+    async def test_lost_resume_before_receipt_keeps_terminal_history_and_exact_pending_intent(self):
+        first = await self.client.post("/invocations", json={**self.request, "max_attempts": 1})
+        first_id = first.json()["authorization"]["run_id"]
+        limited = await self.wait_for(first_id, "limited")
+        resume = {
+            "action": "resume", "run_id": first_id, "request_id": "resume",
+            "expected_revision": 1, "max_attempts": 1, "deadline": 1060,
+        }
+        create = self.store.create_batch_record
+
+        def interrupt(key, payload):
+            if json.loads(payload).get("action") == "resume":
+                raise RuntimeError("synthetic_loss_before_receipt")
+            return create(key, payload)
+
+        with patch.object(self.store, "create_batch_record", side_effect=interrupt):
+            lost = await self.client.post("/invocations", json=resume)
+        self.assertEqual(lost.status_code, 503, lost.text)
+        pending = await self.current()
+        self.assertEqual(pending["current"]["state"], "limited")
+        self.assertEqual(pending["current"]["candidates"], limited["candidates"])
+        self.assertEqual(pending["pending_request"], resume)
+        for changes in ({"request_id": "another-tab"}, {"deadline": 1120}, {"max_attempts": 2}):
+            rejected = await self.client.post("/invocations", json={**resume, **changes})
+            self.assertEqual(rejected.status_code, 409, rejected.text)
+        retry = await self.client.post("/invocations", json=pending["pending_request"])
+        self.assertEqual(retry.status_code, 202, retry.text)
+        second_id = retry.json()["authorization"]["run_id"]
+        await self.wait_for(second_id, "completed")
+        discovered = await self.current()
+        self.assertEqual(discovered["current"]["authorization"]["run_id"], second_id)
+        self.assertIsNone(discovered["pending_request"])
+        self.assertEqual(await self.status(first_id), limited)
         self.assertEqual(len(self.model.calls), 2)
 
     async def test_handled_failure_counts_and_explicit_resume_preserves_candidates(self):
@@ -315,6 +548,13 @@ class HostedAppTests(unittest.IsolatedAsyncioTestCase):
         run_id = started.json()["authorization"]["run_id"]
         blocked = await self.wait_for(run_id, "in_progress_or_interrupted")
         self.assertEqual(blocked["usage"]["unknown_usage_attempts"], 1)
+        with patch(
+            "azure.ai.agentserver.core.tasks.Task.get_active_run",
+            side_effect=AssertionError("inspection_must_not_reclaim"),
+        ):
+            recovered = await self.current()
+        self.assertEqual(recovered["current"]["state"], "in_progress_or_interrupted")
+        self.assertIsNone(recovered["pending_request"])
         resumed = await self.client.post("/invocations", json={
             "action": "resume", "run_id": run_id, "request_id": "unsafe-resume",
             "expected_revision": 0, "max_attempts": 5, "deadline": 1060,
@@ -324,6 +564,29 @@ class HostedAppTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(replay.json(), started.json())
         self.assertNotIn("secret", json.dumps(blocked))
         self.assertEqual(len(self.model.calls), 1)
+
+    async def test_terminal_round_with_lost_registration_receipt_is_not_a_pending_retry(self):
+        execution = Execution(self.store, self.model)
+        execution.create("job", synthetic_plan(), "legacy-create")
+        batch = Batch(execution, self.store, QueueScheduler(), clock=lambda: self.now)
+        run = await batch.start("job", 0, "start", BatchLimits(deadline=1060))
+        batch.run(run.run_id)
+        registered = _hash(_json(["registered", run.run_id]))
+        read = self.store.read_batch_record
+        with (
+            patch.object(
+                self.store, "read_batch_record",
+                side_effect=lambda key: None if key == registered else read(key),
+            ),
+            patch.object(self.store, "create_batch_record", side_effect=AssertionError("read_must_not_write")),
+            patch("azure.ai.agentserver.core.tasks.Task.start", side_effect=AssertionError("read_must_not_schedule")),
+            patch("azure.ai.agentserver.core.tasks.Task.get_active_run", side_effect=AssertionError("read_must_not_schedule")),
+        ):
+            current = await self.current()
+        self.assertEqual(current["current"]["state"], "completed")
+        self.assertFalse(current["current"]["registration_confirmed"])
+        self.assertIsNone(current["pending_request"])
+        self.assertEqual(len(self.model.calls), 2)
 
     async def test_storage_and_unexpected_request_errors_are_sanitized(self):
         with patch.object(self.store, "read_batch_record", side_effect=RuntimeError("secret_storage")):
@@ -353,6 +616,26 @@ class HostedAppTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sorted(result.status_code for result in results), [202, 409])
         winner = next(result for result in results if result.status_code == 202)
         await self.wait_for(winner.json()["authorization"]["run_id"], "completed")
+        self.assertEqual(len(self.model.calls), 2)
+
+    async def test_concurrent_resume_intents_select_one_budget_and_one_current_successor(self):
+        first = await self.client.post("/invocations", json={**self.request, "max_attempts": 1})
+        first_id = first.json()["authorization"]["run_id"]
+        await self.wait_for(first_id, "limited")
+        results = await asyncio.gather(*(
+            self.client.post("/invocations", json={
+                "action": "resume", "run_id": first_id, "request_id": request_id,
+                "expected_revision": 1, "max_attempts": 1, "deadline": 1060,
+            })
+            for request_id in ("resume-a", "resume-b")
+        ))
+        self.assertEqual(sorted(result.status_code for result in results), [202, 409])
+        winner = next(result for result in results if result.status_code == 202)
+        run_id = winner.json()["authorization"]["run_id"]
+        await self.wait_for(run_id, "completed")
+        current = await self.current()
+        self.assertEqual(current["current"]["authorization"]["run_id"], run_id)
+        self.assertIsNone(current["pending_request"])
         self.assertEqual(len(self.model.calls), 2)
 
     async def test_detached_native_failure_does_not_leak_unobserved_sdk_tracebacks(self):

@@ -17,7 +17,7 @@ from azure.ai.agentserver.invocations import InvocationAgentServerHost
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from .batch import BatchLimits, BatchRecords, BatchState, BatchStatus, RegistrationUnknown
+from .batch import Authorization, Batch, BatchLimits, BatchRecords, BatchState, BatchStatus, RegistrationUnknown
 from .codec import _hash, _json
 from .contracts import (
     Conflict, ExecutionError, IntegrityError, InvalidInput, Model, ModelRequest, ModelResponse,
@@ -148,6 +148,11 @@ class StatusInput:
     run_id: str
 
 
+@dataclass(frozen=True)
+class CurrentInput:
+    pass
+
+
 class RequestTooLarge(InvalidInput):
     pass
 
@@ -157,6 +162,10 @@ class UnsupportedMediaType(InvalidInput):
 
 
 class JobNotOwned(Conflict):
+    pass
+
+
+class SavedRequestExpired(Conflict):
     pass
 
 
@@ -173,7 +182,7 @@ def _nonfinite(value):
     raise InvalidInput("nonfinite_json_number")
 
 
-async def _input(request: Request) -> StartInput | ResumeInput | StatusInput:
+async def _input(request: Request) -> StartInput | ResumeInput | StatusInput | CurrentInput:
     if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
         raise UnsupportedMediaType("json_required")
     length = request.headers.get("content-length")
@@ -191,9 +200,15 @@ async def _input(request: Request) -> StartInput | ResumeInput | StatusInput:
         data = json.loads(body.decode("utf-8"), object_pairs_hook=_object, parse_constant=_nonfinite)
     except (ValueError, UnicodeError, RecursionError):
         raise InvalidInput("invalid_json") from None
+    return _decode_input(data)
+
+
+def _decode_input(data) -> StartInput | ResumeInput | StatusInput | CurrentInput:
     if type(data) is not dict:
         raise InvalidInput("object_required")
     action = data.get("action")
+    if action == "current" and set(data) == {"action"}:
+        return CurrentInput()
     if action == "status" and set(data) == {"action", "run_id"}:
         validate_identifier(data["run_id"])
         return StatusInput(data["run_id"])
@@ -223,7 +238,8 @@ async def _storage[T](operation: Callable[[], T]) -> T:
 
 
 async def _freeze_request(
-    store: BatchRecords, data: StartInput | ResumeInput, clock: Callable[[], float],
+    store: BatchRecords, data: StartInput | ResumeInput, clock: Callable[[], float], job_id: str,
+    committed: Authorization | None,
 ) -> None:
     key = _hash(_json(["synthetic-invocation-v1", data.request_id]))
     payload = _json({
@@ -231,13 +247,113 @@ async def _freeze_request(
         "request": asdict(data),
     })
     saved = await _storage(lambda: store.read_batch_record(key))
-    if saved is None:
+    if saved is not None and saved != payload:
+        raise Conflict("invocation_request_conflict")
+    previous_run_id = data.run_id if isinstance(data, ResumeInput) else None
+    pending = await _read_intent(store, job_id, previous_run_id)
+    body = _request_body(data)
+    if pending is not None and _json(pending) != _json(body):
+        raise Conflict("invocation_round_intent_conflict")
+    if committed is not None and _authorized_request(committed) != body:
+        raise Conflict("invocation_round_intent_conflict")
+    if committed is None:
         now = clock()
         if not now < data.limits.deadline <= now + 604800:
+            if data.limits.deadline <= now and (saved is not None or pending is not None):
+                raise SavedRequestExpired("saved_request_expired")
             raise InvalidInput("deadline_out_of_range")
+    intent_key = _intent_key(job_id, previous_run_id)
+    intent = _json({"version": 1, "job_id": job_id, "body": body})
+    winner = await _storage(lambda: store.create_batch_record(intent_key, intent))
+    if winner != intent:
+        raise Conflict("invocation_round_intent_conflict")
+    if saved is None:
         saved = await _storage(lambda: store.create_batch_record(key, payload))
     if saved != payload:
         raise Conflict("invocation_request_conflict")
+
+
+def _existing_round(batch: Batch, data: StartInput | ResumeInput, job_id: str) -> Authorization | None:
+    current = batch.current(job_id)
+    previous_run_id = data.run_id if isinstance(data, ResumeInput) else None
+    if current is None:
+        if previous_run_id is not None:
+            raise Conflict("resume_not_current")
+        return None
+    if previous_run_id == current.authorization.run_id:
+        return None
+    for _ in range(1024):
+        _owned(current, job_id)
+        _fixture(current.snapshot)
+        run = current.authorization
+        if run.previous_run_id == previous_run_id:
+            return run
+        if run.previous_run_id is None:
+            raise Conflict("resume_not_owned")
+        current = batch.status(run.previous_run_id)
+    raise IntegrityError("batch_chain_traversal_limit")
+
+
+def _intent_key(job_id: str, previous_run_id: str | None) -> str:
+    return _hash(_json(["synthetic-invocation-slot-v1", job_id, previous_run_id]))
+
+
+def _request_body(data: StartInput | ResumeInput) -> dict:
+    values = asdict(data)
+    limits = values.pop("limits")
+    return {"action": "start" if isinstance(data, StartInput) else "resume", **values, **limits}
+
+
+def _authorized_request(run: Authorization) -> dict:
+    data = (
+        ResumeInput(run.previous_run_id, run.request_id, run.expected_revision, run.limits)
+        if run.previous_run_id is not None
+        else StartInput(run.job_id, run.request_id, run.expected_revision, run.limits)
+    )
+    return _request_body(data)
+
+
+async def _read_intent(
+    store: BatchRecords, job_id: str, previous_run_id: str | None,
+) -> dict | None:
+    saved = await _storage(lambda: store.read_batch_record(_intent_key(job_id, previous_run_id)))
+    if saved is None:
+        return None
+    try:
+        value = json.loads(saved, object_pairs_hook=_object, parse_constant=_nonfinite)
+        if (
+            type(value) is not dict or set(value) != {"version", "job_id", "body"}
+            or type(value["version"]) is not int or value["version"] != 1 or value["job_id"] != job_id
+        ):
+            raise IntegrityError("invocation_intent_invalid")
+        data = _decode_input(value["body"])
+        if previous_run_id is None:
+            valid = isinstance(data, StartInput) and data.job_id == job_id and data.expected_revision == 0
+        else:
+            valid = isinstance(data, ResumeInput) and data.run_id == previous_run_id
+        if not valid:
+            raise IntegrityError("invocation_intent_ownership_invalid")
+        return value["body"]
+    except (InvalidInput, ValueError, TypeError, KeyError, RecursionError):
+        raise IntegrityError("invocation_intent_invalid") from None
+
+
+async def _pending_request(store: BatchRecords, job_id: str, current: BatchStatus | None) -> dict | None:
+    if current is None:
+        return await _read_intent(store, job_id, None)
+    if current.state in (BatchState.FAILED, BatchState.LIMITED):
+        pending = await _read_intent(store, job_id, current.authorization.run_id)
+        if pending is not None and pending["expected_revision"] != current.snapshot.revision:
+            raise IntegrityError("invocation_intent_revision_invalid")
+        return pending
+    if current.state in (BatchState.QUEUED, BatchState.RUNNING):
+        run = current.authorization
+        pending = await _read_intent(store, job_id, run.previous_run_id)
+        original = _authorized_request(run)
+        if pending is not None and pending != original:
+            raise IntegrityError("invocation_intent_authorization_invalid")
+        return original if pending is None else pending
+    return None
 
 
 def _fixture(snapshot: Snapshot) -> None:
@@ -336,6 +452,14 @@ def _build_app(
     async def invoke(request: Request) -> Response:
         try:
             data = await _input(request)
+            if isinstance(data, CurrentInput):
+                current = await _storage(lambda: batch.current(job_id))
+                if current is not None:
+                    _owned(current, job_id)
+                return response({
+                    "job_id": job_id, "current": None if current is None else _status(current),
+                    "pending_request": await _pending_request(store, job_id, current),
+                })
             if isinstance(data, StatusInput):
                 status = await _storage(lambda: batch.status(data.run_id))
                 _owned(status, job_id)
@@ -345,7 +469,8 @@ def _build_app(
                     raise JobNotOwned("job_not_owned")
                 if data.expected_revision != 0:
                     raise Conflict("start_requires_revision_zero")
-                await _freeze_request(store, data, clock)
+                committed = await _storage(lambda: _existing_round(batch, data, job_id))
+                await _freeze_request(store, data, clock, job_id, committed)
                 create_id = "synthetic-create-" + _hash(_json([data.job_id, data.request_id]))
                 await _storage(lambda: execution.create(data.job_id, synthetic_plan(), create_id))
                 run = await batch.start(data.job_id, data.expected_revision, data.request_id, data.limits)
@@ -358,7 +483,8 @@ def _build_app(
                 or previous.snapshot.revision != data.expected_revision
             ):
                 raise Conflict("resume_not_applicable")
-            await _freeze_request(store, data, clock)
+            committed = await _storage(lambda: _existing_round(batch, data, job_id))
+            await _freeze_request(store, data, clock, job_id, committed)
             run = await batch.resume(data.run_id, data.expected_revision, data.request_id, data.limits)
             return response({"authorization": asdict(run)}, 202)
         except RequestTooLarge:
@@ -371,6 +497,8 @@ def _build_app(
             return _error("batch_registration_unknown", 503, authorization=asdict(error.authorization))
         except JobNotOwned:
             return _error("job_not_owned", 409)
+        except SavedRequestExpired:
+            return _error("saved_request_expired", 409)
         except Conflict:
             return _error("execution_conflict", 409)
         except NotFound:

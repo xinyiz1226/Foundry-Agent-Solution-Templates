@@ -76,6 +76,7 @@ in numeric fields are rejected before mutation.
 | --- | --- | --- |
 | `start` | Configured `job_id`, `request_id`, `expected_revision: 0`, `max_attempts`, `deadline` | 202 |
 | `status` | `run_id` | 200 |
+| `current` | None; exactly `{"action":"current"}` | 200 |
 | `resume` | Previous round's `run_id`, new `request_id`, `expected_revision`, `max_attempts`, `deadline` | 202 |
 
 `max_attempts` is an integer from 1 through 5. `deadline` is an absolute Unix
@@ -83,6 +84,36 @@ timestamp; a fresh mutation requires a future value within seven days.
 Persist the original request body before sending it. A transport retry must
 reuse the same identifier and deadline, not generate a fresh allowance.
 Compatible saved mutations retain their original deadlines after expiration.
+
+The current source adds read-only current-job discovery for the
+[local workbench](local-workbench.md). **This addition has not been redeployed**
+to the previously observed hosted agent. `current` returns:
+
+```json
+{
+  "synthetic_only": true,
+  "app_instance_id": "<application UUID>",
+  "job_id": "<configured job>",
+  "current": null,
+  "pending_request": null
+}
+```
+
+`current` is either `null` or the existing status projection for the latest
+owned round. `pending_request` is either `null` or the exact original winning
+start/resume request body. A pending successor can accompany a previous
+terminal round until its successor is owned. Queued/running requests may
+remain retryable; completed or blocked rounds do not expose a stale retry.
+Neither lookup schedules work, reconnects an SDK task, writes a migration, or
+renews limits.
+
+Create-only HTTP intent indexes bind the first start per configured job and
+the first resume per predecessor before creation/scheduling. They recover
+request identity even if an HTTP acknowledgment or initial ownership write
+was lost. Competing request IDs/limits conflict rather than receiving
+additional budgets. A saved intent that expired before authorization returns
+409 `saved_request_expired`; an exact retry never extends it. Existing valid
+legacy rounds remain discoverable without rewriting their records.
 
 Start/resume responses contain the frozen `authorization`. Status includes
 round/execution states, revision, completed chunks, reserved/committed

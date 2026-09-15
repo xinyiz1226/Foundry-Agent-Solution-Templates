@@ -13,7 +13,7 @@ from typing import Callable, Protocol
 
 from .codec import _hash, _json, _snapshot
 from .contracts import (
-    Action, Blocked, Conflict, ExecutionError, InvalidInput, NotFound, Snapshot, Status,
+    Action, Blocked, Conflict, ExecutionError, IntegrityError, InvalidInput, NotFound, Snapshot, Status,
     validate_identifier,
 )
 from .execution import Execution
@@ -128,7 +128,15 @@ class Batch:
 
     def _read(self, *parts: object) -> dict | None:
         value = self._storage(lambda: self.records.read_batch_record(self._key(*parts)))
-        return None if value is None else json.loads(value)
+        if value is None:
+            return None
+        try:
+            decoded = json.loads(value)
+            if type(decoded) is not dict:
+                raise IntegrityError("batch_record_invalid")
+            return decoded
+        except (ValueError, TypeError, RecursionError):
+            raise IntegrityError("batch_record_invalid") from None
 
     def _put(self, value: dict, *parts: object) -> dict:
         return json.loads(self._storage(
@@ -229,6 +237,49 @@ class Batch:
             ), snapshot, reserved,
             registration_confirmed=self._read("registered", run_id) is not None,
         )
+
+    def current(self, job_id: str) -> BatchStatus | None:
+        """Read the owned authorization chain, without registering or running work."""
+        validate_identifier(job_id)
+        try:
+            return self._current(job_id)
+        except (InvalidInput, NotFound, ValueError, TypeError, KeyError, AttributeError, RecursionError):
+            raise IntegrityError("batch_chain_invalid") from None
+
+    def _current(self, job_id: str) -> BatchStatus | None:
+        owner = self._read("root", job_id)
+        previous = None
+        visited = set()
+        for _ in range(1024):
+            if owner is None:
+                return previous
+            if type(owner) is not dict or set(owner) != {"run_id"}:
+                raise IntegrityError("batch_owner_invalid")
+            run_id = owner["run_id"]
+            validate_identifier(run_id)
+            if run_id in visited:
+                raise IntegrityError("batch_chain_cycle")
+            visited.add(run_id)
+            status = self.status(run_id)
+            run = status.authorization
+            validate_identifier(run.request_id)
+            if (
+                run.run_id != run_id or run_id != self._key("run", run.request_id)
+                or run.job_id != job_id or status.snapshot.job_id != job_id
+                or run.plan_fingerprint != status.snapshot.plan_fingerprint
+                or type(run.expected_revision) is not int or run.expected_revision < 0
+                or run.previous_run_id != (previous.authorization.run_id if previous else None)
+                or previous is not None and (
+                    previous.state not in (BatchState.FAILED, BatchState.LIMITED)
+                    or run.expected_revision != previous.snapshot.revision
+                )
+            ):
+                raise IntegrityError("batch_chain_ownership_invalid")
+            previous = status
+            owner = self._read("next", run_id)
+        if owner is not None:
+            raise IntegrityError("batch_chain_traversal_limit")
+        return previous
 
     @staticmethod
     def _decode_snapshot(value: dict) -> Snapshot:

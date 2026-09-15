@@ -1,4 +1,4 @@
-# Information extraction: G0 execution core and optional Azure adapters
+# Information extraction: local workbench and G0 execution core
 
 This is a **new implementation** of the execution invariants described in
 the [migration inventory](docs/migration-inventory.md), not a copy of DataFlowMVP
@@ -33,6 +33,33 @@ application instance, and completed through explicit resume with no real
 model calls. The probe agent was then disabled and its sessions stopped.
 **G0 remains incomplete.**
 
+## Try the local workbench
+
+The [Streamlit workbench](docs/local-workbench.md) runs against an independent
+local Invocations/native-task process with SQLite persistence. It supports
+explicit start/resume, read-only current-job discovery, progress, candidate
+records, and original source evidence. Browser refresh/reopen does not need
+a saved run ID and does not authorize new work.
+
+From `information-extraction`, using a Python 3.13+ virtual environment:
+
+```powershell
+& .\.venv\Scripts\python.exe -m pip install -e '.[hosted,workbench]'
+& .\.venv\Scripts\python.exe .\scripts\run_workbench.py
+```
+
+Open `http://127.0.0.1:8501`. The default one-attempt allowance deliberately
+pauses after the first of two fictional chunks; explicitly resume to complete
+the second. All results remain pending review. Ctrl+C stops the launcher's
+own services while retaining `.local-data\workbench`; restarting with that
+directory restores the job.
+
+This preview is **local and synthetic only**: no Azure resources, credentials,
+or real models. Both listeners bind to `127.0.0.1`. It has no operator
+authentication and must not be exposed through a tunnel or shared host.
+Hosted deployment, end-to-end authorization, uploads, configurable schemas,
+and approval/export are not part of this slice.
+
 ## Run the offline checks
 
 Prerequisite: Python **3.13 or newer**. From the repository root, in PowerShell:
@@ -65,6 +92,12 @@ needed for the offline checks. With the Azure extra installed, additional tests
 exercise real SDK response deserialization against `httpx.MockTransport`, not
 Azure. Without the extra, those tests skip; core and read-only smoke tests still
 run.
+
+With `.[hosted,workbench,test]` installed, additional tests exercise Streamlit
+`AppTest`, actual loopback HTTP listeners, an independent native-task process,
+and local process restart. They make no Azure or real model calls. These
+optional checks require permission to bind local ports; they are distinct
+from the dependency-free, no-network core route above.
 
 ## Small execution interface
 

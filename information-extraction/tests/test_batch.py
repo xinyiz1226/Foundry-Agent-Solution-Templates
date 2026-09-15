@@ -1,6 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import replace
+from dataclasses import asdict, replace
 from pathlib import Path
 import json
 import shutil
@@ -9,9 +9,11 @@ import uuid
 from threading import Barrier, Event
 
 from information_extraction import (
-    Conflict, Execution, ExecutionError, FailureCode, InvalidInput, ModelFailure, SQLiteStore, Status,
+    Conflict, Execution, ExecutionError, FailureCode, IntegrityError, InvalidInput, ModelFailure,
+    SQLiteStore, Status,
 )
 from information_extraction.batch import Batch, BatchLimits, BatchState, RegistrationUnknown
+from information_extraction.codec import _hash, _json
 from information_extraction.sample import synthetic_plan
 from tests.test_execution import SyntheticModel
 
@@ -51,6 +53,84 @@ class BatchTests(unittest.TestCase):
 
     def start(self, request="start", limits=None):
         return asyncio.run(self.batch.start("job", 0, request, limits or self.limits))
+
+    def test_current_discovers_only_owned_rounds_and_follows_resume_after_restore(self):
+        self.assertIsNone(self.restore().current("absent"))
+        self.assertIsNone(self.restore().current("job"))
+        first = self.start(limits=BatchLimits(max_attempts=1, deadline=1060))
+        self.assertEqual(self.restore().current("job"), self.batch.status(first.run_id))
+        self.batch.run(first.run_id)
+        second = asyncio.run(self.batch.resume(first.run_id, 1, "resume", self.limits))
+        deliveries = list(self.scheduler.deliveries)
+        for _ in range(3):
+            self.assertEqual(self.restore().current("job"), self.batch.status(second.run_id))
+        self.assertEqual(self.scheduler.deliveries, deliveries)
+        self.assertEqual(len(self.model.calls), 1)
+
+    def test_current_rejects_corrupt_foreign_missing_and_cyclic_owned_references(self):
+        run = self.start()
+        root = _hash(_json(["root", "job"]))
+        authorization = _hash(_json(["authorization", run.run_id]))
+        successor = _hash(_json(["next", run.run_id]))
+        cases = [
+            {root: "null"},
+            {root: "not-json"},
+            {root: "[]"},
+            {root: _json({"run_id": "missing"})},
+            {root: _json({"run_id": run.run_id, "extra": True})},
+            {authorization: _json({**asdict(run), "job_id": "foreign"})},
+            {authorization: _json({**asdict(run), "run_id": "different"})},
+            {authorization: _json({**asdict(run), "previous_run_id": "wrong"})},
+            {authorization: _json({**asdict(run), "limits": {}})},
+            {successor: _json({"run_id": "missing"})},
+            {successor: _json({"run_id": run.run_id})},
+        ]
+        store = self.make_store()
+        for overrides in cases:
+            class DamagedRecords:
+                def read_batch_record(self, key):
+                    return overrides.get(key, store.read_batch_record(key))
+
+                def create_batch_record(self, key, payload):
+                    raise AssertionError("discovery_must_not_write")
+
+            batch = Batch(self.execution, DamagedRecords(), self.scheduler, clock=lambda: self.now)
+            with self.assertRaises(IntegrityError):
+                batch.current("job")
+        self.assertEqual(self.model.calls, [])
+        self.assertEqual(self.scheduler.deliveries, [run.run_id])
+
+    def test_current_has_an_explicit_traversal_limit_instead_of_returning_an_old_tip(self):
+        snapshot = asdict(self.execution.read("job"))
+        records = {}
+        previous = None
+        for index in range(1025):
+            request_id = f"round-{index}"
+            run_id = _hash(_json(["run", request_id]))
+            records[_hash(_json(["authorization", run_id]))] = _json({
+                "run_id": run_id, "job_id": "job", "request_id": request_id,
+                "plan_fingerprint": snapshot["plan_fingerprint"], "expected_revision": 0,
+                "limits": {"max_attempts": 1, "deadline": 1060}, "previous_run_id": previous,
+            })
+            owner = ["root", "job"] if previous is None else ["next", previous]
+            records[_hash(_json(owner))] = _json({"run_id": run_id})
+            records[_hash(_json(["step", run_id, 0]))] = _json({
+                "kind": "terminal", "state": "limited", "snapshot": snapshot,
+            })
+            previous = run_id
+
+        class ReadOnlyRecords:
+            def read_batch_record(self, key):
+                return records.get(key)
+
+            def create_batch_record(self, key, payload):
+                raise AssertionError("discovery_must_not_write")
+
+        batch = Batch(self.execution, ReadOnlyRecords(), self.scheduler, clock=lambda: self.now)
+        with self.assertRaisesRegex(IntegrityError, "batch_chain_traversal_limit"):
+            batch.current("job")
+        self.assertEqual(self.model.calls, [])
+        self.assertEqual(self.scheduler.deliveries, [])
 
     def test_start_freezes_authorization_before_scheduling_and_replays_without_model(self):
         run = self.start()

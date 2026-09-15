@@ -54,7 +54,7 @@ corruption, source evidence resolution, and unknown versus observed usage.
 | G0-02 through G0-06 | Offline ownership/failure/interruption contracts; live hosted commits, saved-request replay, and replacement-instance restoration after a known limit. Earlier Blob smoke covers controlled failure/resume. | No live concurrency or unknown-interruption injection; hosted failure/resume is not established by the limit/resume case. |
 | G0-07 | Offline identity/revision and Blob integrity checks; valid history restored in a replacement hosted application. | No live corruption injection. |
 | G0-08 | Native hosted task reached a persisted limit; explicit resume completed the remaining chunk through real Blob persistence. | Two chunks from one uninterrupted cloud start and browser-disconnect timing remain unverified. |
-| G0-09 | Not run. | No browser workbench/reconnect proof. |
+| G0-09 | Local Streamlit page/client recreation restores current progress and evidence; a separate native-task process and process restart preserve the job. | Hosted authenticated browser reconnect and live disconnect timing remain unverified. |
 | G0-10 | Scoped runtime-identity Blob grant followed by successful hosted Blob/task operations; authenticated gateway calls and unauthenticated HTTP 401. | No designated web-operator allowlist, unauthorized signed-in-user test, or full effective-permissions audit. |
 | G0-11 | Owned session stop, different hosted application UUID, unchanged durable status, explicit resume, and endpoint disable observed. | Unexpected in-flight crash/lease recovery, hard cancellation, and real-model lifecycle remain unverified. |
 | G0-12 | Probe endpoint disabled and four session stops acknowledged; records report `idle`. | Source version, role, sessions and storage intentionally retained; deletion and final billing are not verified. |
@@ -124,6 +124,27 @@ The agent was disabled and its four listed sessions stopped, with preserved
 records reporting `idle`. This is bounded live evidence, not a full G0 pass
 or a claim of automatic recovery from an unknown in-flight outcome.
 
+### Local workbench evidence: September 15, 2026
+
+The [local Streamlit workbench](local-workbench.md) uses an independent
+Invocations/native-task process with SQLite and the SDK's local-file provider.
+Its actual process/HTTP/page flow reaches a one-attempt limit, restores the
+first candidate in a fresh Streamlit `AppTest`, explicitly resumes to revision
+2, then restarts the backend and restores both unchanged candidates with a
+different application UUID. A fresh completed page offers no new-work button.
+
+Separate page/client checks cover read-only initial render and refresh, exact
+saved-request recovery/retry, pending-review evidence, visible backend errors,
+and inspection-only unresolved claims. Backend SQLite/fake-Blob checks cover
+current-job chain integrity, legacy ownership records, competing intents,
+uncertain registration, and expired uncommitted requests. The two-process
+launcher checks readiness without authorizing work and stops its owned
+services while retaining normal workbench state.
+
+No Azure resource, deployment, or real model was used. This is local UI and
+reconnect evidence, not hosted authentication, an unexpected in-flight crash
+probe, a live browser-disconnect timing test, or a completed G0 gate.
+
 ## 1. Smallest demonstration
 
 Use a pre-registered, approved sample, a fixed extraction configuration, and
@@ -175,6 +196,7 @@ already exist in DataFlowMVP:
 | --- | --- | --- |
 | Start | Registered sample/profile version, durable request identifier, processing limits | Create or return the same job for a compatible repeated request; reject conflicting reuse |
 | Inspect | Job identifier | Return durable progress, last committed revision, safe next action, and candidate/artifact availability; never trigger inference |
+| Rediscover current job | Server-configured job; no browser-held run identifier | Read owned root/successor history and any pending HTTP intent; never create, schedule, reconnect, or renew work |
 | Resume | Job identifier, expected revision, explicit request identifier | Advance only a safely resumable job with unchanged execution identity; reject stale or incompatible requests |
 | Read candidates | Job identifier and committed result version | Retrieve verified artifacts server-side and return sanitized candidate/evidence views |
 

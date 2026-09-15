@@ -102,10 +102,19 @@ earlier [one-attempt Blob evidence](blob-store.md#observed-live-storage-evidence
 | --- | --- |
 | `await batch.start(job_id, expected_revision, request_id, limits)` | Returns a frozen `Authorization`. New starts require an existing READY execution at that revision; authorization is persisted before scheduling. |
 | `batch.status(run_id)` | Returns `BatchStatus` without scheduling, reconnecting a native task, or invoking a model. |
+| `batch.current(job_id)` | Returns the latest owned `BatchStatus`, or `None` if no root exists, by read-only traversal of root/successor records. |
 | `await batch.resume(previous_run_id, expected_revision, request_id, limits)` | Returns one new `Authorization` after a durably closed FAILED or LIMITED round. Repeated compatible requests retain the same successor and allowance. |
 
 `Batch.run` is the worker entry point used by the scheduler, not a
 browser-driven per-chunk advance operation.
+
+`current` checks ownership, missing/foreign links, and cycles. It supports
+valid legacy ownership records without migration writes. Traversal is bounded
+to 1,024 rounds and fails visibly if exceeded; it does not truncate to an older
+round or impose a new lifetime authorization cap. HTTP pending-intent recovery
+is layered above this interface in the [Invocations contract](hosted-deployment.md#json-operation-contract).
+The [local workbench](local-workbench.md) uses this discovery rather than
+browser-held run IDs or SDK task reconnection.
 
 `Authorization` contains `run_id`, `job_id`, `request_id`, `plan_fingerprint`,
 `expected_revision`, `limits`, and optional `previous_run_id`. Preserve the
