@@ -48,7 +48,7 @@ corruption, source evidence resolution, and unknown versus observed usage.
 
 | Probes | Current evidence | Remaining scope |
 | --- | --- | --- |
-| G0-01 | Source imports succeed in local Python 3.13.15; the batch smoke enters and exits the public `AgentServerHost` lifespan with an explicitly local task provider. | Clean package build, deployed startup and managed readiness remain unverified. |
+| G0-01 | Local public-host startup/shutdown and an allowlisted source ZIP's isolated wheel-build/entrypoint-import check succeed with installed dependencies. | Remote dependency resolution, deployed startup and managed readiness remain unverified. |
 | G0-02 through G0-06 | Offline SQLite/Blob contract tests cover ownership, replay, failure and interruption. Live Blob smoke covers commits, fresh processes, historical replay and handled failure/resume. | Live concurrency/unknown-interruption injection and actual hosted workflow recovery remain unverified. |
 | G0-07 | Offline identity/revision and Blob digest/length/ETag checks exercised; valid live Blob history restored successfully. | No live corruption injection or hosted restoration proof. |
 | G0-08 | Local native SDK smoke: one start reaches an attempt limit; explicit resume completes the fixture. Offline contracts cover durable limits, handler reentry, and obsolete-round blocking. | No managed Foundry backend/disconnect or live Blob batch verification. |
@@ -87,6 +87,28 @@ these new batch authorization records.
 No new cloud resource or real model call was used for this slice. Hosted
 lease recovery, operator authentication, downstream managed identities, and
 cloud lifecycle probes are still outstanding.
+
+### Synthetic Invocations and packaging evidence
+
+The [hosted entry point](hosted-deployment.md) adds in-process ASGI evidence
+through the actual Invocations 1.1.0 SDK, strict request validation, a single
+configured synthetic job, and sanitized start/status/resume responses.
+SQLite and fake-Blob tests restore status in a newly constructed application
+before explicit resume; distinct application UUIDs identify those local
+instances without exposing Azure resource identifiers.
+
+Pre-upload review found two native SDK gaps: developer credential fallback
+in its independently constructed async credential, and incomplete hosted
+resource shutdown. Production-only credential policy and a pinned hosted
+lifecycle adapter now cover both. Offline checks exercise effective
+credential chains and resource ownership during normal shutdown, startup
+failure, and cancellation. These are local SDK findings and fixes, not
+evidence that the managed task service is available.
+
+The source archive excludes real-model code and private environment state.
+Its isolated build/import check does not install fresh cloud dependencies or
+pass the deployed-startup portion of G0-01. Actual hosted observations must
+be recorded separately.
 
 ## 1. Smallest demonstration
 

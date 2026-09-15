@@ -10,8 +10,15 @@ requires-python = ">=3.13"
 dependencies = []
 
 [project.optional-dependencies]
+test = [
+    "httpx>=0.28.1,<1",
+    "setuptools>=77",
+]
 hosted = [
-    "azure-ai-agentserver-core==2.1.0",
+    "azure-ai-agentserver-core[hosted]==2.1.0",
+    "azure-ai-agentserver-invocations==1.1.0",
+    "azure-identity>=1.25.0,<2",
+    "azure-storage-blob>=12.30,<13",
 ]
 azure = [
     "azure-ai-projects>=2.3.0,<3",

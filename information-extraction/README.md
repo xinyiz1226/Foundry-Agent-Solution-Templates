@@ -339,6 +339,33 @@ managed task-service recovery, browser disconnection, or managed-identity
 authorization. See [native batch usage and limitations](docs/native-batch.md)
 and the [hosting feasibility decision](docs/batch-hosting-feasibility.md).
 
+## Synthetic hosted entry point and source package
+
+The [Invocations entry point](docs/hosted-deployment.md) exposes strict JSON
+start/status/resume operations for one configured synthetic job. Production
+uses Blob and the hosted task backend only; no real-model switch, arbitrary
+document input, or local fallback is provided.
+
+Local checks exercise the actual Invocations SDK over in-process ASGI,
+including replacement-application inspection and explicit resume. The
+allowlisted ZIP excludes the real-model adapter, credentials, local ledgers,
+tests, and documentation:
+
+```powershell
+& .\.venv\Scripts\python.exe -m pip install -e '.[hosted,test]'
+& .\.venv\Scripts\python.exe .\scripts\invocations_smoke.py
+& .\.venv\Scripts\python.exe .\scripts\package_source.py `
+    --output .\.local-data\synthetic-agent.zip --check
+```
+
+The package check builds a wheel and imports the entry point in isolated
+Python using installed dependencies, with network access blocked. It is
+not a remote-build or cloud-recovery result. The initial deployment probe
+uses existing Foundry gateway permissions, not a designated-operator web
+allowlist. The [deployment guide](docs/hosted-deployment.md) covers approval,
+runtime identity, pinned SDK lifecycle ownership, session affinity, and stop
+semantics.
+
 ## Storage and scope limitations
 
 `Store` is the narrow internal storage seam implemented by `SQLiteStore` and
@@ -366,8 +393,8 @@ are cumulative, and reads verify full history: this is a bounded G0 ledger,
 not a large-document storage design. See [Blob contracts and smoke commands](docs/blob-store.md)
 for ambiguous-write handling, integrity checks, and retention limitations.
 
-Not implemented: Foundry hosting, Agent Framework/Invocations integration,
-managed-identity deployment, browser/UI/HTTP transport, a deployed batch
+Not yet verified or completed: deployed Foundry hosting, Agent Framework
+integration, managed-identity access, browser/UI, a deployed batch
 worker, total-token or billed-cost enforcement, input normalization, generalized
 schemas, evaluation, semantic validation, or review operations.
 
