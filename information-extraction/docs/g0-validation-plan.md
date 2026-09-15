@@ -177,6 +177,13 @@ Responses wrapper, or a full deployment template merely to prove this path.
 | Deployment interface | Preserve the existing Invocations approach unless evidence requires a change. | Clean package readiness and a supported source deployment/invocation path; confirm what azd can express |
 | Identity | Entra operator access plus server-side managed identities. | Separate operator authorization and downstream resource roles; do not assume login alone grants mutation permission |
 
+The [next-slice hosting and authorization plan](workbench-hosting-auth-plan.md)
+records the minimum resource/permission inventory, installed SDK identity
+limitations, direct-gateway bypass checks, and long-lived WebSocket
+expiry/revocation probes. Its [primary-source research](workbench-hosting-auth-research.md)
+does not replace target-environment checks or approval for resource changes.
+Neither document marks G0-10 complete.
+
 An in-memory background task, a thread launched from Streamlit, or a longer
 HTTP timeout is not evidence of durable batch execution. If the hosting
 contract cannot meet the lifecycle requirement, report G0 as blocked and

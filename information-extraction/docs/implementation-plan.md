@@ -6,7 +6,11 @@ This plan records the scope agreed on September 14, 2026. It is a planning
 artifact, not a claim that all capabilities described below already exist.
 The [execution core](../README.md) is implemented, and a
 [bounded synthetic hosted probe](hosted-smoke-results.md) has completed.
-The full browser workflow, workbench, and complete G0 gate remain outstanding.
+A [local synthetic workbench](local-workbench.md) now supports current-job
+rediscovery, explicit start/resume, and evidence inspection. The authenticated
+hosted browser workflow and complete G0 gate remain outstanding; the next
+[hosting and authorization slice](workbench-hosting-auth-plan.md) is a
+proposed design, not a deployed access-control boundary.
 
 Execution planning is detailed in the [minimal migration inventory](migration-inventory.md)
 and [G0 technical validation plan](g0-validation-plan.md). The
