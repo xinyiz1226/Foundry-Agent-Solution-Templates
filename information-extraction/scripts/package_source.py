@@ -19,6 +19,7 @@ ALLOWED_FILES = (
     *(Path("src") / "information_extraction" / name for name in (
         "__init__.py", "batch.py", "blob_store.py", "codec.py", "contracts.py",
         "execution.py", "hosted_app.py", "hosted_lifecycle.py", "native_batch.py", "sample.py", "sqlite_store.py",
+        "legacy_financial.py", "outputs.py", "schema.py",
     )),
 )
 WEB_ALLOWED_FILES = (
@@ -29,6 +30,7 @@ WEB_ALLOWED_FILES = (
         "__init__.py", "batch.py", "codec.py", "contracts.py", "execution.py",
         "sample.py", "sqlite_store.py", "cloud_workbench_client.py", "workbench_auth.py",
         "workbench_client.py", "workbench_cloud.py", "workbench_ui.py",
+        "legacy_financial.py", "outputs.py", "schema.py",
     )),
 )
 TARGETS = {

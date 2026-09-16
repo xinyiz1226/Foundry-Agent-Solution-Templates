@@ -1,7 +1,9 @@
-"""Frozen contracts for the fixed, pre-normalized G0 financial sample."""
+"""Frozen extraction contracts, including the unchanged legacy G0 wire shape."""
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import StrEnum
+import json
+import math
 import re
 from typing import Protocol
 
@@ -117,6 +119,114 @@ class Block:
 
 
 @dataclass(frozen=True)
+class DialogueBlock(Block):
+    speaker: str
+
+    def __post_init__(self):
+        super().__post_init__()
+        validate_identifier(self.speaker)
+
+
+class FieldType(StrEnum):
+    TEXT = "text"
+    NUMBER = "number"
+    INTEGER = "integer"
+    BOOLEAN = "boolean"
+    ENUM = "enum"
+    DATE = "date"
+
+
+RESERVED_FIELDS = frozenset({
+    "job_id", "document_id", "record_id", "candidate_id", "source_id", "chunk_id",
+    "request_id", "revision", "plan_fingerprint", "review_status",
+    "semantic_validation_performed", "evidence", "field_evidence", "block_ids",
+    "configuration_version", "schema_version", "profile_version", "parser_version", "model_binding",
+})
+MAX_FIELDS = 32
+MAX_TEXT_LENGTH = 4096
+MIN_INTEGER = -(2**63)
+MAX_INTEGER = 2**63 - 1
+Scalar = str | int | float | bool | None
+
+
+def _field_name(value: object) -> None:
+    if (
+        type(value) is not str or re.fullmatch(r"[a-z][a-z0-9_]{0,63}", value) is None
+        or value in RESERVED_FIELDS
+    ):
+        raise InvalidInput("invalid_or_reserved_field_name")
+
+
+def _bounded_text(value: object, limit: int) -> bool:
+    if type(value) is not str or not value.strip() or len(value) > limit:
+        return False
+    try:
+        value.encode("utf-8")
+    except UnicodeError:
+        return False
+    return True
+
+
+@dataclass(frozen=True)
+class FieldSpec:
+    name: str
+    kind: FieldType
+    description: str
+    nullable: bool = False
+    choices: tuple[str, ...] = ()
+    date_format: str | None = None
+
+    def __post_init__(self):
+        _field_name(self.name)
+        if (
+            not isinstance(self.kind, FieldType) or type(self.nullable) is not bool
+            or not _bounded_text(self.description, 512) or type(self.choices) is not tuple
+        ):
+            raise InvalidInput("invalid_field_specification")
+        if self.kind == FieldType.ENUM:
+            if (
+                not 1 <= len(self.choices) <= 32
+                or any(not _bounded_text(choice, 128) for choice in self.choices)
+                or len(set(self.choices)) != len(self.choices)
+            ):
+                raise InvalidInput("invalid_enum_choices")
+        elif self.choices:
+            raise InvalidInput("choices_require_enum_field")
+        if self.date_format != ("YYYY-MM-DD" if self.kind == FieldType.DATE else None):
+            raise InvalidInput("unsupported_field_date_format")
+
+
+@dataclass(frozen=True)
+class RecordSchema:
+    version: str
+    fields: tuple[FieldSpec, ...]
+    max_records: int = 50
+
+    def __post_init__(self):
+        validate_identifier(self.version)
+        if (
+            type(self.fields) is not tuple or not 1 <= len(self.fields) <= MAX_FIELDS
+            or any(not isinstance(item, FieldSpec) for item in self.fields)
+            or len({item.name for item in self.fields}) != len(self.fields)
+        ):
+            raise InvalidInput("invalid_schema_fields")
+        if type(self.max_records) is not int or not 1 <= self.max_records <= 100:
+            raise InvalidInput("invalid_schema_record_limit")
+
+
+@dataclass(frozen=True)
+class ExtractionProfile:
+    version: str
+    schema: RecordSchema
+    instructions: str
+
+    def __post_init__(self):
+        validate_identifier(self.version)
+        if not isinstance(self.schema, RecordSchema) or not _bounded_text(self.instructions, 8192):
+            raise InvalidInput("invalid_extraction_profile")
+
+
+@dataclass(frozen=True)
 class Chunk:
     id: str
     blocks: tuple[Block, ...]
@@ -141,12 +251,17 @@ class Plan:
     model_binding: str
 
     def __post_init__(self):
+        self._validate_sources()
+        if self.schema_version != SCHEMA_VERSION:
+            raise InvalidInput("unsupported_schema_version")
+        if any(isinstance(block, DialogueBlock) for chunk in self.chunks for block in chunk.blocks):
+            raise InvalidInput("dialogue_blocks_require_configured_plan")
+
+    def _validate_sources(self):
         for identifier in (
             self.document_id, self.profile_version, self.parser_version, self.model_binding,
         ):
             validate_identifier(identifier)
-        if self.schema_version != SCHEMA_VERSION:
-            raise InvalidInput("unsupported_schema_version")
         if type(self.chunks) is not tuple or not self.chunks or any(
             not isinstance(chunk, Chunk) for chunk in self.chunks
         ):
@@ -156,6 +271,34 @@ class Plan:
         block_ids = [block.id for chunk in self.chunks for block in chunk.blocks]
         if len(set(block_ids)) != len(block_ids):
             raise InvalidInput("duplicate_block_id")
+
+
+@dataclass(frozen=True)
+class ConfiguredPlan(Plan):
+    profile: ExtractionProfile
+    format_version: str = "configured-plan-v1"
+
+    def __post_init__(self):
+        self._validate_sources()
+        if (
+            type(self.format_version) is not str or self.format_version != "configured-plan-v1"
+            or not isinstance(self.profile, ExtractionProfile)
+            or self.profile_version != self.profile.version
+            or self.schema_version != self.profile.schema.version
+        ):
+            raise InvalidInput("configured_plan_profile_mismatch")
+        try:
+            for chunk in self.chunks:
+                for block in chunk.blocks:
+                    block.text.encode("utf-8")
+                    block.location.encode("utf-8")
+        except UnicodeError:
+            raise InvalidInput("invalid_source_unicode") from None
+        if (
+            len(self.chunks) > 16
+            or len(json.dumps(asdict(self), sort_keys=True, separators=(",", ":"), allow_nan=False)) > 256 * 1024
+        ):
+            raise InvalidInput("configured_plan_size_limit_exceeded")
 
 
 @dataclass(frozen=True)
@@ -187,6 +330,55 @@ class Record:
 
 
 @dataclass(frozen=True)
+class FieldValue:
+    name: str
+    value: Scalar
+
+    def __post_init__(self):
+        _field_name(self.name)
+        valid = (
+            self.value is None or type(self.value) is bool
+            or (type(self.value) is str and _bounded_text(self.value, MAX_TEXT_LENGTH))
+            or (type(self.value) is int and MIN_INTEGER <= self.value <= MAX_INTEGER)
+            or (type(self.value) is float and math.isfinite(self.value))
+        )
+        if not valid:
+            raise InvalidInput("invalid_flat_field_value")
+
+
+@dataclass(frozen=True)
+class FlatRecord:
+    fields: tuple[FieldValue, ...]
+
+    def __post_init__(self):
+        if (
+            type(self.fields) is not tuple or not 1 <= len(self.fields) <= MAX_FIELDS
+            or any(not isinstance(item, FieldValue) for item in self.fields)
+            or len({item.name for item in self.fields}) != len(self.fields)
+        ):
+            raise InvalidInput("invalid_flat_record")
+
+    def to_dict(self) -> dict[str, Scalar]:
+        return {item.name: item.value for item in self.fields}
+
+
+@dataclass(frozen=True)
+class FieldEvidence:
+    name: str
+    block_ids: tuple[str, ...]
+
+    def __post_init__(self):
+        _field_name(self.name)
+        if (
+            type(self.block_ids) is not tuple or any(type(item) is not str for item in self.block_ids)
+            or len(set(self.block_ids)) != len(self.block_ids)
+        ):
+            raise InvalidInput("invalid_field_evidence")
+        for block_id in self.block_ids:
+            validate_identifier(block_id)
+
+
+@dataclass(frozen=True)
 class Evidence:
     document_id: str
     chunk_id: str
@@ -201,10 +393,24 @@ class Candidate:
     job_id: str
     revision: int
     plan_fingerprint: str
-    record: Record
+    record: Record | FlatRecord
     evidence: tuple[Evidence, ...]
     review_status: ReviewStatus = ReviewStatus.PENDING
     semantic_validation_performed: bool = False
+
+
+@dataclass(frozen=True)
+class ConfiguredCandidate(Candidate):
+    record: FlatRecord
+    field_evidence: tuple[FieldEvidence, ...] = ()
+
+    def __post_init__(self):
+        if (
+            not isinstance(self.record, FlatRecord) or type(self.field_evidence) is not tuple
+            or any(not isinstance(item, FieldEvidence) for item in self.field_evidence)
+            or tuple(item.name for item in self.field_evidence) != tuple(item.name for item in self.record.fields)
+        ):
+            raise InvalidInput("invalid_configured_candidate_fields")
 
 
 @dataclass(frozen=True)

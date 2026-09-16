@@ -5,11 +5,12 @@ customer-adoption meeting sample. Financial reports remain the first domain.
 The purpose is to demonstrate reusable, evidence-linked extraction, not to
 implement ABCD's original dialogue-agent benchmark.
 
-**Implemented:** a bounded, offline ABCD-format importer and an original
-synthetic format fixture. **Not implemented:** configurable support extraction,
-support records in the workbench, review/export, or a second-domain evaluation
-result. This input-preparation slice does not complete G1 or any remaining G0
-cloud acceptance gate.
+**Implemented:** a bounded, offline ABCD-format importer, an original synthetic
+format fixture, and a [shared configured-core rehearsal](configurable-extraction.md)
+with a support profile and scripted responses. **Not implemented:** real support
+model extraction, support records in the workbench, review/export, or a
+second-domain accuracy result. These local slices do not complete G1 or any
+remaining G0 cloud acceptance gate.
 
 ## Data selection and provenance
 
@@ -107,7 +108,7 @@ identifies the exact supplied file, including compression and metadata.
 Neither identity implies that two different conversations describe different
 real-world customers.
 
-## Evidence and proposed support profile
+## Evidence and support profile
 
 Only customer/agent utterances from `original` are eligible textual evidence.
 Do not copy `scenario`, delexicalized text, intent labels, action targets,
@@ -116,7 +117,9 @@ are deliberately excluded in this dialogue-only profile: they may describe
 system state, but they do not prove that a customer or agent stated an outcome.
 Their count is reported so this omission is visible.
 
-The initial **proposed**, not yet executable, flat business profile is:
+The following flat profile is implemented as `SUPPORT_PROFILE` in
+`information_extraction.profiles`. Its current rehearsal uses predetermined
+fixture responses, not inference or human-labeled corpus evaluation:
 
 | Field | Type | Evidence rule |
 |---|---|---|
@@ -129,17 +132,18 @@ The initial **proposed**, not yet executable, flat business profile is:
 One conversation can yield zero or multiple records. Split unrelated concerns;
 do not emit a new record for every turn. Evidence, speaker/source references,
 configuration versions, execution identity, and review status remain
-framework-owned, outside this business schema. Preserve speaker information
-when preparing future model prompts. New records must remain pending review,
+framework-owned, outside this business schema. The configured plan and model
+prompt preserve speaker information. New records remain pending review,
 and default downstream queries/exports must use approved records only.
 
 ## Next G1 acceptance
 
-1. Generalize the bounded schema/model-output contracts and move financial
-   assumptions into a profile, preserving old immutable plans and ledgers.
-2. Wire this source format and the support profile through the same explicit
-   execution/evidence/review interfaces as the financial example, without
-   support-specific branches in the extraction engine.
+1. Complete general input planning and an explicitly bounded configured-model
+   trial. The shared schemas, output validator and frozen financial/support
+   profiles are implemented; fixture behavior alone is not a real-model result.
+2. Wire the source/profile selection into the workbench without support-specific
+   execution branches. Durable human review and approved output remain later
+   product work; current candidates are only pending.
 3. Freeze a small development subset and a distinct official dev/test subset;
    retain file hashes and conversation IDs. Author field values, record
    counts, and original-turn evidence as gold labels. Existing ABCD intent,
@@ -148,7 +152,8 @@ and default downstream queries/exports must use approved records only.
    outcomes, multiple concerns, and no-record cases. Report missed records
    and field/evidence errors with denominators, not just JSON validity.
 
-The existing synthetic hosted factory, financial workbench, and explicit
-hosted/web source-package allowlists are unchanged. The new module is part of
-the base Python package, but this local importer is not deployed by those
-existing G0 source archives.
+The deployed synthetic hosted factory and financial workbench are unchanged.
+New local source archives include the shared validator and legacy compatibility
+adapter needed by their imports (17 hosted files and 18 web files). They still
+exclude the local ABCD importer and real-model adapter. No new archive has been
+deployed as part of this work.

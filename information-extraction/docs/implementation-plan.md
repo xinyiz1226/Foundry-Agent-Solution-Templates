@@ -18,6 +18,15 @@ provisioning, and complete G0 remain outstanding. See the bounded observations a
 limitations in [guarded deployment](guarded-deployment.md), rather than
 treating the earlier read-only preflight as the current deployment state.
 
+The [configured-core slice](configurable-extraction.md) now supports frozen
+flat schemas, field-level source references, and a shared financial/support
+execution path. A scripted two-domain rehearsal exercises local persistence,
+failure/resume and historical replay. Configured plans also round-trip through
+the Blob adapter with offline clients, and the optional Responses adapter
+derives its prompt/schema from the frozen profile. Legacy G0 serialization and
+model bindings are preserved. This is not live support extraction, UI
+integration, review/export, held-out evaluation, or complete G1.
+
 Execution planning is detailed in the [minimal migration inventory](migration-inventory.md)
 and [G0 technical validation plan](g0-validation-plan.md). The
 [batch hosting feasibility decision](batch-hosting-feasibility.md) selects
@@ -102,7 +111,8 @@ customer issues/requests, products, attempted actions, and outcomes with
 original-turn evidence. These are human role-play conversations with fictional
 scenarios, not production support tickets. The
 [ABCD input-preparation slice](abcd-support-sample.md) provides a bounded local
-importer and an independently authored format fixture; generic support
+importer and an independently authored format fixture. The support profile
+now runs through the shared core with scripted fixture responses; real support
 extraction and evaluation remain G1 work. Hidden scenario facts and task labels
 must not become source evidence or automatic extraction gold.
 
@@ -364,13 +374,17 @@ Exit criteria:
 Work:
 
 - Define normalized document, bounded schema, evidence, configuration-version,
-  execution, and review contracts.
+  execution, and review contracts. Frozen schema/profile and field-evidence
+  contracts are implemented; general input planning and review remain open.
 - Move financial-report-specific assumptions into adapters and sample profiles.
+  New configured financial and support jobs use one output validator; a
+  separate compatibility adapter retains the already-frozen G0 wire format.
 - Implement the SEC HTML and plain-text paths.
 - Introduce the ABCD customer-support profile and a small, versioned local
-  development/held-out subset. The offline importer and original format fixture
-  are available; shared schema execution, human extraction gold, and approved
-  support queries remain to be implemented. Review dataset redistribution
+  development/held-out subset. The offline importer, support profile and
+  shared fixture execution are available; real provider validation, human
+  extraction gold, and approved support queries remain to be implemented.
+  Review dataset redistribution
   before bundling upstream dialogue text.
 
 Exit criteria:

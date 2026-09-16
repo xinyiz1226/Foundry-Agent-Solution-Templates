@@ -1,13 +1,12 @@
 """Synchronous one-attempt execution, independent of any process host."""
 
 from dataclasses import replace
-import math
-
 from .contracts import (
-    Action, Attempt, Candidate, Chunk, Conflict, Evidence, FailureCode, InvalidInput, Metric, Model, ModelFailure,
-    ModelRequest, ModelResponse, Plan, Record, Snapshot, Status, Store, TokenUsage, ValidationFailure,
+    Action, Attempt, Conflict, FailureCode, InvalidInput, Model, ModelFailure,
+    ModelRequest, ModelResponse, Plan, Snapshot, Status, Store, TokenUsage, ValidationFailure,
     validate_identifier,
 )
+from .outputs import resolve_candidates
 
 
 def _usage(value: object) -> TokenUsage | None:
@@ -18,44 +17,6 @@ def _usage(value: object) -> TokenUsage | None:
     ):
         raise ValidationFailure(FailureCode.INVALID_USAGE)
     return value
-
-
-def _resolve(claimed: Snapshot, chunk: Chunk, payload: object) -> tuple[Candidate, ...]:
-    if type(payload) is not dict or set(payload) != {"records"} or type(payload["records"]) is not list:
-        raise ValidationFailure(FailureCode.MALFORMED_OUTPUT)
-    blocks = {block.id: block for block in chunk.blocks}
-    candidates = []
-    for index, record in enumerate(payload["records"]):
-        if (
-            type(record) is not dict
-            or not {"metric", "value", "unit", "block_ids"} <= set(record)
-            or set(record) - {"metric", "value", "unit", "block_ids", "quote"}
-            or type(record["metric"]) is not str
-            or record["metric"] not in {metric.value for metric in Metric}
-            or type(record["value"]) not in (int, float)
-            or (type(record["value"]) is float and not math.isfinite(record["value"]))
-            or record["unit"] != "USD_millions"
-        ):
-            raise ValidationFailure(FailureCode.MALFORMED_OUTPUT)
-        references = record["block_ids"]
-        if (
-            type(references) is not list or not references
-            or any(type(block_id) is not str or block_id not in blocks for block_id in references)
-            or len(set(references)) != len(references)
-        ):
-            raise ValidationFailure(FailureCode.INVALID_EVIDENCE)
-        candidates.append(Candidate(
-            id=f"{claimed.job_id}:{claimed.revision + 1}:{index}",
-            job_id=claimed.job_id,
-            revision=claimed.revision + 1,
-            plan_fingerprint=claimed.plan_fingerprint,
-            record=Record(Metric(record["metric"]), record["value"], record["unit"]),
-            evidence=tuple(Evidence(
-                claimed.plan.document_id, chunk.id, block_id,
-                blocks[block_id].location, blocks[block_id].text,
-            ) for block_id in references),
-        ))
-    return tuple(candidates)
 
 
 class Execution:
@@ -103,7 +64,7 @@ class Execution:
             if not isinstance(response, ModelResponse):
                 raise ValidationFailure(FailureCode.MALFORMED_OUTPUT)
             usage = _usage(response.usage)
-            candidates = _resolve(claimed, chunk, response.payload)
+            candidates = resolve_candidates(claimed, chunk, response.payload)
         except ModelFailure as error:
             failure = error.code
             try:

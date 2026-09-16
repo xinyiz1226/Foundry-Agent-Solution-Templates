@@ -39,6 +39,9 @@ class SourcePackageTests(unittest.TestCase):
                 "src/information_extraction/native_batch.py",
                 "src/information_extraction/sample.py",
                 "src/information_extraction/sqlite_store.py",
+                "src/information_extraction/legacy_financial.py",
+                "src/information_extraction/outputs.py",
+                "src/information_extraction/schema.py",
             })
             self.assertEqual(archive.namelist(), sorted(archive.namelist()))
             self.assertEqual(archive.read("requirements.txt").decode("utf-8").splitlines(), [".[hosted]"])

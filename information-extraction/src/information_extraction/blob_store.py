@@ -13,9 +13,10 @@ from azure.storage.blob import ContainerClient
 from .codec import _hash, _json, _plan, _snapshot
 from .contracts import (
     Action, Blocked, Claim, Conflict, Evidence, FailureCode, IntegrityError,
-    InvalidInput, Metric, NotFound, Plan, ReviewStatus, Snapshot, StaleRevision,
+    InvalidInput, NotFound, Plan, ReviewStatus, Snapshot, StaleRevision,
     Status, TokenUsage, validate_identifier,
 )
+from .outputs import validate_published_records
 
 
 MAX_BLOB_BYTES = 8 * 1024 * 1024
@@ -462,10 +463,6 @@ class BlobStore:
                 or candidate.plan_fingerprint != claimed.plan_fingerprint
                 or candidate.review_status != ReviewStatus.PENDING
                 or candidate.semantic_validation_performed is not False
-                or not isinstance(candidate.record.metric, Metric)
-                or type(candidate.record.value) not in (int, float)
-                or (type(candidate.record.value) is float and not math.isfinite(candidate.record.value))
-                or candidate.record.unit != "USD_millions"
                 or type(candidate.evidence) is not tuple or not candidate.evidence
                 or len({evidence.block_id for evidence in candidate.evidence}) != len(candidate.evidence)
             ):
@@ -476,6 +473,7 @@ class BlobStore:
                     claimed.plan.document_id, chunk.id, block.id, block.location, block.text,
                 ):
                     raise Conflict("publication_evidence_conflict")
+        validate_published_records(claimed, chunk, result.candidates[len(claimed.candidates):])
 
     def publish(self, claimed: Snapshot, result: Snapshot) -> Snapshot:
         self._validate_result(claimed, result)

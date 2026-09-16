@@ -71,6 +71,9 @@ class WebSourcePackageTests(unittest.TestCase):
                 "src/information_extraction/workbench_client.py",
                 "src/information_extraction/workbench_cloud.py",
                 "src/information_extraction/workbench_ui.py",
+                "src/information_extraction/legacy_financial.py",
+                "src/information_extraction/outputs.py",
+                "src/information_extraction/schema.py",
             })
             self.assertEqual(archive.namelist(), sorted(archive.namelist()))
             self.assertEqual(archive.read("requirements.txt"), (source / "requirements-web.txt").read_bytes())
@@ -158,7 +161,7 @@ class WebSourcePackageTests(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         result = json.loads(completed.stdout)
-        self.assertEqual(len(result["files"]), 15)
+        self.assertEqual(len(result["files"]), 18)
         self.assertEqual(result["sha256"], hashlib.sha256(self.artifact.read_bytes()).hexdigest())
 
     @unittest.skipUnless(CLOUD_AVAILABLE, "optional cloud-workbench dependencies unavailable")

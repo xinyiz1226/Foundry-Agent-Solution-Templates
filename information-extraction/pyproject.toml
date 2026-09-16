@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "information-extraction"
 version = "0.1.0"
-description = "Offline G0 deterministic extraction execution core"
+description = "Configurable information extraction with deterministic durable execution"
 requires-python = ">=3.13"
 dependencies = []
 

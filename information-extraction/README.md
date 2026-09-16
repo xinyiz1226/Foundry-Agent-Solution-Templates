@@ -1,4 +1,4 @@
-# Information extraction: local workbench and G0 execution core
+# Information extraction: configurable core and workbench preview
 
 This is a **new implementation** of the execution invariants described in
 the [migration inventory](docs/migration-inventory.md), not a copy of DataFlowMVP
@@ -42,10 +42,21 @@ and original turn locations while excluding hidden scenarios, task labels and
 action events from dialogue evidence. An independently authored format fixture
 is included; no upstream conversations are bundled.
 
-This is **input preparation, not support extraction**. Configurable schemas,
-support records in the workbench, review/export and two-domain evaluation
-remain G1/later work. The existing synthetic cloud/local workbench is unchanged;
-the importer creates no Azure resources and makes no model calls.
+The [configurable core and two-domain rehearsal](docs/configurable-extraction.md)
+now run financial and support profiles through the same schema/evidence
+validation and durable execution path. Profiles are frozen into versioned
+plans; candidates contain flat business values plus framework-owned per-field
+source references. The JSON profile loader rejects unsupported constructs.
+SQLite and Blob codecs support these plans without changing legacy G0 plan or
+request identity.
+
+The rehearsal uses **scripted fixture responses, not real support extraction
+or an accuracy benchmark**. The optional Foundry Responses adapter can derive
+its prompt/schema from a frozen profile, but that configured provider path has
+only offline transport coverage. The existing synthetic cloud/local workbench
+is unchanged; support UI, general document upload, review/export, held-out
+evaluation, and full G1 remain open. No Azure resources or real-model calls are
+needed for the local rehearsal.
 
 ## Try the local workbench
 
@@ -145,8 +156,8 @@ $env:PYTHONPATH = Join-Path (Get-Location) 'src'
 ```
 
 This source-based route requires no package installation, Azure credentials,
-network access, or model service. Tests create uniquely named directories under
-`.test-data` in the current directory and remove them on completion. They launch
+network access, or model service. Tests use temporary directories, including
+unique folders under `.test-data`, and remove them on completion. They launch
 real subprocesses and exercise independent SQLite connections, including a
 deliberate process exit and a publication-lock failure.
 
@@ -179,7 +190,7 @@ an endpoint, credential, or an automatically discovered provider identity.
 The adapter is responsible for honoring it and disabling automatic retries.
 The core rejects an adapter whose binding differs from the persisted plan.
 
-Library usage with your adapter (not a configured live-model example):
+Legacy G0 library usage with your adapter (not a configured live-model example):
 
 ```python
 from information_extraction import Action, Execution, SQLiteStore
@@ -213,8 +224,10 @@ immutable objects with a final checkpoint commit marker.
 
 - `create` freezes the entire pre-normalized source plan before inference.
   Identity hashes bind document/chunk/block identifiers, text, source
-  locations, ordering, fixed schema version, profile version, parser version,
-  and model binding. There is no normalization or mutable configuration lookup.
+  locations, ordering, schema version, profile version, parser version,
+  and model binding. Configured plans additionally freeze the entire
+  schema/instructions and any dialogue speaker labels. Legacy plan encoding is
+  unchanged. There is no normalization or mutable configuration lookup.
 - A compatible new create request for an existing job returns its current
   state; changing its plan conflicts. An identical consumed request returns
   its **saved historical snapshot**, which may differ from the latest state.
@@ -262,12 +275,14 @@ exactly-once provider-inference guarantee. A future operator reconciliation
 design must not blindly delete these claims. Callers must avoid logging raw
 unknown provider exceptions, which can contain sensitive diagnostics.
 
-### Fixed records and source evidence
+### Legacy G0 records and source evidence
 
 `synthetic_plan()` contains two chunks, each with two identified source blocks.
 It is fictional financial text, not an SEC parser or proof of another domain.
-The only supported schema is `financial-metrics-v1`. A model response payload
-must be a dictionary with exactly this structure:
+The legacy `Plan` wire format supports only `financial-metrics-v1`. Its model
+response payload must be a dictionary with exactly this structure. New
+`ConfiguredPlan` jobs instead use the
+[flat fields/evidence envelope](docs/configurable-extraction.md):
 
 ```json
 {
@@ -324,19 +339,28 @@ selected deployment**, and omission sends no reasoning setting. The adapter
 does not discover deployments or assume that every model supports strict
 structured output, Responses, or a particular reasoning setting.
 
-Prompt version `financial-extraction-v2` includes the same output schema in the
+The default legacy prompt `financial-extraction-v2` includes the same output schema in the
 instructions as in the strict response-format request, with explicit enum
 spelling. This improves guidance; it does not substitute for local validation
 or prove provider-side schema enforcement. Invalid values are never silently
 normalized. Changing the prompt changes the binding and requires a new job.
 
+For configured extraction, pass `profile=selected_profile` and the matching
+`profile_version=selected_profile.version` to `FoundrySettings`. Build the
+`ConfiguredPlan` from that same profile and `settings.binding`. This uses
+`flat-extraction-v1`, deriving both instructions and output schema from the
+frozen profile. Configured and legacy model bindings cannot be interchanged.
+Only offline mocked transport has exercised this new provider path so far.
+
 - The binding hashes the explicit endpoint, deployment, profile, schema,
-  prompt/version, and request settings. Only the hash enters the plan, not the
-  endpoint. A deployment identifier is **not proof of an underlying model
+  prompt/version, and request settings. The model-settings hash, not the
+  endpoint, enters `model_binding`; configured plans also retain their full
+  extraction profile. A deployment identifier is **not proof of an underlying model
   version**; a deployment can be changed outside this ledger.
 - Requests send only the current chunk's blocks and relevant profile/schema
   fields, with source data separated from instructions. Strict JSON Schema
-  requests the fixed metrics structure without a `quote` field. No tools are
+  requests either the legacy metrics structure or configured fields/evidence,
+  without model-supplied framework quotes. No tools are
   supplied, `store=False`, and SDK retries are disabled even for injected
   clients. The factory disables HTTP redirects and environment-derived proxy
   settings. `store=False` is not a claim about all provider retention policies.
