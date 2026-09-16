@@ -288,14 +288,98 @@ sessions idle. The web app remained stopped/public-access-disabled with
 
 The remaining browser/Easy Auth, web-managed-identity gateway, WebSocket
 expiry/reconnect and bounded synthetic-round checks require a
-user-present test window. Readiness for a maximum ten-minute browser
-window was requested, but no answer was received; no public ingress was
-opened. CLI sign-in and this direct-route denial do not close those gates.
+user-present test window. Initially, readiness for a maximum ten-minute
+browser window was requested without a response; no public ingress was
+opened at that point. The subsequently authorized attempt is recorded below.
+CLI sign-in and this direct-route denial do not close those gates.
+
+## Anonymous login precheck: aborted window and diagnosis
+
+The first user-present window was aborted **before browser handoff**.
+Public opening was attempted at `2026-09-15T23:58:48.749837Z`, but the
+anonymous-login assertion failed. Cleanup completed at `23:58:59.523372Z`:
+public access disabled, site stopped, Always On restored to false, and
+agent disabled. No new agent session was created; all five retained
+sessions were idle. No extraction or real-model call occurred.
+
+The original precheck saved its HTTP status **after** the assertion, so
+the failed receipt contains neither the actual status nor redirect
+classification. That lost response cannot be reconstructed, and this
+failure alone proves neither successful login protection nor its cause.
+The historical receipt was preserved without invented response details.
+
+A subsequent read-only comparison confirmed that the actual default and
+bound hostname, probe URL, Streamlit browser hostname, and registered
+Entra callback agree. Easy Auth still requires authentication with
+`RedirectToLoginPage`, the exact tenant-specific v2 issuer, and the
+operator allowlist. No hostname, authentication, role, or deployment
+change was justified by that comparison.
+
+The operational precheck now saves metadata **before** its assertion,
+using [`scripts/web_login_diagnostics.py`](../scripts/web_login_diagnostics.py).
+The standard-library helper records status, the selected Accept profile,
+a bounded content-type classification, a UUID-shaped request ID, and a
+strict redirect classification. Only the configured site's AAD login
+path or the configured tenant's v2 authorization path can pass the
+redirect gate. Unexpected hosts/paths, raw OAuth query/fragment values,
+cookies, authorization headers, and response bodies are not persisted.
+An arbitrary 200, 401, or 403 is not treated as a successful login redirect.
+
+Local regression coverage exercises failed-response retention and
+redaction. A private controller fixture also verifies that a failed
+browser gate saves those diagnostics and still closes the site and agent.
+These checks validate observability and cleanup, not live browser login.
+
+### Bounded web-only differential probe
+
+On September 16, 2026, a separate diagnostic kept the agent **disabled**
+throughout. After private warmup, it allowed at most three anonymous root
+GETs within a 60-second public-access budget. Each request had a fresh
+cookie jar, no credentials, no redirects, and the same Requests User-Agent;
+only Accept changed. No response body was read or saved.
+
+| UTC observation time | Accept | Status | Location |
+| --- | --- | --- | --- |
+| `00:14:09.292251Z` | `*/*` | **401** | Absent |
+| `00:14:20.434938Z` | `text/html` | **401** | Absent |
+| `00:14:31.702516Z` | `*/*` | **401** | Absent |
+
+No content type or UUID-shaped `x-ms-request-id` was available in these
+responses. **Changing Accept alone did not produce a login redirect.**
+No transition was observed over the sampled interval; longer propagation
+or differences between a real browser and Requests have not been ruled
+out. The original window's missing response remains unknown.
+
+The configured unauthenticated action was still `RedirectToLoginPage`,
+the redirect provider was `azureActiveDirectory`, and the AAD provider was
+enabled. Microsoft's [authentication overview][anonymous-auth-doc] describes
+browser redirects and native-client 401 responses, but does not specify a
+header-detection algorithm sufficient to explain this trace. Do not infer
+a User-Agent root cause from the documentation alone.
+
+Opening was attempted at `00:14:07.376024Z`; closure was verified at
+`00:14:38.786198Z`, **31.4 seconds** later and before the fixed
+`00:15:07.376024Z` deadline. An independent watchdog verified closure.
+A subsequent independent control-plane read confirmed the site stopped,
+public access disabled, Always On false, the agent disabled, and the same
+five idle sessions. No baseline session was stopped, no new session was
+created, authentication was unchanged, and no model call occurred. The
+backup session automation was cleared.
+
+**Root cause and browser acceptance remain unresolved.** The three-request
+allowance is exhausted; this result does not authorize reopening. A later
+approved probe should distinguish real-browser/header behavior from the
+explicit `/.auth/login/aad` route, without weakening authentication or
+enabling the agent. A 401 from Requests is not a failed human sign-in, but
+it also does not satisfy the browser-redirect gate.
+
+[anonymous-auth-doc]: https://learn.microsoft.com/en-us/azure/app-service/overview-authentication-authorization#unauthenticated-requests
 
 ## Local verification
 
-The full optional suite passed **282 tests**. The dependency-free route
-passed **56**, with **226** optional tests skipped. Both actual archives
+After adding anonymous-response diagnostics, the full optional suite
+passed **288 tests**. The dependency-free route passed **62**, with **226**
+optional tests skipped. At the earlier deployment checkpoint, both actual archives
 passed isolated wheel/entry checks with zero network calls; the web entry
 also reported zero service calls and a blocked missing-login configuration.
 These are local checks, not a completed cloud browser demonstration.

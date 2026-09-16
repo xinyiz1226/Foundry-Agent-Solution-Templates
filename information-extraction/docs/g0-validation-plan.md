@@ -18,8 +18,11 @@ After an East US quota rejection, the operator approved West US 2, where
 resource group. The site is stopped/public-access-disabled and the plan
 is retained and billable. A later [identity-only approval](web-identity-configuration.md)
 configured the web login, protected credential and narrow managed-identity
-grant. Code deployment and live authorization verification remain
-unapproved and incomplete. Maintainer alignment is also still pending.
+grant. Subsequent [guarded deployment and caller probes](guarded-deployment.md)
+completed source deployment, private platform startup, and a paired
+operator-allow/unapproved-user-deny check on the direct Invocations route.
+Browser and web-managed-identity acceptance remain incomplete. Maintainer
+alignment is also still pending.
 
 Read alongside the [implementation plan](implementation-plan.md) and
 [source migration inventory](migration-inventory.md).

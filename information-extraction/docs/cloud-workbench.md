@@ -16,6 +16,13 @@ and an unapproved user's HTTP 403, then disabled it and stopped the new
 session. Those callers used isolated CLI profiles, not the deployed web
 managed identity or browser ID-token flow.
 
+A later [anonymous-login diagnosis](guarded-deployment.md#anonymous-login-precheck-aborted-window-and-diagnosis)
+recorded three root-request HTTP 401 responses with no redirect, including
+one with `Accept: text/html`. It closed the web-only diagnostic within its
+60-second budget and left the agent disabled. This did not establish the
+root cause or complete browser acceptance; no authentication controls were
+relaxed.
+
 ## Entry points and public interfaces
 
 | Surface | Purpose |

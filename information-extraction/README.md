@@ -88,8 +88,10 @@ confirmed platform startup, then stopped the site and restored Always On
 to false. A subsequent real-caller test returned HTTP 200 for the operator's
 read-only version-2 `current` request and HTTP 403 for an unapproved user's
 identical request; the agent and new session were closed afterward.
-Browser, web-managed-identity and broader route/access acceptance remain
-unverified. Protecting only
+A subsequent [bounded anonymous-login diagnosis](docs/guarded-deployment.md#anonymous-login-precheck-aborted-window-and-diagnosis)
+returned HTTP 401 with no redirect for both tested Accept profiles, then
+closed the web-only probe. Its root cause and browser, web-managed-identity
+and broader route/access acceptance remain unverified. Protecting only
 the web login does not protect a separately callable Foundry endpoint.
 
 ## Run the offline checks
