@@ -95,7 +95,9 @@ closed the web-only probe. A separately approved
 observed Edge HTTP 302 to the configured tenant, unlike Requests HTTP 401;
 the private precheck now uses a browser. The site is closed again.
 Operator sign-in/callback, web-managed-identity and broader route/access
-acceptance remain unverified. Protecting only
+acceptance remain unverified: a later approved human window passed the
+precheck but closed early without human results or new agent sessions.
+Protecting only
 the web login does not protect a separately callable Foundry endpoint.
 
 ## Run the offline checks

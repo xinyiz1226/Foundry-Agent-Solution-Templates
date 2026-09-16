@@ -31,6 +31,12 @@ as a browser substitute. No authentication settings changed. Login
 initiation is demonstrated, not operator sign-in, callback validation,
 the protected page, or managed-identity integration. The site is closed again.
 
+A later [human-window attempt](guarded-deployment.md#human-browser-window-opened-then-closed-without-an-acceptance-result)
+passed that precheck and opened the operator browser, but obtained no human
+login/rejection result. It closed early with the original five sessions
+still idle and no new sessions. Missing human feedback is not an
+authentication success or failure.
+
 ## Entry points and public interfaces
 
 | Surface | Purpose |

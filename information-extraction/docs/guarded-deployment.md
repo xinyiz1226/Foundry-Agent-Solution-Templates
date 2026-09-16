@@ -439,6 +439,40 @@ Streamlit page, web-managed-identity calls, and WebSocket expiry/reconnect
 still require a separately approved user-present window. This diagnostic
 did not reopen that full browser window.
 
+### Human browser window: opened, then closed without an acceptance result
+
+The operator approved continuing at `2026-09-16T09:05:03.468+08:00`.
+A new one-time receipt preserved all earlier receipts and bounded the
+attempt to at most ten minutes of public access and two new agent sessions.
+Preparation had a separate admission deadline; an independent watchdog
+and backup session automation guarded cleanup. Only login and read were
+permitted, not start/resume/retry or real-model calls.
+
+The corrected isolated-browser precheck passed with **302** to the
+configured tenant's v2 authorization endpoint. Public opening was attempted
+at `01:15:00.799918Z`; the fixed closing deadline was `01:25:00.799918Z`.
+The operator browser canvas was opened, with instructions to use an
+independent InPrivate browser for the unapproved account.
+
+**No human acceptance result was obtained.** The optional checklist
+terminal could not be read because it was not running. The subsequent
+interactive result request returned that the user was unavailable, and no
+checklist result file was created. This is missing observation, **not**
+evidence that either account succeeded or failed to sign in.
+
+The attempt was therefore closed early at `01:17:26.036732Z`, approximately
+**2 minutes 25 seconds** after opening was attempted. Independent readback
+verified the site stopped, public access disabled, Always On false, agent
+disabled, and the same five idle sessions, with no new sessions. No baseline
+session was stopped. The waiting controller was stopped only after resource
+cleanup had been verified; backup automation was then cleared.
+
+The browser precheck is now live-demonstrated through the actual window
+controller, but operator sign-in/callback, unapproved-user rejection,
+protected-page/managed-identity behavior, and WebSocket acceptance remain
+unverified. Another window requires fresh user-present approval; this
+attempt is closed and is not automatically retried or extended.
+
 [anonymous-auth-doc]: https://learn.microsoft.com/en-us/azure/app-service/overview-authentication-authorization#unauthenticated-requests
 
 ## Local verification
