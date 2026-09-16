@@ -64,11 +64,11 @@ corruption, source evidence resolution, and unknown versus observed usage.
 | G0-01 | Isolated source build/import, platform remote build, and deployed Invocations startup succeeded. | Complete clean-environment Bicep/azd deployment remains unverified. |
 | G0-02 through G0-06 | Offline ownership/failure/interruption contracts; live hosted commits, saved-request replay, and replacement-instance restoration after a known limit. Earlier Blob smoke covers controlled failure/resume. | No live concurrency or unknown-interruption injection; hosted failure/resume is not established by the limit/resume case. |
 | G0-07 | Offline identity/revision and Blob integrity checks; valid history restored in a replacement hosted application. | No live corruption injection. |
-| G0-08 | Native hosted task reached a persisted limit; explicit resume completed the remaining chunk through real Blob persistence. | Two chunks from one uninterrupted cloud start and browser-disconnect timing remain unverified. |
+| G0-08 | Native hosted task reached a persisted limit; explicit resume completed the remaining chunk through real Blob persistence. Fresh version-3 browser screenshots now demonstrate protected Start with allowance 1, limit at revision 1, and explicit Resume to revision 2 with 2/2 chunks. | Two chunks from one uninterrupted cloud start and browser-disconnect timing remain unverified. |
 | G0-09 | Local Streamlit page/client recreation restores current progress and evidence; a separate native-task process and process restart preserve the job. | Hosted authenticated browser reconnect and live disconnect timing remain unverified. |
-| G0-10 | Scoped runtime-identity Blob grant and hosted operations; local signed-token/client coverage and actual web identity/configuration. Direct Invocations `current` returned operator HTTP 200 and unapproved-user HTTP 403. Browser screenshots subsequently showed the test identity's Entra AADSTS50105 denial and protected historical current-job content through the deployed managed-identity read path; one new session was observed and stopped. | Token-level identity audit, login/callback edge cases, managed-identity start/resume, WebSocket expiry/revocation, alternate routes and the full effective-permissions audit remain open; directory PIM eligibility was not readable. |
+| G0-10 | Scoped runtime-identity Blob grant and hosted operations; local signed-token/client coverage and actual web identity/configuration. Direct Invocations `current` returned operator HTTP 200 and unapproved-user HTTP 403. Browser evidence includes Entra AADSTS50105 denial, protected historical reads, and a later fresh-job Start/limit/Resume completion through the deployed managed-identity client, with both Pending candidates and expanded source evidence visible. | Token-level identity audit, login/callback edge cases, WebSocket expiry/revocation, alternate routes and the full effective-permissions audit remain open; directory PIM eligibility was not readable. |
 | G0-11 | Owned session stop, different hosted application UUID, unchanged durable status, explicit resume, and endpoint disable observed. | Unexpected in-flight crash/lease recovery, hard cancellation, and real-model lifecycle remain unverified. |
-| G0-12 | Historical probe stops plus subsequent caller/browser-session cleanup; latest independent read found the site stopped/private, agent disabled and all six retained sessions idle. Baseline sessions were not stopped again during the browser window. | Source versions, roles, sessions, B1 plan and storage intentionally retained; deletion and final billing are not verified. |
+| G0-12 | Historical probe stops plus subsequent caller/browser-session cleanup; latest independent read found the site stopped/private, agent disabled and all seven retained sessions idle. The fresh execution window stopped its one new session and preserved all six baseline sessions; synchronized cleanup retained its closed receipt. | Source versions, roles, sessions, B1 plan and storage intentionally retained; deletion and final billing are not verified. |
 
 Run the exact local command from the README to reproduce the suite. The
 offline evidence alone does not establish Azure behavior; the live probes
@@ -91,10 +91,14 @@ The subsequent [version-3 staging](guarded-deployment.md#fresh-execution-version
 applied the fresh pause/resume job and Blob prefix without changing source,
 runtime identity or historical configuration. The private controller's
 stale-close-receipt race is now covered by an offline regression and fixed.
-The site and agent remain closed with six idle baseline sessions; no
-browser mutation window was opened without a fresh readiness confirmation.
-Actual protected Start/Resume and expanded evidence inspection remain
-human-required acceptance, not completed by deployment or local tests.
+At that staging checkpoint the site and agent were closed with six idle
+baseline sessions. A later explicitly user-present
+[execution window](guarded-deployment.md#human-execution-acceptance-start-limit-resume-and-source-evidence)
+demonstrated protected Start/limit/Resume and expanded source evidence
+through screenshots, then closed the site/agent and stopped its sole new
+session. This is live functional acceptance, not just deployment or local
+test evidence. All seven retained sessions are now idle; the remaining
+G0 gaps above are unchanged except for the demonstrated mutation path.
 
 ### Native batch evidence: September 15, 2026
 

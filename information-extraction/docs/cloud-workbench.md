@@ -1,6 +1,7 @@
 # Cloud workbench code: authorization and transport
 
-This is **source-deployed code with bounded live read-only browser evidence**,
+This is **source-deployed code with bounded live browser read and synthetic
+Start/Resume evidence**,
 not a currently running application or a completed G0 gate.
 The code-only slice did not create directory registrations, credentials,
 identities or grants. A subsequent, separately approved
@@ -43,10 +44,20 @@ obtained screenshots of the test identity's Entra **AADSTS50105** rejection
 and the operator workflow's protected current-job page: completed revision
 2, 2/2 chunks and a backend instance ID. One new hosted session was observed,
 then explicitly stopped; the five baseline sessions were untouched and all
-six are idle. This is functional evidence of the deployed protected
+six were idle at that checkpoint. This is functional evidence of the deployed protected
 managed-identity **read** path, not a token-level audit or new extraction.
-The site and agent are closed again. Fresh start/resume and WebSocket
-expiry/reconnect/revocation remain unverified.
+That window did not establish fresh extraction or WebSocket behavior.
+
+A later [fresh execution window](guarded-deployment.md#human-execution-acceptance-start-limit-resume-and-source-evidence)
+used version 3 with an independent job/Blob prefix. User screenshots showed
+Start reaching `limited` at revision 1, explicit Resume reaching `completed`
+at revision 2 with 2/2 chunks, revenue 120 and operating income 18, and both
+expanded source-evidence sections. Both candidates remained Pending.
+The sole new session was stopped and six baseline sessions preserved; all
+seven retained sessions are idle, with the site and agent closed.
+This demonstrates the protected managed-identity mutation path functionally,
+not a token-level audit, live exact-replay test, single-start two-chunk run,
+or WebSocket expiry/reconnect/revocation validation.
 
 ## Entry points and public interfaces
 

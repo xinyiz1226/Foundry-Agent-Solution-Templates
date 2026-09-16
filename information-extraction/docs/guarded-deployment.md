@@ -591,6 +591,82 @@ version-2 ownership checks. The wrapper and its watchdog must share the
 canonical receipt and validation function. Keep the fixed ten-minute
 maximum, original six-session baseline, and explicit 1+1 attempt budget.
 
+### Human execution acceptance: Start, limit, Resume and source evidence
+
+The user explicitly requested execution acceptance at
+`2026-09-16T13:53:08.842+08:00`. A new one-time wrapper used the exact
+version-3 ownership validator, its prepared fresh job/Blob prefix, the
+canonical synchronized window receipt and an independent cleanup guardian.
+The six existing idle sessions were the baseline. The approved job budget
+was Start with allowance **1**, then one explicit Resume with allowance
+**1**, each with a **120-second** admission deadline, using only the
+fixed synthetic model.
+
+The browser precheck returned the configured tenant's HTTP **302**.
+Public opening was attempted at `05:57:51.561727Z`; the fixed cutoff was
+`06:07:51.561727Z`. Focusing the browser and reopening its login route did
+not change that cutoff. The user was directed to the existing operator
+account; no identity, permission, model or deployment change was made
+during the window.
+
+The following are user-supplied screenshots, with **message receipt times**
+rather than independently measured click or backend-completion times:
+
+| Screenshot received (UTC) | Visible result |
+| --- | --- |
+| `06:00:58.151Z` | Exact fresh job, Start offered, allowance 1 and 120 seconds, no existing round shown. |
+| `06:02:06.522Z` | `limited`, revision **1**, **1/2** chunks, one committed attempt, reservation **1/1**, native registration confirmed. |
+| `06:03:10.493Z` | Resume accepted, new run/deadline, previous revenue **120** candidate still visible. An uncommitted attempt temporarily projected `in_progress_or_interrupted` and one unknown-usage attempt; the UI was inspection-only. |
+| `06:04:30.466Z` | Same resumed run reached `completed`, revision **2**, **2/2** chunks, two committed attempts overall, reservation **1/1** for this round, and zero unknown-usage attempts. Both candidate values were visible. |
+| `06:07:49.677Z` | Completed projection retained the same results; both Evidence sections were expanded, showing candidate IDs, block locations and original text. |
+
+| Candidate | Value / review state | Expanded source evidence |
+| --- | --- | --- |
+| `revenue` | `120 USD_millions`, Pending | `block-1`, `synthetic:line:1`: `ExampleCo revenue was USD 120 million.` |
+| `operating_income` | `18 USD_millions`, Pending | `block-3`, `synthetic:line:3`: `ExampleCo operating income was USD 18 million.` |
+
+The candidate IDs retained their revision-qualified suffixes `:1:0` and
+`:2:0` in the fresh job namespace. The first candidate's visible value
+remained 120 across resume. This does not substitute for a byte-level
+comparison of all historical Blob objects.
+
+The transient inspection-only state subsequently resolved to completed;
+no crash or interrupted-worker recovery was observed or inferred from it.
+No additional Resume/Retry was instructed while the outcome was unknown.
+The resumed round's displayed deadline remained
+`06:04:50.245972Z`. The final Pending labels mean viewing the evidence did
+not approve the records.
+
+Together with the deployed signed-operator gate, managed-identity-only
+client, fixed synthetic backend, and one new hosted session, these
+screenshots provide **functional protected browser-to-Foundry
+Start/limit/Resume and evidence-inspection acceptance**. They are not a
+captured token-level audit. No real model was invoked. Explicit refresh
+clicks, browser disconnect/reconnect timing, expiry/revocation, unknown
+crash recovery and two chunks from a single cloud Start were not established
+by this sequence. Exact transport replay remains covered by the separate
+offline tests, not by a claimed live retry here.
+
+Cleanup intent was recorded at `06:07:51.774406Z`, approximately 0.21 seconds
+after the unchanged cutoff. The canonical receipt became closed at
+`06:08:06.291797Z`; this is the end of the control-plane cleanup sequence,
+not a measured timestamp for when public access first became disabled.
+No extension or reopening occurred. The independent guardian and a
+separate verification at `06:09:31.918966Z` confirmed:
+
+- Site **Stopped**, public access **Disabled**, Always On **false**,
+  and operator authentication unchanged.
+- Owned agent **disabled**, exact version 3 and its configuration preserved.
+- Exactly **one** new session stopped; all **six** baseline sessions
+  preserved without being stopped again; all **seven** retained sessions idle.
+
+The primary controller exited successfully without a forced stop or a
+stale receipt overwrite. The backup one-time automation was cleared.
+Only sanitized observations are published; authentication URL fragments,
+tokens and raw browser/session artifacts are not committed.
+**This bounded execution acceptance is complete; full G0 and the general
+document-extraction MVP are not.**
+
 ## Local verification
 
 After adding anonymous-response diagnostics, the full optional suite

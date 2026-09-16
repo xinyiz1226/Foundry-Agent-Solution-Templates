@@ -10,9 +10,11 @@ A [local synthetic workbench](local-workbench.md) now supports current-job
 rediscovery, explicit start/resume, and evidence inspection. The
 [authenticated cloud workbench](cloud-workbench.md) is deployed: bounded
 human acceptance demonstrated protected historical current-job content and
-Entra rejection of the unassigned test identity. Managed-identity
-start/resume, live disconnect and expiry behavior, repeatable provisioning,
-and complete G0 remain outstanding. See the bounded observations and
+Entra rejection of the unassigned test identity. A subsequent fresh-job
+window demonstrated protected Start/limit/Resume completion and expanded
+source evidence through the deployed managed-identity path. Live disconnect
+and expiry behavior, single-start two-chunk cloud progression, repeatable
+provisioning, and complete G0 remain outstanding. See the bounded observations and
 limitations in [guarded deployment](guarded-deployment.md), rather than
 treating the earlier read-only preflight as the current deployment state.
 
@@ -54,12 +56,13 @@ small cost-only decisions, repeat completed login checks, or redesign the
 frontend. This does not relax identity boundaries, historical-data
 preservation, explicit execution budgets, or public-exposure limits.
 
-The immediate slice is [fresh synthetic execution preparation](local-workbench.md#prepare-independent-acceptance-jobs):
-isolated jobs and a repeatable start/limit/resume/single-start rehearsal.
-Then close the live browser-mutation and reconnect gaps once, and move to
-configurable flat schemas, UTF-8 input, a second-domain meeting sample,
-durable review and approved export. Maintainer alignment can proceed in
-parallel; no upstream PR is implied.
+The [fresh synthetic execution preparation](local-workbench.md#prepare-independent-acceptance-jobs)
+and bounded human Start/limit/Resume/evidence acceptance are complete.
+Move product implementation to configurable flat schemas, UTF-8 input,
+a second-domain meeting sample, durable review and approved export;
+track the remaining reconnect/expiry and single-start cloud probes
+separately rather than repeating the completed login or mutation checks.
+Maintainer alignment can proceed in parallel; no upstream PR is implied.
 
 For development budgeting, public USD retail prices checked September 16:
 

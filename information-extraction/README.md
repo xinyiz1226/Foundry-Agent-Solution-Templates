@@ -106,10 +106,14 @@ provided screenshots of the unapproved identity's Entra `AADSTS50105`
 denial and the protected cloud page showing the historical completed job
 at revision 2, with 2/2 chunks. This supports the deployed browser and
 managed-identity current-read path, not new extraction or an exhaustive
-identity audit. The sole new session was stopped; all six retained
-sessions are idle and the web app/agent are closed again. Fresh
-start/resume, WebSocket expiry/reconnect and broader route/access
-acceptance remain outstanding.
+identity audit. The sole new session was stopped, leaving six idle sessions.
+A later [fresh execution acceptance](docs/guarded-deployment.md#human-execution-acceptance-start-limit-resume-and-source-evidence)
+demonstrated protected Start, limit at revision 1, explicit Resume to
+completed revision 2, and expanded evidence for both Pending candidates.
+That window stopped its one new session and preserved the six baseline
+sessions. All seven retained sessions are idle and the web app/agent are
+closed again. WebSocket expiry/reconnect, single-start two-chunk cloud
+progression and broader route/access acceptance remain outstanding.
 Protecting only
 the web login does not protect a separately callable Foundry endpoint.
 
