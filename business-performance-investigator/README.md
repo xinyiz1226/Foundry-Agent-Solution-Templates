@@ -5,14 +5,15 @@ with offline replay evaluation, and a verified private-SQL connectivity package,
 not the full analyst application.
 Hosted-agent model access, private SQL, controlled same-session compute resume
 and the fixed analytical baseline have been verified in Azure. Real DeepSeek
-adaptive investigation remains incomplete: the latest run completed comparison
-and territory discovery, then rejected an invalid filter before product
-drilldown.**
+adaptive investigation remains incomplete: the latest run completed overall
+comparison, territory discovery and a Northwest comparison, but then exhausted
+the remaining query budget before product drilldown.**
 
 The local follow-up now constrains filters to discovered string IDs and allows
 one budgeted correction in the hosted path. Its
 [offline correction behavior](docs/adaptive-evaluation.md#optional-single-filter-correction)
-is covered locally; it has not changed the failed live acceptance outcome.
+is covered locally. A subsequent live run used valid filter IDs but never
+triggered correction; end-to-end acceptance still failed on query-budget planning.
 
 Cloud experiments are disposable and require verified resource teardown and
 revocation of their exact temporary model permissions. Soft-deleted Foundry

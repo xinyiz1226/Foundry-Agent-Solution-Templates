@@ -7,10 +7,11 @@ Azure profiles, environment files and local configuration are excluded from
 the source package. The runtime exposes Responses/2.0.0; its internal adaptive
 model transport is explicitly Chat Completions.
 
-**The separately approved September 16 experiment verified the fixed baseline,
-but real DeepSeek adaptive acceptance remains incomplete.** The bounded
-two-call compatibility mode executed comparison and territory discovery before
-a later invalid filter was rejected. See the
+**The separately approved September 16 experiments verified the fixed baseline,
+but real DeepSeek adaptive acceptance remains incomplete.** The first experiment
+stopped on an invalid filter. The second used a valid Northwest string ID but
+spent eight queries on overall comparison, territory discovery and a regional
+comparison, leaving too little budget for the required product breakdown. See the
 [recorded cloud evidence](cloud-analysis-validation.md#recorded-live-experiment-2026-09-16).
 This is not a customer-readiness or general model-quality claim. Any subsequent
 paid experiment needs fresh resource/cost scope, deadline and authorization
@@ -83,7 +84,9 @@ zero. A rejected batch performs no queries and all its calls get error replies.
 Correction consumes the existing six-call/ten-query/time/token budgets;
 malformed calls, invalid finish references and repeated filter errors still
 stop execution. See [correction semantics](adaptive-evaluation.md#optional-single-filter-correction).
-This follow-up is locally verified only, not deployed or proven with DeepSeek.
+The dynamic-schema configuration has been deployed and exercised with DeepSeek;
+that run did not trigger correction, so real correction success remains unproven.
+The run stopped at the data-request cap rather than completing the question.
 
 Every exit attempts rollback and closes both cursor and connection, including
 setup failures. Cleanup failure prevents reporting successful completion.

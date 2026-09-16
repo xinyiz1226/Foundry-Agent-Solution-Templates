@@ -58,14 +58,15 @@ Original failed acceptance reports remain failed, with their own
 `cleanup: not_run` fields unchanged. A separate local cleanup-verification
 artifact records closure; cleanup success does not promote analytical acceptance.
 
-## Local reliability follow-up (not a new cloud result)
+## Reliability follow-up and second live experiment
 
 The current source adds dynamic discovered-string-ID schemas and one opt-in
 filter correction in the hosted path. It distinguishes wrong value types from
 unknown string IDs without recording rejected values. Offline replay covers
 the pinned Northwest product drilldown and unchanged request/model budgets.
-No new resources, role assignments or paid inference were used for this fix;
-the live failures above remain failures.
+No resources, role assignments or paid inference were used while implementing
+the fix. A subsequently authorized live experiment is recorded below; the
+earlier failures remain failures.
 
 The acceptance policy now expects `max_filter_corrections: 1` and checks the
 correction counter, record shapes, categories, unique tool indices and model
@@ -74,6 +75,60 @@ recognized exhaustion reasons. These are consistency checks on runtime
 reports, not independent proof of what the model privately generated.
 Historical reports use older limits and must be interpreted with their
 recorded source version, not relabeled as passing the current policy.
+
+### Experiment 02: valid IDs, incomplete budget planning
+
+With fresh authorization, source checkpoint `79dc7f5` was deployed as version
+1 in a new disposable Central US environment, reusing the same East US
+DeepSeek deployment and pinned sample. Pre-deployment verification passed 259
+local tests, three Bicep builds and server-side ARM validation/what-if (23
+creates, no modifications or deletions). Only one baseline/adaptive pair ran,
+using exactly the question in experiment 01.
+
+The fixed baseline passed the pinned reference gate. The adaptive path
+returned `exhausted / data_request_limit`, with these completed operations:
+
+| Operation | Analytical requests | Cumulative requests |
+|---|---:|---:|
+| Overall comparison | 2 | 2 |
+| Territory breakdown, Top-K 5 | 4 | 6 |
+| Northwest comparison, `territory: "1"` | 2 | 8 |
+
+Only two requests remained, while a complete product breakdown costs four.
+The next batch was rejected before any of its queries ran. No product
+breakdown completed and no `finish` selection was accepted. The retained
+report exposes completed scopes, not raw arguments of the rejected batch;
+it does not prove exactly which additional calls that batch requested.
+
+This run used a valid previously displayed string ID and had **zero filter
+corrections**. That is evidence that this execution passed the filter contract,
+not proof of general model reliability or successful real-model correction.
+The remaining issue is goal-aware use of the existing query budget, not SQL
+connectivity. Raising the budget or silently accepting a partial answer was
+not attempted.
+
+The four model calls reported **5,361 prompt tokens, 260 completion tokens,
+5,621 total**. Runtime analytical elapsed time was 4.149 seconds; CLI wall
+times were 11.896 seconds for baseline and 9.048 seconds for adaptive. These
+are one-run observations, not benchmarks or billing estimates.
+The initial scoped cost query returned HTTP 429; the final query succeeded
+with an empty `rows` array. No posted rows is **not evidence of zero cost**,
+and the resource-group query excludes the existing shared model's inference
+charges. Actual total cost remains unknown.
+
+The existing failed response and safe receipt were retained without another
+model invocation. The exact session was stopped and verified idle after
+retrieval, and only the tracked new inference assignment was revoked.
+Resource cleanup is recorded separately; the failed acceptance report must
+not be promoted even if teardown succeeds.
+
+**Experiment 02 cleanup was independently verified at 2026-09-16 04:18 UTC:**
+the dedicated resource group and exact temporary inference assignment were
+absent, owned lifecycle state was `deleted`, and the deadline fallback was
+removed. The soft-deleted Foundry account was retained without permanent purge.
+The existing shared model and directory identities were not modified. The
+original failed acceptance report remains unchanged; a separate local
+cleanup-verification artifact records teardown.
 
 ## Prepare without Azure
 
