@@ -1,4 +1,4 @@
-# Bounded hosted analysis: prepared, not cloud-validated
+# Bounded hosted analysis: baseline verified, adaptive acceptance incomplete
 
 The `business-investigator` service is separate from the verified `sql-probe`.
 It packages the shared `analysis/` engine from the project root instead of
@@ -7,12 +7,14 @@ Azure profiles, environment files and local configuration are excluded from
 the source package. The runtime exposes Responses/2.0.0; its internal adaptive
 model transport is explicitly Chat Completions.
 
-**No new cloud experiment or actual DeepSeek analytical evaluation has been
-performed for this milestone.** Previous connectivity approval expired with
-its experiment. A new disposable group, resource/cost scope, deadline and
-exact temporary shared-model grant require fresh approval. The proposed next
-scope is Central US infrastructure with the existing East US DeepSeek
-deployment; it is not an authorization or a reservation.
+**The separately approved September 16 experiment verified the fixed baseline,
+but real DeepSeek adaptive acceptance remains incomplete.** The bounded
+two-call compatibility mode executed comparison and territory discovery before
+a later invalid filter was rejected. See the
+[recorded cloud evidence](cloud-analysis-validation.md#recorded-live-experiment-2026-09-16).
+This is not a customer-readiness or general model-quality claim. Any subsequent
+paid experiment needs fresh resource/cost scope, deadline and authorization
+for its exact temporary shared-model grant; past approval is not reusable.
 
 ## Request contract
 

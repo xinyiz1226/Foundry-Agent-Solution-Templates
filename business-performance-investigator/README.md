@@ -3,13 +3,17 @@
 **Current deliverables: a deterministic baseline, a bounded adaptive engine
 with offline replay evaluation, and a verified private-SQL connectivity package,
 not the full analyst application.
-Hosted-agent model access, private SQL and controlled same-session compute
-resume have been verified in Azure; the new analytical service and actual
-DeepSeek investigation are not yet cloud-validated.**
+Hosted-agent model access, private SQL, controlled same-session compute resume
+and the fixed analytical baseline have been verified in Azure. Real DeepSeek
+adaptive investigation remains incomplete: the latest run completed comparison
+and territory discovery, then rejected an invalid filter before product
+drilldown.**
 
-The disposable experiment's active resource group has been deleted and its
-temporary shared-model permission revoked. Soft-deleted Foundry accounts are
-retained without purge; actual billed cost remains unknown.
+Cloud experiments are disposable and require verified resource teardown and
+revocation of their exact temporary model permissions. Soft-deleted Foundry
+accounts are retained without purge; actual billed cost remains unknown.
+See the [live experiment record](docs/cloud-analysis-validation.md#recorded-live-experiment-2026-09-16)
+for outcomes and cleanup evidence. This is not yet a customer-ready analyst app.
 
 The solution investigates business metric changes without requiring Fabric
 or Databricks. Start with the [local analysis baseline](docs/baseline.md) for
@@ -18,8 +22,8 @@ evidence. It creates no cloud resources and calls no model.
 The [adaptive evaluation](docs/adaptive-evaluation.md) adds bounded model-selected
 investigation and a reproducible replay comparison. The
 [analytical hosted service](docs/hosted-analysis.md) and
-[private sample initializer](docs/analysis-initialization.md) prepare the next
-separately approved experiment; replay is not evidence of live model quality.
+[private sample initializer](docs/analysis-initialization.md) support separately
+approved cloud experiments; replay is not evidence of live model quality.
 
 The separately deployed connectivity probe checks a smaller prerequisite:
 

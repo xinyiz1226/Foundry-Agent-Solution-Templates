@@ -2,12 +2,14 @@
 
 ## What was implemented—and what was not
 
-This is the local implementation of steps 1–2: a single-agent, tool-selecting
-Chat Completions loop and a comparison harness against the existing fixed
-baseline. **No Azure requests, real model inference, paid experiment, or cloud
-deployment was performed or approved by this work.** No dependencies were added.
-The hosted runtime and credential transport remain the integrating caller's
-responsibility.
+This documents the local implementation of steps 1–2: a single-agent,
+tool-selecting Chat Completions loop and a comparison harness against the
+existing fixed baseline. Its original implementation performed no Azure
+requests or real model inference. The subsequent separately authorized
+[cloud experiment](cloud-analysis-validation.md#recorded-live-experiment-2026-09-16)
+verified the baseline but did not complete adaptive acceptance. No dependencies
+were added for the local engine. Hosted runtime and credential transport remain
+the integrating caller's responsibility.
 
 Replay fixtures are **scripted choices at the external model boundary**, not
 DeepSeek reasoning, intelligence, quality, latency, or price measurements.

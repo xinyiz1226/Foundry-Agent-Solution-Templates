@@ -1,9 +1,62 @@
 # Analytical cloud acceptance
 
 `scripts/validate-analysis.ps1` is the separate acceptance entrypoint for
-`business-investigator`. Its implementation and command-boundary tests are
-local-only so far: **the new analytical cloud experiment has not been run**.
-The existing `validate-agent.ps1` remains probe-only.
+`business-investigator`. A separately authorized live experiment has verified
+the fixed analytical baseline, but **the adaptive path has not passed
+end-to-end acceptance**. See the recorded experiment below. The existing
+`validate-agent.ps1` remains probe-only.
+
+## Recorded live experiment: 2026-09-16
+
+The disposable Central US experiment used the existing East US
+`DeepSeek-V4-Flash-0731` deployment, model version `2026-07-31`, and the pinned
+33,400-row USD snapshot. All three attempts used this same question:
+
+> Compare overall sales between the approved periods. Investigate the largest
+> declining territory and its leading product contributions, then stop.
+
+| Agent version | Fixed baseline | Adaptive outcome | Model calls | Adaptive analytical requests | Reported tokens |
+|---|---|---|---:|---:|---:|
+| 1 | Passed the reference gate | Rejected the first two-call response | 1 | 0 | 922 |
+| 2 | Passed; evidence retained | Confirmed `tool_call_count: 2` despite `parallel_tool_calls=False` | 1 | 0 | 954 |
+| 3 | Passed; evidence retained | Completed comparison and territory discovery, then rejected `unknown_filter_id` | 2 | 6 | 2,686 |
+
+Version 3 used source checkpoint `2d8b5bc`, explicitly enabled the two-call
+serial mode, and bound acceptance to its exact versioned session. Its territory
+result exposed the string IDs `"7"` (France), `"1"` (Northwest), `"4"`
+(Southwest), `"8"` (Germany) and `"5"` (Southeast). The subsequent filter failed
+the existing type/known-ID guard. The sanitized diagnostics do not retain the
+rejected raw arguments, so they do not distinguish an unknown value from an
+incorrectly typed value. No product drilldown executed and no successful
+adaptive answer or model-quality claim is made.
+
+The first attempt predates failure-receipt retention: its baseline passed the
+gate, but the combined evidence file was overwritten on adaptive failure.
+Versions 2 and 3 preserve the accepted baseline and bounded adaptive failure
+receipt. The retrieved version-3 response additionally preserves its partial
+results; those are not a successful adaptive acceptance report.
+
+There were **four reported model calls: 4,180 prompt tokens, 382 completion
+tokens, 4,562 total**. These are SDK-reported usage, not billing. Cost Management
+returned HTTP 429 on the initial and final scoped queries; actual resource and
+inference charges remain unknown. The isolated-resource-group query would not
+include inference billed to the existing shared model account even if it
+succeeded.
+No broad model-quality evaluation or automatic idle-timeout test was performed.
+
+Reading the existing version-3 response required no new model inference, but
+the session was subsequently observed active again. It was explicitly stopped
+and verified idle after retrieval. Do not assume that fetching saved hosted
+responses leaves compute idle; perform the final stop check after diagnostics.
+
+**Cleanup was independently verified at 2026-09-16 01:57 UTC:** the dedicated
+resource group was absent, the exact temporary shared-model inference role was
+absent, and owned lifecycle state was `deleted`. The cleanup fallback was then
+removed. The soft-deleted Foundry account was retained without permanent purge;
+shared model configuration and directory identities were not modified.
+Original failed acceptance reports remain failed, with their own
+`cleanup: not_run` fields unchanged. A separate local cleanup-verification
+artifact records closure; cleanup success does not promote analytical acceptance.
 
 ## Prepare without Azure
 
