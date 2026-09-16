@@ -62,6 +62,13 @@ sources. It is not an ABCD corpus accuracy benchmark. All candidates remain
 Pending; review/export, held-out evaluation, SEC HTML parsing and full G1 remain
 open. The existing synthetic cloud/local workbench is unchanged.
 
+**Agreed next direction, not implemented:** evaluate Content Understanding as
+the default parsing/extraction foundation, while the template focuses on the
+end-to-end workflow. The [CU plan and adoption gate](docs/content-understanding-plan.md)
+require original-source evidence and a small real financial/ABCD comparison
+before changing the default. No CU deployment or paid experiment is authorized
+by that documentation-only decision.
+
 ## Try configurable extraction locally
 
 With the optional dependencies installed as described below:

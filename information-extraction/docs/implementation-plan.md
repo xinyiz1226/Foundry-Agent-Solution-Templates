@@ -35,6 +35,15 @@ candidate, all Pending. Preparation, browser refresh and process restart
 preserved the call budget and historical jobs. This is not corpus evaluation,
 durable review/export, configurable cloud deployment, or complete G1.
 
+The subsequent [Content Understanding decision](content-understanding-plan.md)
+selects a service-first direction, conditional on validation: CU may become the
+default parsing/extraction foundation, with the template retaining configuration,
+durability, original evidence, review and approved export. A small real
+financial HTML/text and ABCD comparison must meet evidence/semantic gates and
+not regress record/field performance before a default switch. PDF and media
+remain outside this increment. This is an agreed plan only: no CU integration,
+resource change or paid trial has been performed or authorized by this decision.
+
 Execution planning is detailed in the [minimal migration inventory](migration-inventory.md)
 and [G0 technical validation plan](g0-validation-plan.md). The
 [batch hosting feasibility decision](batch-hosting-feasibility.md) selects
@@ -80,6 +89,12 @@ the ABCD customer-support second domain, durable review and approved export;
 track the remaining reconnect/expiry and single-start cloud probes
 separately rather than repeating the completed login or mutation checks.
 Maintainer alignment can proceed in parallel; no upstream PR is implied.
+
+The next extraction-foundation decision is now gated by the
+[independent CU comparison](content-understanding-plan.md#4-independent-comparison-before-integration),
+not by a premature workbench rewrite or further investment in a proprietary
+extractor. Preserve the existing Responses baseline and all execution history.
+Plan approval does not authorize implementing or running that comparison.
 
 For development budgeting, public USD retail prices checked September 16:
 
