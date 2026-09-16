@@ -17,8 +17,7 @@ from azure.ai.agentserver.core.tasks import (
 )
 
 from .batch import Batch, BatchRecords
-from .contracts import ExecutionError
-from .execution import Execution
+from .contracts import ExecutionDriver, ExecutionError
 
 
 class NativeScheduler:
@@ -48,7 +47,7 @@ class NativeScheduler:
 
 
 def create_native_batch(
-    execution: Execution, records: BatchRecords, *, clock: Callable[[], float] = time.time,
+    execution: ExecutionDriver, records: BatchRecords, *, clock: Callable[[], float] = time.time,
 ) -> Batch:
     """Register the stable recovery handler; use returned start/status/resume seams."""
     set_resilient_tasks_enabled(True)

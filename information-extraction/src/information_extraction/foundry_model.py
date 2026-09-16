@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 import hashlib
 import json
+import logging
 import math
 import re
 from urllib.parse import urlsplit
@@ -155,6 +156,24 @@ class ProviderOutcomeUnknown(ExecutionError):
         super().__init__("provider_outcome_unknown")
 
 
+def _rejection_category(body: object) -> str:
+    if type(body) is not dict:
+        return "unclassified"
+    details = body.get("error", body)
+    if type(details) is not dict or type(details.get("message")) is not str:
+        return "unclassified"
+    message = details["message"].lower()
+    for keyword, category in (
+        ("reasoning", "reasoning_parameter"),
+        ("maxitems", "schema_max_items"), ("maxlength", "schema_max_length"),
+        ("schema", "schema"), ("quota", "quota"), ("rate limit", "rate_limit"),
+        ("permission", "permission"), ("access denied", "permission"),
+    ):
+        if keyword in message:
+            return category
+    return "unclassified"
+
+
 class FoundryModel:
     """Injected clients are caller-owned; each request overrides retry/timeout settings."""
 
@@ -219,6 +238,10 @@ class FoundryModel:
             raise ProviderOutcomeUnknown() from None
         except APIStatusError as error:
             if error.status_code in (400, 401, 403, 404, 405, 413, 415, 422, 429):
+                logging.getLogger(__name__).warning(
+                    "provider_request_rejected status=%d category=%s",
+                    error.status_code, _rejection_category(error.body),
+                )
                 raise ModelFailure(FailureCode.MODEL_REJECTED) from None
             raise ProviderOutcomeUnknown() from None
         input_tokens = getattr(response.usage, "input_tokens", None)

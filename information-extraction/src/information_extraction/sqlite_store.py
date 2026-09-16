@@ -112,6 +112,14 @@ class SQLiteStore:
         with self._transaction(write=False) as connection:
             return self._read(connection, job_id)
 
+    def list_jobs(self) -> tuple[Snapshot, ...]:
+        """Read the newest 100 job snapshots in a single consistent transaction."""
+        with self._transaction(write=False) as connection:
+            rows = connection.execute(
+                "SELECT job_id FROM jobs ORDER BY rowid DESC LIMIT 100",
+            ).fetchall()
+            return tuple(self._read(connection, row["job_id"]) for row in rows)
+
     def _replay(
         self, connection: sqlite3.Connection, request_id: str, fingerprint: str
     ) -> Snapshot | None:

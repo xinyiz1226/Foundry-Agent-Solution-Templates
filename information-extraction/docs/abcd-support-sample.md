@@ -6,11 +6,13 @@ The purpose is to demonstrate reusable, evidence-linked extraction, not to
 implement ABCD's original dialogue-agent benchmark.
 
 **Implemented:** a bounded, offline ABCD-format importer, an original synthetic
-format fixture, and a [shared configured-core rehearsal](configurable-extraction.md)
-with a support profile and scripted responses. **Not implemented:** real support
-model extraction, support records in the workbench, review/export, or a
-second-domain accuracy result. These local slices do not complete G1 or any
-remaining G0 cloud acceptance gate.
+format fixture, a [shared configured-core rehearsal](configurable-extraction.md),
+and a [configured local workbench](configured-workbench.md) with support-profile
+editing, bounded JSON upload, explicit execution and field-level evidence.
+A [real-model pilot](configured-workbench-pilot.md) extracted one support
+candidate from the owned lamp fixture. **Not implemented:** durable review/export
+or a second-domain corpus accuracy result. These local slices do not complete
+G1 or any remaining G0 cloud acceptance gate.
 
 ## Data selection and provenance
 
@@ -118,8 +120,8 @@ system state, but they do not prove that a customer or agent stated an outcome.
 Their count is reported so this omission is visible.
 
 The following flat profile is implemented as `SUPPORT_PROFILE` in
-`information_extraction.profiles`. Its current rehearsal uses predetermined
-fixture responses, not inference or human-labeled corpus evaluation:
+`information_extraction.profiles`. Both the scripted rehearsal and the separate
+bounded real-model pilot use it; neither is human-labeled corpus evaluation:
 
 | Field | Type | Evidence rule |
 |---|---|---|
@@ -138,12 +140,11 @@ and default downstream queries/exports must use approved records only.
 
 ## Next G1 acceptance
 
-1. Complete general input planning and an explicitly bounded configured-model
-   trial. The shared schemas, output validator and frozen financial/support
-   profiles are implemented; fixture behavior alone is not a real-model result.
-2. Wire the source/profile selection into the workbench without support-specific
-   execution branches. Durable human review and approved output remain later
-   product work; current candidates are only pending.
+1. Extend the working text/ABCD planning and local workbench path toward the
+   remaining supported inputs and deployment gates. The bounded real-model
+   trial is complete, but only on owned synthetic sources.
+2. Implement durable human review and approved output; current candidates
+   remain Pending and cannot stand in for approved records.
 3. Freeze a small development subset and a distinct official dev/test subset;
    retain file hashes and conversation IDs. Author field values, record
    counts, and original-turn evidence as gold labels. Existing ABCD intent,

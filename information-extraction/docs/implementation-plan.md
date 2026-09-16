@@ -24,8 +24,16 @@ execution path. A scripted two-domain rehearsal exercises local persistence,
 failure/resume and historical replay. Configured plans also round-trip through
 the Blob adapter with offline clients, and the optional Responses adapter
 derives its prompt/schema from the frozen profile. Legacy G0 serialization and
-model bindings are preserved. This is not live support extraction, UI
-integration, review/export, held-out evaluation, or complete G1.
+model bindings are preserved.
+
+The subsequent [configured local workbench](configured-workbench.md) implements
+bounded UTF-8 text/ABCD JSON upload, profile selection/manual editing, native-task
+start/resume, job rediscovery and per-field evidence. A
+[bounded real-provider pilot](configured-workbench-pilot.md) completed both
+domains on owned synthetic sources: two financial records and one support
+candidate, all Pending. Preparation, browser refresh and process restart
+preserved the call budget and historical jobs. This is not corpus evaluation,
+durable review/export, configurable cloud deployment, or complete G1.
 
 Execution planning is detailed in the [minimal migration inventory](migration-inventory.md)
 and [G0 technical validation plan](g0-validation-plan.md). The
@@ -89,7 +97,11 @@ spending cap; discounts, taxes, traffic and model selection can change totals.
 The [Foundry Agent Service pricing page](https://azure.microsoft.com/en-us/pricing/details/foundry-agent-service/)
 confirms that hosted agents incur hourly container-compute charges, separate
 from model tokens; it did not expose a numeric runtime rate in this check.
-This preparation itself adds no Azure resource or real-model usage.
+The earlier synthetic preparation added no Azure resource or real-model usage.
+The later configured local pilot added no infrastructure and reported 1,539
+input/272 output tokens across two successful calls, approximately $0.00104
+at the verified model retail rates. One earlier rejected admission has unknown
+usage; see the [pilot cost and limitations](configured-workbench-pilot.md).
 
 ## 1. Positioning and intended user
 
@@ -112,8 +124,8 @@ original-turn evidence. These are human role-play conversations with fictional
 scenarios, not production support tickets. The
 [ABCD input-preparation slice](abcd-support-sample.md) provides a bounded local
 importer and an independently authored format fixture. The support profile
-now runs through the shared core with scripted fixture responses; real support
-extraction and evaluation remain G1 work. Hidden scenario facts and task labels
+now runs through the shared core in the local UI and has a bounded real-model
+result on the owned fixture; corpus evaluation remains G1 work. Hidden scenario facts and task labels
 must not become source evidence or automatic extraction gold.
 
 The downstream demonstration will use deterministic filtering and aggregation
@@ -375,15 +387,17 @@ Work:
 
 - Define normalized document, bounded schema, evidence, configuration-version,
   execution, and review contracts. Frozen schema/profile and field-evidence
-  contracts are implemented; general input planning and review remain open.
+  contracts and bounded text/ABCD planning are implemented; other input adapters
+  and durable review remain open.
 - Move financial-report-specific assumptions into adapters and sample profiles.
   New configured financial and support jobs use one output validator; a
   separate compatibility adapter retains the already-frozen G0 wire format.
-- Implement the SEC HTML and plain-text paths.
+- Implement the SEC HTML and plain-text paths. Bounded UTF-8 text is available;
+  SEC HTML parsing remains open.
 - Introduce the ABCD customer-support profile and a small, versioned local
   development/held-out subset. The offline importer, support profile and
-  shared fixture execution are available; real provider validation, human
-  extraction gold, and approved support queries remain to be implemented.
+  shared fixture execution and a bounded real-provider pilot are available;
+  human extraction gold and approved support queries remain to be implemented.
   Review dataset redistribution
   before bundling upstream dialogue text.
 
@@ -399,8 +413,10 @@ Exit criteria:
 
 Work:
 
-- Extend Streamlit with schema generation and manual editing.
-- Add sample execution and evidence inspection.
+- Extend Streamlit with schema generation and manual editing. Manual profile
+  JSON editing is available; generated schema proposals remain open.
+- Add sample execution and evidence inspection. Both are available locally
+  for the configured financial/support profiles, with Pending-only results.
 - Add feedback-driven proposals, visible differences, version confirmation,
   comparison, and restoration.
 

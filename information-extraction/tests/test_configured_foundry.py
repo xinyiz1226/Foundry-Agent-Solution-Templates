@@ -99,3 +99,15 @@ class ConfiguredFoundryTests(unittest.TestCase):
         )
         with self.assertRaises(Conflict):
             model.complete(ModelRequest("job", "attempt", 0, configured.chunks[0], configured))
+
+    def test_rejection_logs_only_safe_status_and_allowlisted_category(self):
+        from information_extraction import ModelFailure
+        model = self.adapter(lambda _: httpx.Response(400, json={"error": {
+            "message": "Unsupported reasoning field; private-source-and-token-material",
+        }}))
+        request_plan = replace(synthetic_plan(), model_binding=model.binding)
+        with self.assertLogs("information_extraction.foundry_model", level="WARNING") as logs:
+            with self.assertRaises(ModelFailure):
+                model.complete(ModelRequest("job", "attempt", 0, request_plan.chunks[0], request_plan))
+        self.assertIn("status=400 category=reasoning_parameter", logs.output[0])
+        self.assertNotIn("private-source", str(logs.output))

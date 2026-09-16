@@ -5,6 +5,11 @@ accuracy evaluation. It exercises the same generic configured-schema execution
 path for financial facts and support conversations. No Azure resources, provider
 credentials, network access, or real model calls are needed.
 
+For the subsequent upload/profile UI and real-provider slice, see the
+[configured workbench](configured-workbench.md) and its
+[bounded pilot results](configured-workbench-pilot.md). The CLI documented here
+remains scripted and offline.
+
 ## Run on Windows
 
 From the repository root, using the existing environment:
@@ -116,8 +121,9 @@ frozen Python profiles directly. The loader accepts strict UTF-8 JSON of at most
 Outside this offline CLI, `FoundrySettings` accepts an optional `profile` together
 with a matching explicit `profile_version`. The existing real Responses adapter
 derives its output schema and prompt from the frozen profile. The legacy default
-model binding is preserved exactly. **No live generic model call was made** to
-validate these changes; this rehearsal always injects the scripted fixture model.
+model binding is preserved exactly. This rehearsal always injects the scripted
+fixture model; live configured calls were subsequently exercised separately in
+the [local workbench pilot](configured-workbench-pilot.md).
 
 Shared-core source allowlists now contain 17/18 files rather than 14/15, adding
 `legacy_financial.py`, `outputs.py`, and `schema.py`. These are local packaging

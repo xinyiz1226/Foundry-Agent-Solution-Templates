@@ -13,10 +13,9 @@ from typing import Callable, Protocol
 
 from .codec import _hash, _json, _snapshot
 from .contracts import (
-    Action, Blocked, Conflict, ExecutionError, IntegrityError, InvalidInput, NotFound, Snapshot, Status,
+    Action, Blocked, Conflict, ExecutionDriver, ExecutionError, IntegrityError, InvalidInput, NotFound, Snapshot, Status,
     validate_identifier,
 )
-from .execution import Execution
 
 
 @dataclass(frozen=True)
@@ -103,7 +102,7 @@ class RegistrationUnknown(ExecutionError):
 
 class Batch:
     def __init__(
-        self, execution: Execution, records: BatchRecords, scheduler: Scheduler,
+        self, execution: ExecutionDriver, records: BatchRecords, scheduler: Scheduler,
         *, clock: Callable[[], float] = time.time,
     ):
         self.execution = execution

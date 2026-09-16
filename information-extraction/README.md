@@ -50,13 +50,33 @@ source references. The JSON profile loader rejects unsupported constructs.
 SQLite and Blob codecs support these plans without changing legacy G0 plan or
 request identity.
 
-The rehearsal uses **scripted fixture responses, not real support extraction
-or an accuracy benchmark**. The optional Foundry Responses adapter can derive
-its prompt/schema from a frozen profile, but that configured provider path has
-only offline transport coverage. The existing synthetic cloud/local workbench
-is unchanged; support UI, general document upload, review/export, held-out
-evaluation, and full G1 remain open. No Azure resources or real-model calls are
-needed for the local rehearsal.
+The rehearsal uses **scripted fixture responses**, without Azure access. A
+separate [configured local workbench](docs/configured-workbench.md) now supports
+bounded UTF-8 text/ABCD JSON upload, profile selection and manual JSON editing,
+explicit native-task execution, saved jobs, and per-field original evidence.
+Preparation, reopening and status refresh do not authorize model calls.
+
+A [bounded real-model pilot](docs/configured-workbench-pilot.md) produced two
+financial records and one support record from repository-owned synthetic
+sources. It is not an ABCD corpus accuracy benchmark. All candidates remain
+Pending; review/export, held-out evaluation, SEC HTML parsing and full G1 remain
+open. The existing synthetic cloud/local workbench is unchanged.
+
+## Try configurable extraction locally
+
+With the optional dependencies installed as described below:
+
+```powershell
+Set-Location information-extraction
+& .\.venv\Scripts\python.exe -m scripts.run_configured_workbench
+```
+
+Open `http://127.0.0.1:8502`. The default is **prepare-only**, with no model
+access. Follow the [operating guide](docs/configured-workbench.md) to explicitly
+enable a selected Foundry deployment and a persistent, bounded call grant.
+This separate entry point keeps configured state in
+`.local-data\configured-workbench`; do not reuse the older G0 state directory.
+The desktop UI is loopback-only, not a cloud or multi-user deployment.
 
 ## Try the local workbench
 
