@@ -154,8 +154,10 @@ ACI to remove. Use the existing ownership-checked teardown and verify deletion.
 `deploy.ps1` has no Validate stage. The existing `validate-agent.ps1` is
 probe-specific and explicitly rejects analysis service/mode bindings before any
 cloud calls; it cannot set an analysis experiment to `validated` based on the old
-probe fixture or `BPI_PROBE_RESULT`. A dedicated approved analytical cloud
-validator and live-run evidence remain outstanding.
+probe fixture or `BPI_PROBE_RESULT`. Use the separate
+[analytical acceptance entrypoint](cloud-analysis-validation.md) after fresh
+approval. That validator is implemented and locally exercised; live-run evidence
+remains outstanding.
 
 ## Offline validation
 

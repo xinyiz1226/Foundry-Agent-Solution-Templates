@@ -66,6 +66,7 @@ SQL publicly. Review this addition and the revised cost subtotal before approval
 | `docs/baseline.md` | Business-analysis workflow, twelve reference cases and execution boundaries |
 | `docs/adaptive-evaluation.md` | Bounded adaptive investigation and fair replay comparison |
 | `docs/hosted-analysis.md` | Analytical service, private snapshot contract and live-validation gaps |
+| `docs/cloud-analysis-validation.md` | Local preparation and separately authorized analytical cloud acceptance |
 
 ## Prerequisites
 

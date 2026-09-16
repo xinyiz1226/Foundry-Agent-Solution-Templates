@@ -18,6 +18,9 @@ Actual DeepSeek analytical evaluation and private analytical SQL execution have
 not been run: fresh cloud scope/cost approval is still pending. The Web
 application remains a later milestone. See [baseline guidance](docs/baseline.md)
 and [hosted analysis boundaries](docs/hosted-analysis.md).
+The [analytical acceptance script](docs/cloud-analysis-validation.md) is now
+implemented with offline preparation and locally tested cloud/inference gates.
+Executing that script against Azure remains a separately approved milestone.
 
 - The product scope and the next technical-validation milestone were agreed
   with the project owner.

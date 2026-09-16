@@ -97,6 +97,7 @@ class PrivateSessionTests(unittest.TestCase):
         with PrivateAnalysisSession(SETTINGS, credential, POLICY, connect=connect, resolver=lambda *args: ["10.72.1.4"]) as session:
             self.assertEqual(session.security["status"], "passed")
             self.assertEqual(session.security["actual_row_count"], 33400)
+            self.assertEqual(session.security["server"], "pilot.database.windows.net")
             self.assertEqual(session.source.mode, "azure_sql")
         self.assertTrue(options["validate_host"])
         self.assertFalse(options["enc_login_only"])
@@ -144,6 +145,7 @@ class HostAgentTests(unittest.TestCase):
         self.assertEqual(call.args[0].limits.max_requests, 10)
         self.assertEqual(call.args[0].limits.max_seconds, 120)
         self.assertEqual(call.kwargs["limits"].max_seconds, 120)
+        self.assertEqual(call.kwargs["limits"].max_top_k, 5)
 
     def test_cleanup_failure_cannot_publish_successful_analytical_evidence(self):
         source = CsvSalesSource.from_records([dict(zip(COLUMNS, row)) for row in LINES], dataset_id="test")

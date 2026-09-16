@@ -64,7 +64,7 @@ ALTER and checked database DDL/CONTROL permissions must be absent; NULL
 permission results are failures, not interpreted as denial. These are explicit
 checks of the named permissions, not an exhaustive audit of every SQL privilege.
 
-Both modes share a ten-analytical-request budget and a 120-second analytical
+Both modes share a ten-analytical-request budget, a Top-K ceiling of 5 and a 120-second analytical
 budget. The snapshot-begin operation, identity/manifest/permission query and
 rollback are separately reported control overhead, not hidden inside those ten
 data requests. Query/connect timeouts are configured at 15 seconds each.
@@ -77,9 +77,11 @@ setup failures. Cleanup failure prevents reporting successful completion.
 ## What still needs live evidence
 
 `scripts/validate-agent.ps1` is still a probe-only validator and explicitly
-rejects analytical service/mode bindings. A dedicated analytical end-to-end
-cloud validator is not yet implemented; do not reuse a successful probe marker
-to declare the new service validated.
+rejects analytical service/mode bindings. Use the separate
+[analytical acceptance entrypoint](cloud-analysis-validation.md), which verifies
+live context and both reports against the pinned reference. Its implementation
+has been exercised locally with doubled cloud boundaries, not run in Azure.
+Do not reuse a successful probe marker to declare the new service validated.
 
 The metadata hash is an initializer attestation, corroborated with runtime
 counts/totals. It is **not** a runtime cryptographic hash of every SQL row.

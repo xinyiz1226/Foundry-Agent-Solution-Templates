@@ -19,6 +19,10 @@ validation, baseline/adaptive dispatch, matching data/time budgets, private
 snapshot setup, permissions, cleanup failures and analysis-specific Responses
 errors. The adaptive evaluator uses offline CSV snapshots and scripted model
 replays; it is not a live hosted-SQL comparison runner.
+The separate [analytical acceptance entrypoint](cloud-analysis-validation.md)
+now verifies the cloud context and a baseline/adaptive pair against the pinned
+reference. Its cloud boundaries are locally doubled in tests; no actual cloud
+analytical acceptance is claimed.
 
 Local validation now compiles `main`, `bootstrap` and `analysis-bootstrap`.
 The analytical sample initializer has a local preparation path so official

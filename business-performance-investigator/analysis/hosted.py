@@ -166,6 +166,7 @@ class PrivateAnalysisSession:
                     raise SessionFailure("permission_mismatch", "Required SQL permissions are missing, excessive or unknown.")
             self.security = {
                 "status": "passed", "identity_mode": "managed_identity",
+                "server": self.settings.server,
                 "database_principal": record["database_principal"], "database_principal_sid": str(sid),
                 "database_name": record["database_name"], "source_sha256": record["source_sha256"],
                 "actual_row_count": record["actual_row_count"],
@@ -273,7 +274,7 @@ class AnalysisAgent:
                         runner = run_adaptive
                     report = runner(investigator, self.policy.baseline, self.policy.current, question,
                                     client=self.client, model=self.settings.model,
-                                    limits=AdaptiveLimits(max_seconds=120))
+                                    limits=AdaptiveLimits(max_seconds=120, max_top_k=5))
             report["security"] = dict(session.security)
             report["approved_sample_policy"] = {
                 "source_sha256": self.policy.source_sha256,
