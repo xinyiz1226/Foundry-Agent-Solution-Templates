@@ -21,8 +21,10 @@ configured the web login, protected credential and narrow managed-identity
 grant. Subsequent [guarded deployment and caller probes](guarded-deployment.md)
 completed source deployment, private platform startup, and a paired
 operator-allow/unapproved-user-deny check on the direct Invocations route.
-Browser and web-managed-identity acceptance remain incomplete. Maintainer
-alignment is also still pending.
+Subsequent human screenshots establish bounded protected browser/current-read
+and test-user-denial evidence. Fresh browser-driven execution, WebSocket
+lifecycle and full access coverage remain incomplete. Maintainer alignment
+is also still pending.
 
 Read alongside the [implementation plan](implementation-plan.md) and
 [source migration inventory](migration-inventory.md).
@@ -64,9 +66,9 @@ corruption, source evidence resolution, and unknown versus observed usage.
 | G0-07 | Offline identity/revision and Blob integrity checks; valid history restored in a replacement hosted application. | No live corruption injection. |
 | G0-08 | Native hosted task reached a persisted limit; explicit resume completed the remaining chunk through real Blob persistence. | Two chunks from one uninterrupted cloud start and browser-disconnect timing remain unverified. |
 | G0-09 | Local Streamlit page/client recreation restores current progress and evidence; a separate native-task process and process restart preserve the job. | Hosted authenticated browser reconnect and live disconnect timing remain unverified. |
-| G0-10 | Scoped runtime-identity Blob grant and hosted operations; unauthenticated HTTP 401; local signed-token/client coverage and actual web identity/configuration. A later enabled-endpoint test returned operator HTTP 200 and unapproved signed-in-user HTTP 403 for the same read-only Invocations `current` request. Isolated Edge subsequently received HTTP 302 to the configured tenant from both web login entry routes, unlike Requests HTTP 401. | Browser sign-in/callback and unapproved-user rejection, web-managed-identity integration, alternate-route coverage and the full effective-permissions audit remain open; directory PIM eligibility was not readable. |
+| G0-10 | Scoped runtime-identity Blob grant and hosted operations; local signed-token/client coverage and actual web identity/configuration. Direct Invocations `current` returned operator HTTP 200 and unapproved-user HTTP 403. Browser screenshots subsequently showed the test identity's Entra AADSTS50105 denial and protected historical current-job content through the deployed managed-identity read path; one new session was observed and stopped. | Token-level identity audit, login/callback edge cases, managed-identity start/resume, WebSocket expiry/revocation, alternate routes and the full effective-permissions audit remain open; directory PIM eligibility was not readable. |
 | G0-11 | Owned session stop, different hosted application UUID, unchanged durable status, explicit resume, and endpoint disable observed. | Unexpected in-flight crash/lease recovery, hard cancellation, and real-model lifecycle remain unverified. |
-| G0-12 | Probe endpoint disabled and four session stops acknowledged; records report `idle`. | Source version, role, sessions and storage intentionally retained; deletion and final billing are not verified. |
+| G0-12 | Historical probe stops plus subsequent caller/browser-session cleanup; latest independent read found the site stopped/private, agent disabled and all six retained sessions idle. Baseline sessions were not stopped again during the browser window. | Source versions, roles, sessions, B1 plan and storage intentionally retained; deletion and final billing are not verified. |
 
 Run the exact local command from the README to reproduce the suite. The
 offline evidence alone does not establish Azure behavior; the live probes

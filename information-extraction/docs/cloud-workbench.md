@@ -1,14 +1,15 @@
 # Cloud workbench code: authorization and transport
 
-This is **source-deployed code, not a running or live-validated application**.
+This is **source-deployed code with bounded live read-only browser evidence**,
+not a currently running application or a completed G0 gate.
 The code-only slice did not create directory registrations, credentials,
 identities or grants. A subsequent, separately approved
 [identity-configuration slice](web-identity-configuration.md) configured
 those controls on the existing App Service. A subsequent
 [approved private deployment](guarded-deployment.md#private-web-deployment-approved-and-completed)
 completed source upload, remote Oryx build and deployment. The app remains
-stopped/public-access-disabled; its B1 plan still bills. No agent was
-enabled or real model called. **G0 remains incomplete.**
+stopped/public-access-disabled; its B1 plan still bills. That deployment
+slice enabled no agent and called no real model. **G0 remains incomplete.**
 
 A subsequent [direct caller probe](guarded-deployment.md#real-caller-access-positive-current-read-and-negative-direct-call)
 temporarily enabled the backend, verified an operator's `current` read
@@ -36,6 +37,16 @@ passed that precheck and opened the operator browser, but obtained no human
 login/rejection result. It closed early with the original five sessions
 still idle and no new sessions. Missing human feedback is not an
 authentication success or failure.
+
+A subsequent [confirmed human window](guarded-deployment.md#human-acceptance-protected-current-job-read-and-unapproved-user-denial)
+obtained screenshots of the test identity's Entra **AADSTS50105** rejection
+and the operator workflow's protected current-job page: completed revision
+2, 2/2 chunks and a backend instance ID. One new hosted session was observed,
+then explicitly stopped; the five baseline sessions were untouched and all
+six are idle. This is functional evidence of the deployed protected
+managed-identity **read** path, not a token-level audit or new extraction.
+The site and agent are closed again. Fresh start/resume and WebSocket
+expiry/reconnect/revocation remain unverified.
 
 ## Entry points and public interfaces
 

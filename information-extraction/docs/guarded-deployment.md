@@ -1,6 +1,6 @@
 # Guarded backend update and web package
 
-**Observed:** September 15, 2026. The existing synthetic backend now has
+**Observed:** September 15-16, 2026. The existing synthetic backend now has
 version **2**, with the current-job discovery and lifecycle fixes. Foundry
 reports that version as `active`, but the agent endpoint remains
 **disabled**. After a subsequent explicit approval, the web ZIP completed
@@ -8,11 +8,15 @@ remote Oryx build and deployment. Its existing Linux App Service remains
 **stopped with public access disabled**. A later bounded private probe
 confirmed platform startup. A subsequent real-caller test verified an
 operator's read-only version-2 `current` request and an unapproved user's
-denial on that same route. Streamlit/browser and web-managed-identity
-integration remain unverified. **G0 is incomplete.**
+denial on that same route. A later human window supplied screenshots of
+the protected current-job page and the test identity's Entra denial,
+providing bounded browser/managed-identity read-path evidence. Fresh
+execution, WebSocket lifecycle and broader access coverage remain open.
+**G0 is incomplete.**
 
-Neither slice enabled an endpoint, invoked a hosted session, called a real
-model, or changed directory configuration. The later approval added only
+Neither source-deployment slice enabled an endpoint, invoked a hosted session,
+called a real model, or changed directory configuration; later runtime probes
+have their own explicit scope below. The staging approval added only
 the dedicated deployment container and its operator upload grant, as
 recorded below. The retained B1 plan continues billing.
 
@@ -474,6 +478,56 @@ unverified. Another window requires fresh user-present approval; this
 attempt is closed and is not automatically retried or extended.
 
 [anonymous-auth-doc]: https://learn.microsoft.com/en-us/azure/app-service/overview-authentication-authorization#unauthenticated-requests
+
+### Human acceptance: protected current-job read and unapproved-user denial
+
+The user explicitly confirmed browser availability at
+`2026-09-16T11:05:20.621+08:00`. This was a new, separately approved window,
+with a new receipt, a ten-minute public-access limit, and at most two new
+sessions. The previous closed windows were not reopened or extended.
+The isolated-browser precheck again returned a tenant-bound HTTP 302.
+Public opening was attempted at `03:08:38.897058Z`; the fixed deadline
+was `03:18:38.897058Z`.
+
+Two user-provided screenshots establish the bounded acceptance results:
+
+| Surface | Observed evidence | Scope |
+| --- | --- | --- |
+| Unapproved test identity | Entra error **AADSTS50105**, naming the dedicated login application and the test identity, with event time `03:09:18Z` | The application's assignment-required policy denied that identity. No grant was added to make it pass. The screenshot does not independently establish InPrivate isolation or alternate-route denial. |
+| Operator-login workflow | At `03:16:17.930Z`, the supplied screenshot showed the cloud synthetic workbench's protected **Current job** content and backend instance ID | The page rendered `hosted-synthetic-job`, state **completed**, committed revision **2**, **2/2** chunks, two committed attempts overall, and native registration confirmed. This is more than a page title or anonymous login redirect. |
+
+The candidate-records heading is visible, but individual candidate values
+and expanded source evidence were not established by the cropped screenshot.
+The displayed round was already completed, with a September 15 deadline;
+this was rediscovery of historical work, **not a newly executed extraction**.
+No start/resume/retry operation or real-model call was performed in this
+acceptance window.
+
+The deployed cloud entry enforces the signed single-operator proof before
+rendering protected content, and its current-job client uses the web's
+managed identity with no local fallback. Together with the single new
+Foundry session observed during the window, the screenshot provides
+functional evidence for the deployed **protected browser-to-Foundry
+current-read path**. No browser token or token claims were captured;
+the screenshot itself does not display the signed-in account. It is not
+an independent token-level audit, nor proof of every login/callback edge
+case, permission route, or managed-identity mutation path.
+
+After receiving the screenshot, cleanup closed public access, stopped the
+site, restored Always On false, disabled the agent, and explicitly stopped
+the sole new session. The five baseline sessions were preserved, not
+stopped again. A polling-writer race overwrote the first close receipt;
+after the waiting controller was stopped **following verified resource
+closure**, idempotent cleanup reconciled the receipt. The durable close
+record is `03:17:35.055054Z`, before the original deadline. An independent
+control-plane read confirmed the closed site/agent, unchanged authentication,
+and all **six** retained sessions idle. Backup automation was cleared.
+
+**The bounded read-only browser acceptance has positive and negative
+evidence; G0 is not complete.** Fresh synthetic start/resume, candidate
+detail/source inspection, WebSocket expiry/reconnect/revocation, alternate
+routes and the full effective-permissions audit remain outstanding. No
+additional window or execution budget is authorized by these results.
 
 ## Local verification
 

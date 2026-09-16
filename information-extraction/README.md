@@ -66,9 +66,9 @@ The next cloud slice is scoped in the
 selected architecture and resource/permission checklist, not approval to
 create resources. A separate [cloud entry point and authorization/client
 implementation](docs/cloud-workbench.md) now has local signed-token,
-HTTP, and UI-fixture coverage; its subsequent private source deployment
-has not been validated against live Easy Auth, WebSockets, or effective
-Foundry access. The
+HTTP, and UI-fixture coverage, plus the bounded live read-only browser
+evidence described below. WebSocket expiry/reconnect and exhaustive
+effective-access validation remain open. The
 [read-only preflight](docs/workbench-hosting-preflight.md) records the runtime,
 scoped resource/role inventory and indicative B1 price. An
 [empty web-host slice](docs/web-host-deployment.md) was created in approved
@@ -94,9 +94,16 @@ closed the web-only probe. A separately approved
 [browser comparison](docs/guarded-deployment.md#browser-versus-script-and-explicit-login-comparison)
 observed Edge HTTP 302 to the configured tenant, unlike Requests HTTP 401;
 the private precheck now uses a browser. The site is closed again.
-Operator sign-in/callback, web-managed-identity and broader route/access
-acceptance remain unverified: a later approved human window passed the
-precheck but closed early without human results or new agent sessions.
+An initial human window closed without results. A later
+[confirmed human window](docs/guarded-deployment.md#human-acceptance-protected-current-job-read-and-unapproved-user-denial)
+provided screenshots of the unapproved identity's Entra `AADSTS50105`
+denial and the protected cloud page showing the historical completed job
+at revision 2, with 2/2 chunks. This supports the deployed browser and
+managed-identity current-read path, not new extraction or an exhaustive
+identity audit. The sole new session was stopped; all six retained
+sessions are idle and the web app/agent are closed again. Fresh
+start/resume, WebSocket expiry/reconnect and broader route/access
+acceptance remain outstanding.
 Protecting only
 the web login does not protect a separately callable Foundry endpoint.
 
