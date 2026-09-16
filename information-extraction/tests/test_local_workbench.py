@@ -32,6 +32,17 @@ class LocalWorkbenchTests(unittest.TestCase):
     def setUp(self):
         (ROOT / ".test-data").mkdir(exist_ok=True)
 
+    def test_invalid_job_id_is_rejected_before_creating_state(self):
+        with TemporaryDirectory(dir=ROOT / ".test-data", prefix="workbench-") as directory:
+            state = Path(directory) / "must-not-exist"
+            result = subprocess.run([
+                sys.executable, str(ROOT / "scripts" / "run_workbench.py"),
+                "--job-id", "invalid/job", "--state-dir", str(state),
+            ], cwd=ROOT, capture_output=True, text=True, timeout=15)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("job-id must be a valid execution identifier", result.stderr)
+            self.assertFalse(state.exists())
+
     def test_occupied_ui_port_is_reported_without_starting_a_backend(self):
         from information_extraction.workbench_client import WorkbenchClient, WorkbenchError
 
@@ -65,7 +76,7 @@ class LocalWorkbenchTests(unittest.TestCase):
                 process = subprocess.Popen([
                     sys.executable, str(ROOT / "scripts" / "run_workbench.py"),
                     "--parent-pipe", "--backend-port", str(backend_port), "--ui-port", str(ui_port),
-                    "--state-dir", directory,
+                    "--state-dir", directory, "--job-id", "fresh-launcher-job",
                 ], cwd=ROOT, stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True, env={
                     **os.environ, "AGENTSERVER_TASKS_BACKEND": "hosted", "FOUNDRY_HOSTING_ENVIRONMENT": "1",
                     "FOUNDRY_PROJECT_ENDPOINT": "https://invalid.example",
@@ -88,6 +99,7 @@ class LocalWorkbenchTests(unittest.TestCase):
                             time.sleep(0.1)
                     with WorkbenchClient(endpoint) as client:
                         current = client.current()
+                    self.assertEqual(current.job_id, "fresh-launcher-job")
                     self.assertIsNone(current.round)
                     self.assertIsNone(current.pending)
                     process.stdin.write("stop\n")

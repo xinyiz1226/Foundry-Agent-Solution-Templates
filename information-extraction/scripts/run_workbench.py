@@ -44,7 +44,7 @@ def _local_environment(state: Path, backend_port: int) -> dict[str, str]:
     return environment
 
 
-def _backend(state: Path, port: int, parent_pipe: bool) -> None:
+def _backend(state: Path, port: int, parent_pipe: bool, job_id: str = "synthetic-job") -> None:
     environment = _local_environment(state, port)
     os.environ.clear()
     os.environ.update(environment)
@@ -52,7 +52,7 @@ def _backend(state: Path, port: int, parent_pipe: bool) -> None:
     from information_extraction import SQLiteStore
     from information_extraction.hosted_app import create_offline_app
 
-    app = create_offline_app(SQLiteStore(state / "ledger.sqlite3"))
+    app = create_offline_app(SQLiteStore(state / "ledger.sqlite3"), job_id=job_id)
     server = Server(Config(
         app, host="127.0.0.1", port=port, log_level="warning",
         timeout_graceful_shutdown=5,
@@ -99,7 +99,9 @@ def _stop(process: subprocess.Popen, *, backend: bool) -> bool:
         return False
 
 
-def _launch(state: Path, backend_port: int, ui_port: int, parent_pipe: bool) -> None:
+def _launch(
+    state: Path, backend_port: int, ui_port: int, parent_pipe: bool, job_id: str = "synthetic-job",
+) -> None:
     import httpx
     from information_extraction.workbench_client import WorkbenchClient, WorkbenchError
 
@@ -141,6 +143,7 @@ def _launch(state: Path, backend_port: int, ui_port: int, parent_pipe: bool) -> 
             backend = subprocess.Popen([
                 sys.executable, str(Path(__file__).resolve()), "--backend-only", "--parent-pipe",
                 "--backend-port", str(backend_port), "--state-dir", str(state),
+                "--job-id", job_id,
             ], cwd=ROOT, env=environment, stdin=subprocess.PIPE,
                 stdout=backend_log, stderr=subprocess.STDOUT, text=True)
             children.append((backend, True))
@@ -186,14 +189,24 @@ def main() -> int:
     parser.add_argument("--ui-port", type=_port, default=8501)
     parser.add_argument("--backend-only", action="store_true")
     parser.add_argument("--parent-pipe", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--job-id", default="synthetic-job",
+        help="Server-owned synthetic job; use a fresh state directory for a new job.",
+    )
     arguments = parser.parse_args()
     state = arguments.state_dir.resolve()
     try:
+        from information_extraction.contracts import InvalidInput, validate_identifier
+
+        try:
+            validate_identifier(arguments.job_id)
+        except InvalidInput:
+            parser.error("job-id must be a valid execution identifier")
         state.mkdir(parents=True, exist_ok=True)
         if arguments.backend_only:
-            _backend(state, arguments.backend_port, arguments.parent_pipe)
+            _backend(state, arguments.backend_port, arguments.parent_pipe, arguments.job_id)
         else:
-            _launch(state, arguments.backend_port, arguments.ui_port, arguments.parent_pipe)
+            _launch(state, arguments.backend_port, arguments.ui_port, arguments.parent_pipe, arguments.job_id)
     except ImportError:
         print('Install the optional dependencies: python -m pip install -e ".[hosted,workbench]"', file=sys.stderr)
         return 1

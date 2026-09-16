@@ -54,6 +54,12 @@ the second. All results remain pending review. Ctrl+C stops the launcher's
 own services while retaining `.local-data\workbench`; restarting with that
 directory restores the job.
 
+For a new demonstration without resetting that history, use the
+[fresh acceptance manifest and repeatable local rehearsal](docs/local-workbench.md#prepare-independent-acceptance-jobs).
+They cover bounded start/limit/resume, two chunks from one start, evidence
+inspection and completed-process restoration in independent job namespaces.
+Preparation does not deploy, open a public endpoint or call a real model.
+
 This preview is **local and synthetic only**: no Azure resources, credentials,
 or real models. Both listeners bind to `127.0.0.1`. It has no operator
 authentication and must not be exposed through a tunnel or shared host.

@@ -7,12 +7,14 @@ artifact, not a claim that all capabilities described below already exist.
 The [execution core](../README.md) is implemented, and a
 [bounded synthetic hosted probe](hosted-smoke-results.md) has completed.
 A [local synthetic workbench](local-workbench.md) now supports current-job
-rediscovery, explicit start/resume, and evidence inspection. The authenticated
-hosted browser workflow and complete G0 gate remain outstanding; the next
-[hosting and authorization slice](workbench-hosting-auth-plan.md) is now the
-operator-selected architecture, not a deployed access-control boundary.
-Its [read-only preflight](workbench-hosting-preflight.md) records resource,
-runtime and role observations without authorizing resource changes.
+rediscovery, explicit start/resume, and evidence inspection. The
+[authenticated cloud workbench](cloud-workbench.md) is deployed: bounded
+human acceptance demonstrated protected historical current-job content and
+Entra rejection of the unassigned test identity. Managed-identity
+start/resume, live disconnect and expiry behavior, repeatable provisioning,
+and complete G0 remain outstanding. See the bounded observations and
+limitations in [guarded deployment](guarded-deployment.md), rather than
+treating the earlier read-only preflight as the current deployment state.
 
 Execution planning is detailed in the [minimal migration inventory](migration-inventory.md)
 and [G0 technical validation plan](g0-validation-plan.md). The
@@ -41,6 +43,41 @@ Broad parity with the reference product's observable capabilities is a
 long-term roadmap goal, not a prerequisite for the first contribution.
 Functional similarity does not imply equivalent accuracy, latency, cost,
 scale, or service guarantees.
+
+### Delivery priority: September 16, 2026
+
+Prioritize the shortest path to a usable end-to-end MVP over minor Azure
+cost savings. Reuse the existing working web/agent/storage deployment;
+add modest resources when they materially accelerate delivery and disclose
+the approximate incremental cost. Do not repeatedly block delivery for
+small cost-only decisions, repeat completed login checks, or redesign the
+frontend. This does not relax identity boundaries, historical-data
+preservation, explicit execution budgets, or public-exposure limits.
+
+The immediate slice is [fresh synthetic execution preparation](local-workbench.md#prepare-independent-acceptance-jobs):
+isolated jobs and a repeatable start/limit/resume/single-start rehearsal.
+Then close the live browser-mutation and reconnect gaps once, and move to
+configurable flat schemas, UTF-8 input, a second-domain meeting sample,
+durable review and approved export. Maintainer alignment can proceed in
+parallel; no upstream PR is implied.
+
+For development budgeting, public USD retail prices checked September 16:
+
+| Component | Assumption | Approximate cost |
+| --- | --- | --- |
+| Existing Linux B1, West US 2 | 1 instance, 730 hours/month at $0.017/hour | $12.41/month; stopping the app does not remove this plan charge. |
+| Another dedicated Linux B1 if actually needed | Same size and region | An additional $12.41/month, not provisioned by this preparation. |
+| Hot LRS Block Blob, East US | First capacity tier, $0.0208/GB-month | About $0.21/month for 10 GB, plus transactions, transfer and any logging. |
+| Hosted agent runtime and real inference | Depends on runtime allocation, active sessions and chosen model | Not included in the amounts above; no reliable hosted-runtime unit quote was established in this check. Synthetic execution has no real-model token charges. |
+
+Sources: [App Service Linux retail meter](https://prices.azure.com/api/retail/prices?$filter=serviceName%20eq%20%27Azure%20App%20Service%27%20and%20armRegionName%20eq%20%27westus2%27%20and%20skuName%20eq%20%27B1%27)
+and [East US Hot LRS retail meter](https://prices.azure.com/api/retail/prices?$filter=serviceName%20eq%20%27Storage%27%20and%20armRegionName%20eq%20%27eastus%27%20and%20skuName%20eq%20%27Hot%20LRS%27%20and%20meterName%20eq%20%27Hot%20LRS%20Data%20Stored%27).
+These are component estimates, not an invoice, an all-in forecast or a
+spending cap; discounts, taxes, traffic and model selection can change totals.
+The [Foundry Agent Service pricing page](https://azure.microsoft.com/en-us/pricing/details/foundry-agent-service/)
+confirms that hosted agents incur hourly container-compute charges, separate
+from model tokens; it did not expose a numeric runtime rate in this check.
+This preparation itself adds no Azure resource or real-model usage.
 
 ## 1. Positioning and intended user
 

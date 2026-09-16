@@ -50,8 +50,8 @@ failure, resumed to revision 3, and replayed all saved requests with no new
 model work. This used real Azure Blob storage and a synthetic model, not the
 real Foundry model. The [storage deployment](storage-deployment.md) confirmed
 Entra operator access and anonymous denial. Hosted identity/gateway
-observations are recorded separately below; workbench operator authorization
-remains unverified.
+observations are recorded separately below; later bounded browser
+login/current-read evidence does not establish all authorization paths.
 
 The suite covers one-attempt commits, two explicitly advanced chunks,
 historical request replay, independent connection ownership, subprocess
@@ -73,6 +73,19 @@ corruption, source evidence resolution, and unknown versus observed usage.
 Run the exact local command from the README to reproduce the suite. The
 offline evidence alone does not establish Azure behavior; the live probes
 cover only their stated paths. Neither establishes exactly-once model execution.
+
+### Fresh synthetic browser-execution preparation
+
+The [independent acceptance manifest and local rehearsal](local-workbench.md#prepare-independent-acceptance-jobs)
+separate the next execution jobs from the historical completed hosted ledger.
+One scenario explicitly pauses after allowance 1 and resumes with allowance 1;
+the other authorizes two chunks with one Start. Read/reopen and completed
+process-restart checks must preserve the round, first candidate and evidence.
+No real inference, resource provisioning or public-window opening occurs in
+preparation. AppTest/native-local evidence must not be marked as a live
+G0-08/G0-09/G0-10 pass. The next cloud exercise must use the prepared job/prefix
+bindings, fresh owned sessions and fixed cleanup bounds; do not repeat a
+login-only window in place of testing mutations.
 
 ### Native batch evidence: September 15, 2026
 

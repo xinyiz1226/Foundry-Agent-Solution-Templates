@@ -22,6 +22,7 @@ read-only readiness checks. Defaults are:
 | --- | --- |
 | Streamlit | `http://127.0.0.1:8501` |
 | Local Invocations backend | `http://127.0.0.1:8765` |
+| Server-owned job (`--job-id`) | `synthetic-job` |
 | Durable extraction/batch/HTTP receipts | `.local-data\workbench\ledger.sqlite3` |
 | Native local-file task state | `.local-data\workbench\native-state` |
 | Diagnostics | `.local-data\workbench\backend.log` and `streamlit.log` |
@@ -49,6 +50,80 @@ Use only one backend per state directory. Changing ports does not create
 another job. `--state-dir` selects a different local directory for an
 independent synthetic demonstration; it is not recovery or reconciliation
 of an unresolved job. Never delete an old ledger or claim to make retry safe.
+
+## Prepare independent acceptance jobs
+
+Preparation creates a new manifest, not a job authorization or an Azure
+deployment. Every invocation allocates a create-only directory with two
+different job IDs, local state directories, and proposed Blob prefixes.
+Existing ledgers and the historical hosted job are not reset or reused.
+
+```powershell
+$prepared = & .\.venv\Scripts\python.exe .\scripts\prepare_workbench_acceptance.py | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) { throw "Acceptance preparation failed." }
+$manifest = Get-Content -Raw $prepared.manifest | ConvertFrom-Json
+$case = $manifest.scenarios | Where-Object name -eq 'pause-resume'
+& .\.venv\Scripts\python.exe .\scripts\run_workbench.py `
+    --job-id $case.hosted_environment.EXTRACTION_JOB_ID `
+    --state-dir $case.local_state_dir --backend-port 8766 --ui-port 8502
+```
+
+The explicit job ID is passed to the independent backend, not selected from
+browser state. Leave an existing preview on its own ports and state directory.
+On reopen, reuse the same manifest and state, not another prepared job.
+
+The repeatable local rehearsal uses Streamlit's AppTest, real loopback HTTP,
+the separate native-task process, and durable SQLite, rather than a mocked
+page projection. It consumes its own fresh manifest and uses shorter
+60-second rounds inside the prepared 120-second ceiling. The JSON result
+reports the actual duration and separates UI clicks from exact transport
+replays; repeated saved requests must preserve the complete durable ledger:
+
+```powershell
+& .\.venv\Scripts\python.exe .\scripts\workbench_acceptance.py
+& .\.venv\Scripts\python.exe -m unittest tests.test_prepare_workbench_acceptance tests.test_workbench_acceptance tests.test_local_workbench -q
+```
+
+| Prepared manual scenario | Explicit commands | Expected observation |
+| --- | --- | --- |
+| Pause/resume | Start with allowance 1, then Resume with allowance 1; each round 120 seconds | First round `limited`, revision 1, revenue 120. Reads/reopen do not advance. Resume completes revision 2 with operating income 18 and the original revenue candidate unchanged. |
+| Single start | Start with allowance 2, 120 seconds | Backend completes both chunks without another mutation, revision 2, two committed attempts. |
+| Read/restart | Refresh/recreate the page; restart the completed backend | Same run, revision, candidates, evidence and no new authorization. Process instance changes after restart. |
+| Isolation | Run the second scenario in its own state directory | Prior completed ledger and candidates remain unchanged. |
+
+All values use `USD_millions`; evidence is `block-1` / `synthetic:line:1`
+and `block-3` / `synthetic:line:3`. Both records remain Pending. A `limited`
+round is an admission-limit pause, not a manual cancel or hard interruption.
+The rehearsal stops its own processes and removes only its temporary state;
+manifests prepared separately above are retained.
+
+### Subsequent cloud execution
+
+The manifest's `hosted_environment` contains only the two changed bindings;
+it is **not** a complete hosted configuration or permission to open ingress.
+Preserve all existing identity, task-backend and Blob account/container
+settings. Apply job ID and prefix together on a new hosted version, keeping
+the previous version/configuration for rollback. Do not retarget existing
+sessions or erase old Blob state. Configure one scenario at a time with fresh
+session affinity, and require `current` to return its exact job ID with no
+round or pending intent before Start. A mismatch blocks the test.
+
+For a future approved execution window: maximum 10 minutes public exposure,
+at most two new owned sessions across the two scenarios, four committed
+synthetic attempts total, and no real model calls. Set an absolute cleanup
+deadline when the window opens; do not extend it. Each click freezes its
+own 120-second admission deadline; retries retain that exact request and
+deadline. Stop on an unknown claim or transport outcome rather than issuing
+a new mutation. Capture the initial session set, close ingress and stop the
+owned site/agent/new sessions at the deadline, restore the approved Always On
+setting, and leave baseline sessions and historical ledgers untouched.
+Cleanup must have one authoritative receipt writer so a stale poll cannot
+overwrite a closed result.
+
+Local rehearsal does not establish cloud managed-identity mutations, actual
+browser/WebSocket disconnect timing, or token expiry/revocation. Those are
+still live acceptance gates; another successful login-only check is not a
+substitute.
 
 ## Use and reconnect
 
