@@ -366,12 +366,78 @@ five idle sessions. No baseline session was stopped, no new session was
 created, authentication was unchanged, and no model call occurred. The
 backup session automation was cleared.
 
-**Root cause and browser acceptance remain unresolved.** The three-request
-allowance is exhausted; this result does not authorize reopening. A later
-approved probe should distinguish real-browser/header behavior from the
-explicit `/.auth/login/aad` route, without weakening authentication or
-enabling the agent. A 401 from Requests is not a failed human sign-in, but
-it also does not satisfy the browser-redirect gate.
+At this checkpoint, root cause and browser acceptance remained unresolved.
+The three-request allowance was exhausted and did not authorize reopening.
+The separately approved browser comparison below followed without
+weakening authentication or enabling the agent. A 401 from Requests is
+not a failed human sign-in, but it also does not satisfy the browser-redirect
+gate.
+
+### Browser-versus-script and explicit-login comparison
+
+The operator separately approved this next diagnostic at
+`2026-09-16T08:19:23.238+08:00`. It retained the 60-second public-access
+budget and at most three initial site GETs, with the agent disabled
+throughout. The browser was an isolated, headless instance of the installed
+Microsoft Edge **153.0.4234.32**, not the operator's existing browser profile.
+Playwright was installed only in a private diagnostic environment; no
+application dependency, source archive, or Azure configuration was changed.
+
+All three requests used `Accept: text/html`. The first comparison changed
+the client from Requests to Edge; the next changed only the navigation path
+within the same browser implementation. Each browser sample used a fresh
+context with no previous login cookies. CDP interception admitted one
+navigation per context and aborted at response headers, before any
+redirect, response-body processing, or additional page request.
+
+| UTC sample start | Client | Path | HTTP result |
+| --- | --- | --- | --- |
+| `00:29:02.926099Z` | Requests | `/` | **401**, no Location |
+| `00:29:05.320006Z` | Isolated headless Edge | `/` | **302**, configured tenant's v2 authorization endpoint |
+| `00:29:06.249056Z` | Isolated headless Edge | `/.auth/login/aad` | **302**, same tenant's v2 authorization endpoint |
+
+Both browser redirects matched the expected HTTPS host
+`login.microsoftonline.com` and configured tenant's
+`/oauth2/v2.0/authorize` path. OAuth query values, cookies, tokens, and
+bodies were not recorded. The receipt's `navigation_error` flag reflects
+the **deliberate post-header abort**, not a failed authentication attempt.
+The Entra authorization endpoint was not followed, and no login was submitted.
+
+This identifies a **precheck-client mismatch**: requiring a Requests GET
+to redirect was not a valid substitute for checking browser navigation
+on this deployment. The observed browser login initiation works without
+an authentication change. It does not isolate a particular User-Agent,
+Fetch header, transport difference, or timing effect, and it does not
+retroactively recover the first window's missing response.
+
+The private browser-window controller now uses one bounded, isolated
+browser navigation for its anonymous gate instead of Requests. It still
+persists sanitized evidence before asserting the expected redirect, fails
+closed on browser failure or an unexpected response, and has no API-client
+fallback or 401-as-success exception. A controller regression first failed
+under the old implementation with Requests 401/browser 302, then passed
+after this change. Real-Edge loopback fixtures separately verified status
+capture, the on-wire Accept value, fresh cookies, and no followed redirects.
+These fixtures do not submit user credentials or call Azure.
+
+Read-only configuration checks also found auth configuration version `v2`,
+runtime `~1`, the `/.auth` prefix, no file-based override, and no examined
+auth-override app settings. No change to the tenant, provider, callback,
+secret, allowlist, roles, or deployment was needed for the observed redirects.
+
+Public opening was attempted at `00:29:00.360516Z`; closure was verified
+at `00:29:13.588605Z`, **13.2 seconds** later and before the fixed
+`00:30:00.360516Z` deadline. The independent watchdog and a later independent
+control-plane read verified the site stopped, public access disabled,
+Always On false, the agent disabled, and the same five idle sessions.
+No baseline session was stopped, no new session was created, and no
+model call occurred. The backup session automation was cleared.
+
+**Browser login initiation is demonstrated; G0 is still incomplete.**
+Operator sign-in/callback, unapproved-user rejection, the protected
+Streamlit page, web-managed-identity calls, and WebSocket expiry/reconnect
+still require a separately approved user-present window. This diagnostic
+did not reopen that full browser window.
 
 [anonymous-auth-doc]: https://learn.microsoft.com/en-us/azure/app-service/overview-authentication-authorization#unauthenticated-requests
 

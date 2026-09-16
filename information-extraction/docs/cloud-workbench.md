@@ -23,6 +23,14 @@ one with `Accept: text/html`. It closed the web-only diagnostic within its
 root cause or complete browser acceptance; no authentication controls were
 relaxed.
 
+A separately approved [browser comparison](guarded-deployment.md#browser-versus-script-and-explicit-login-comparison)
+then observed Requests HTTP 401 but isolated Edge HTTP 302 to the configured
+tenant, both for the root page and the explicit AAD login route. The private
+window precheck now uses browser navigation rather than treating Requests
+as a browser substitute. No authentication settings changed. Login
+initiation is demonstrated, not operator sign-in, callback validation,
+the protected page, or managed-identity integration. The site is closed again.
+
 ## Entry points and public interfaces
 
 | Surface | Purpose |

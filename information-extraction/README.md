@@ -90,8 +90,12 @@ read-only version-2 `current` request and HTTP 403 for an unapproved user's
 identical request; the agent and new session were closed afterward.
 A subsequent [bounded anonymous-login diagnosis](docs/guarded-deployment.md#anonymous-login-precheck-aborted-window-and-diagnosis)
 returned HTTP 401 with no redirect for both tested Accept profiles, then
-closed the web-only probe. Its root cause and browser, web-managed-identity
-and broader route/access acceptance remain unverified. Protecting only
+closed the web-only probe. A separately approved
+[browser comparison](docs/guarded-deployment.md#browser-versus-script-and-explicit-login-comparison)
+observed Edge HTTP 302 to the configured tenant, unlike Requests HTTP 401;
+the private precheck now uses a browser. The site is closed again.
+Operator sign-in/callback, web-managed-identity and broader route/access
+acceptance remain unverified. Protecting only
 the web login does not protect a separately callable Foundry endpoint.
 
 ## Run the offline checks
