@@ -529,6 +529,68 @@ detail/source inspection, WebSocket expiry/reconnect/revocation, alternate
 routes and the full effective-permissions audit remain outstanding. No
 additional window or execution budget is authorized by these results.
 
+### Fresh execution version: isolated ledger, endpoint still disabled
+
+Following the September 16 continuation, immutable backend version **3**
+was created for the prepared pause/resume scenario. Its source archive is
+byte-identical to version 2: **104,002 bytes**, SHA-256
+`1b29accc0b98e0f50eac44c18bd52af03cf679bc135642103e5ba1b2d29fa026`.
+The current allowlisted source rebuilt to that same digest and passed
+isolated wheel/import checks before submission.
+
+Only `EXTRACTION_JOB_ID` and `EXTRACTION_BLOB_PREFIX` changed, together, to
+a new UUID-qualified acceptance namespace. The previous version's complete
+environment was checked unchanged; all other new-version environment values,
+CPU/memory allocation, runtime principal and Invocations `2.0.0` declaration
+were preserved. The historical completed job and its Blob prefix were not
+reset, retargeted or deleted. No new web plan, identity or permission grant
+was created.
+
+At `05:31:05.791420Z`, the one source-version creation was submitted. Readback
+confirmed version 3 active while the agent endpoint remained **disabled**.
+Independent web checks confirmed **Stopped**, public access **Disabled**,
+Always On **false**, and the existing operator authentication unchanged.
+The same **six** baseline sessions remained idle. There were **zero
+Invocations requests** and **zero real-model calls** in this staging step.
+
+The private staging helper records submission intent before the write and
+does not resubmit after an unknown outcome; read-only reconciliation instead
+locates the uniquely tagged version. Its offline checks cover exact binding
+changes and blocked repeat submission. Operational window guards must now
+verify this exact new version, source, identity and fresh bindings; the old
+version-2 guards remain unchanged for historical procedures.
+
+This is configuration staging, **not** browser start/resume acceptance or
+proof that a new extraction has run. It reuses the existing SDK-based
+deployment path rather than re-scaffolding or provisioning the shared
+Foundry project for this bounded exercise. Runtime and model cost categories
+remain as described in the [delivery budget](implementation-plan.md#delivery-priority-september-16-2026).
+
+The earlier private window-controller race was also reproduced offline:
+a stale polling write changed a closed receipt back to
+`browser_window_open`. The corrected controller uses crash-released locks,
+durable close intent, serialized cleanup/admissions and a closed receipt
+that stale writers cannot replace. The guardian now performs cleanup
+against the canonical window receipt and records its own verification
+separately. Regression cases cover stale polling, duplicate cleanup and
+guardian recovery; historical window receipts were checked unchanged.
+This is an operational-helper fix, not a change to the deployed web or
+agent application.
+
+The combined private regression run passed **34 tests**. A subsequent
+independent inspector again confirmed the protected stopped site, disabled
+version-3 agent, unchanged historical configuration and the same six idle
+sessions. No new public window was opened: the current browser-readiness
+prompt produced no user confirmation, so the human-required Start/Resume
+step remains pending rather than being reported as a pass.
+
+For the next explicitly user-present window, create a new receipt and
+wrapper; bind its ownership check to version 3 and the exact prepared
+job/prefix. Do not reuse the previous login-only wrapper or weaken its
+version-2 ownership checks. The wrapper and its watchdog must share the
+canonical receipt and validation function. Keep the fixed ten-minute
+maximum, original six-session baseline, and explicit 1+1 attempt budget.
+
 ## Local verification
 
 After adding anonymous-response diagnostics, the full optional suite

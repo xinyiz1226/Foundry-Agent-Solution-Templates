@@ -87,8 +87,11 @@ Compatible saved mutations retain their original deadlines after expiration.
 
 The current source adds read-only current-job discovery for the
 [local workbench](local-workbench.md). The [guarded backend update](guarded-deployment.md)
-uploaded it as version 2, with the endpoint still disabled and no live
-`current` invocation. The historical version-1 smoke predates this action.
+uploaded it as version 2. Subsequent bounded probes demonstrated `current`
+through CLI and the protected cloud workbench. A later version **3** preserves
+the same source and identity with a fresh job/Blob-prefix pair for execution
+acceptance; its staging left the endpoint disabled and made no Invocations
+request. The historical version-1 smoke predates this action.
 `current` returns:
 
 ```json

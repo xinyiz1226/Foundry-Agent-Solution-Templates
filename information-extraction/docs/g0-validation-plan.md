@@ -87,6 +87,15 @@ G0-08/G0-09/G0-10 pass. The next cloud exercise must use the prepared job/prefix
 bindings, fresh owned sessions and fixed cleanup bounds; do not repeat a
 login-only window in place of testing mutations.
 
+The subsequent [version-3 staging](guarded-deployment.md#fresh-execution-version-isolated-ledger-endpoint-still-disabled)
+applied the fresh pause/resume job and Blob prefix without changing source,
+runtime identity or historical configuration. The private controller's
+stale-close-receipt race is now covered by an offline regression and fixed.
+The site and agent remain closed with six idle baseline sessions; no
+browser mutation window was opened without a fresh readiness confirmation.
+Actual protected Start/Resume and expanded evidence inspection remain
+human-required acceptance, not completed by deployment or local tests.
+
 ### Native batch evidence: September 15, 2026
 
 The [native batch slice](native-batch.md) passed the local suite with the
