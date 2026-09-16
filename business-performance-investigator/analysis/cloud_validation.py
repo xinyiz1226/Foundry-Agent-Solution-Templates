@@ -12,7 +12,7 @@ from uuid import UUID
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "agent"))
 
-from .adaptive import AdaptiveLimits, strict_json
+from .adaptive import AdaptiveLimits, CONTRACT_REASONS, strict_json
 from .core import CsvSalesSource, Investigator, Limits, Period, run_baseline
 from .evaluate import validate_report
 from .hosted import HostedPolicy, PERMISSIONS, RESULT_MARKER
@@ -222,6 +222,38 @@ def _read(path, limit=MAX_RESPONSE_BYTES):
     return content.decode("utf-8-sig")
 
 
+def failure_receipt(report):
+    """Keep bounded diagnostic categories/counters, never unvalidated prose or model context."""
+    receipt = {"status": report.get("status") if report.get("status") in
+               ("failed", "error", "exhausted", "insufficient_data", "ok") else "unrecognized",
+               "accepted_as_success": False}
+    if report.get("stop_reason") in ("invalid_model_response", "model_error", "data_error",
+                                    "time_limit", "token_limit", "data_request_limit", "insufficient_evidence"):
+        receipt["stop_reason"] = report["stop_reason"]
+    execution = report.get("execution")
+    if isinstance(execution, dict):
+        receipt["reported_counters"] = {
+            key: execution[key] for key in ("model_calls", "model_inference_requests", "data_requests")
+            if type(execution.get(key)) is int and 0 <= execution[key] <= 50
+        }
+        usage = execution.get("token_usage")
+        if isinstance(usage, dict):
+            receipt["reported_token_usage"] = {
+                key: usage[key] for key in ("prompt_tokens", "completion_tokens", "total_tokens")
+                if type(usage.get(key)) is int and 0 <= usage[key] <= 1000000
+            }
+    diagnostic = report.get("diagnostics")
+    if isinstance(diagnostic, dict):
+        safe = {key: diagnostic[key] for key in ("choice_count", "tool_call_count")
+                if type(diagnostic.get(key)) is int and 0 <= diagnostic[key] <= 100}
+        if diagnostic.get("reason") in set(CONTRACT_REASONS.values()) | {"invalid_metadata_or_json"}:
+            safe["reason"] = diagnostic["reason"]
+        if diagnostic.get("finish_reason") in ("tool_calls", "stop", "length", "content_filter", "function_call", "other"):
+            safe["finish_reason"] = diagnostic["finish_reason"]
+        receipt["diagnostics"] = safe
+    return receipt
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Validate pinned reference and saved analytical evidence. No network calls.")
     parser.add_argument("--csv", type=Path, required=True)
@@ -248,11 +280,16 @@ def main(argv=None):
         else:
             _require(args.context is not None and args.baseline is not None, "missing_arguments")
             context = strict_json(_read(args.context, 16384))
-            runs = {"baseline": validate_run(parse_response(_read(args.baseline)), mode="baseline",
-                                            source=source, policy=policy, context=context)}
-            if args.adaptive is not None:
-                runs["adaptive"] = validate_run(parse_response(_read(args.adaptive)), mode="adaptive",
-                                               source=source, policy=policy, context=context)
+            runs = result["runs"] = {}
+            for mode, path in (("baseline", args.baseline), ("adaptive", args.adaptive)):
+                if path is None:
+                    continue
+                report = parse_response(_read(path))
+                try:
+                    runs[mode] = validate_run(report, mode=mode, source=source, policy=policy, context=context)
+                except ValidationFailure:
+                    runs[mode] = {"status": "failed", "receipt": failure_receipt(report)}
+                    raise
             result.update(status="passed" if args.adaptive else "baseline_passed", runs=runs,
                           same_sql_transaction=False,
                           snapshot_basis="Initializer-attested hash plus every captured aggregate matched to the pinned CSV.",

@@ -118,7 +118,11 @@ per-experiment lock prevents concurrent validator runs; inspect a leftover lock
 after an interrupted process rather than deleting it blindly.
 
 Raw CLI transcripts are removed on normal exit, including failure; accepted
-structured evidence remains. Reports are written before state promotion.
+structured evidence remains. A later failure preserves the already verified
+baseline and a bounded failure receipt (status, reported counters/token usage and
+recognized diagnostic categories), not raw model prose or private reasoning.
+Malformed/unrecognized fields are not copied into that receipt.
+Reports are written before state promotion.
 Costs remain explicitly unknown: token counts alone do not establish prices or
 platform charges. A passed pair sets `real_model_quality_validated: false`.
 It is neither a statistical comparison nor evidence that the model answered the

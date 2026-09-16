@@ -40,6 +40,17 @@ def response(name="compare", arguments='{"filters":{}}', call_id="call_1", **mes
 
 
 class AdaptiveTests(unittest.TestCase):
+    def test_invalid_model_response_has_bounded_diagnostics_without_private_content(self):
+        malformed = response(reasoning_content="private-secret")
+        malformed["choices"][0]["message"]["tool_calls"] *= 2
+        report = run_adaptive(investigator(), BASELINE, CURRENT, "Compare",
+                              BoundaryClient([malformed]), "deepseek")
+        self.assertEqual(report["diagnostics"]["reason"], "tool_call_count")
+        self.assertEqual(report["diagnostics"]["tool_call_count"], 2)
+        self.assertEqual(report["diagnostics"]["finish_reason"], "tool_calls")
+        self.assertNotIn("private-secret", json.dumps(report))
+        self.assertEqual(report["execution"]["data_requests"], 0)
+
     def test_finish_rejects_stale_or_fabricated_evidence_and_duplicate_ids(self):
         for args in (
             {"result_ids": ["r99"], "evidence_ids": ["q1", "q2"], "stop_reason": "complete"},

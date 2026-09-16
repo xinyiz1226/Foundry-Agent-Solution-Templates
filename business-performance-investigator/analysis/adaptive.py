@@ -51,6 +51,43 @@ existing result_ids and their exact union of evidence_ids, with stop_reason
 complete or insufficient_evidence. Do not author facts or causal conclusions.
 A complete selection must contain a comparison. No free text is reported."""
 
+CONTRACT_REASONS = {
+    "Expected one choice.": "choice_count",
+    "Incomplete, refused or unsupported message.": "message_shape",
+    "Expected exactly one tool call.": "tool_call_count",
+    "Invalid or reused call ID.": "call_identity",
+    "Unapproved tool or oversized arguments.": "tool_identity_or_size",
+    "Invalid tool arguments.": "argument_shape",
+    "Invalid assistant context.": "context_type",
+    "Assistant context too large.": "context_size",
+    "Invalid finish IDs.": "finish_ids",
+    "Unknown result ID.": "unknown_result",
+    "Finish evidence must exactly match selected results.": "finish_evidence",
+    "Unknown stop reason.": "stop_reason",
+    "Completion needs a selected comparison.": "missing_comparison",
+    "Invalid filters.": "filter_shape",
+    "Filters must use IDs exposed in this investigation.": "unknown_filter_id",
+    "Invalid breakdown.": "breakdown_shape",
+    "Malformed usage.": "usage_shape",
+    "Inconsistent usage.": "usage_total",
+    "Duplicate JSON key.": "duplicate_json_key",
+    "Nonfinite JSON value.": "nonfinite_json",
+}
+
+
+def _contract_diagnostics(completion, error):
+    choices = _get(completion, "choices")
+    choice = choices[0] if isinstance(choices, list) and len(choices) == 1 else None
+    message = _get(choice, "message")
+    calls = _get(message, "tool_calls")
+    finish = _get(choice, "finish_reason")
+    return {
+        "reason": CONTRACT_REASONS.get(str(error), "invalid_metadata_or_json"),
+        "choice_count": min(len(choices), 100) if isinstance(choices, list) else None,
+        "tool_call_count": min(len(calls), 100) if isinstance(calls, list) else None,
+        "finish_reason": finish if finish in ("tool_calls", "stop", "length", "content_filter", "function_call") else "other",
+    }
+
 
 def _tool(name, properties, required):
     return {"type": "function", "function": {
@@ -302,7 +339,8 @@ def run_adaptive(investigator: Investigator, baseline: Period, current: Period,
                 break
             name, args, assistant, call_id = _parse_response(completion, seen, limits)
             selected = _validate_args(name, args, known_ids, results, limits)
-        except (ValueError, TypeError, AttributeError, RecursionError):
+        except (ValueError, TypeError, AttributeError, RecursionError) as error:
+            diagnostics = _contract_diagnostics(completion, error)
             status, stop_reason = "error", "invalid_model_response"
             break
         if name == "finish":
@@ -361,7 +399,7 @@ def run_adaptive(investigator: Investigator, baseline: Period, current: Period,
         for key in ("prompt_tokens", "completion_tokens", "total_tokens")
     }
     token_usage["status"] = "known" if all(value is not None for value in token_usage.values()) else "unknown"
-    return {
+    report = {
         "schema_version": 1, "workflow": "bounded_adaptive_chat_completions",
         "status": status, "stop_reason": stop_reason,
         "baseline_period": baseline.as_dict(), "current_period": current.as_dict(),
@@ -386,3 +424,6 @@ def run_adaptive(investigator: Investigator, baseline: Period, current: Period,
             "token_reservation_basis": "serialized_ascii_bytes_plus_1024_framing_plus_output_cap",
         },
     }
+    if stop_reason == "invalid_model_response":
+        report["diagnostics"] = diagnostics
+    return report

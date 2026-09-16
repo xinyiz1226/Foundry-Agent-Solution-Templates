@@ -380,7 +380,10 @@ function global:azd {{
             after.write_text('BPI_ANALYSIS_RESULT={"status":"failed"}')
             result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=40)
             self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(json.loads(output.read_text())["status"], "failed")
+            failed = json.loads(output.read_text())
+            self.assertEqual(failed["status"], "failed")
+            self.assertEqual(failed["runs"]["baseline"]["status"], "passed")
+            self.assertEqual(failed["runs"]["adaptive"]["receipt"]["status"], "failed")
 
 
 if __name__ == "__main__":
