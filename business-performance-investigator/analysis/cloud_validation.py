@@ -21,7 +21,7 @@ from .queries import plan_query
 
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 DATA_LIMITS = Limits(max_seconds=120)
-MODEL_LIMITS = AdaptiveLimits(max_seconds=120, max_top_k=5)
+MODEL_LIMITS = AdaptiveLimits(max_seconds=120, max_top_k=5, max_tool_calls_per_response=2)
 
 
 class ValidationFailure(ValueError):

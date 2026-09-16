@@ -58,7 +58,8 @@ def fixture(official=False):
 
     fixed = run_baseline(engine(), policy.baseline, policy.current)
     adaptive = run_adaptive(engine(), policy.baseline, policy.current, "Investigate the changes.",
-                            ModelBoundary(steps), CONTEXT["model"], limits=AdaptiveLimits(max_seconds=120, max_top_k=5))
+                            ModelBoundary(steps), CONTEXT["model"],
+                            limits=AdaptiveLimits(max_seconds=120, max_top_k=5, max_tool_calls_per_response=2))
     for report in (fixed, adaptive):
         permissions = {k: v for k, v in security_record().items()
                        if k.endswith(("_select", "_insert", "_update", "_delete", "_alter", "_table", "_view", "_control"))}
@@ -153,7 +154,7 @@ class ValidationCliTests(unittest.TestCase):
         for case in ("pass", "public-sql", "wrong-sid", "wrong-endpoint", "wrong-client",
                      "version-drift", "bad-baseline", "bad-adaptive", "state-drift", "public-ip",
                      "wrong-owner", "wrong-environment", "wrong-service", "wrong-initialization",
-                     "existing-pass", "existing-model-drift"):
+                     "existing-pass", "existing-model-drift", "wrong-session-version"):
             with self.subTest(case=case):
                 self.run_live_case(case)
 
@@ -244,6 +245,9 @@ class ValidationCliTests(unittest.TestCase):
                 "env": env,
                 "agent": {"name": "business-investigator", "version": "1", "status": "active",
                           "instance_identity": {"principal_id": CONTEXT["agent_principal_id"]}},
+                "session": {"agent_session_id": "approved-session", "status": "active",
+                            "version_indicator": {"type": "version_ref",
+                                                  "agent_version": "2" if case == "wrong-session-version" else "1"}},
             }
             if case == "public-ip":
                 responses["network nic"]["ipConfigurations"][0]["privateIPAddress"] = "8.8.8.8"
@@ -289,6 +293,10 @@ function global:az {{
 function global:azd {{
   $global:LASTEXITCODE=0
   if ($args[0] -eq 'env') {{ $global:fixture.env | ConvertTo-Json -Compress; return }}
+  if ($args[0..3] -join ' ' -eq 'ai agent sessions show') {{
+    $global:fixture.session | ConvertTo-Json -Depth 5 -Compress
+    return
+  }}
   if ($args[0..2] -join ' ' -eq 'ai agent show') {{
     $global:shows++
     if ('{case}' -eq 'version-drift' -and $global:shows -gt 1) {{ $global:fixture.agent.version='2' }}

@@ -35,7 +35,8 @@ Prerequisites:
 - A new owned experiment initialized with `-AgentName business-investigator`
   and `-InitializationMode AnalysisSnapshot`.
 - The current analytical service version deployed, including the runtime
-  `security.server` field and shared Top-K ceiling of 5. Earlier analytical
+  `security.server` field, shared Top-K ceiling of 5 and explicit two-call
+  serial compatibility mode. Earlier analytical
   builds fail this acceptance contract.
 - The configured Azure CLI/azd context and explicit Chat Completions model.
 - An existing, explicitly approved session ID for this agent and project.
@@ -64,13 +65,19 @@ invocation retry is added. Runtime limits are 10 analytical requests, Top-K 5,
 120 analytical seconds and, for adaptive mode, six model calls capped at 1,024
 completion tokens each. The CLI itself has no hard process-kill deadline;
 operator monitoring and the separately approved cleanup deadline remain required.
+At most two independent analytical tools may be returned in one model response;
+the runtime validates their combined cost before executing them serially.
+`finish` cannot be combined with another tool. This does not raise the ten-query
+budget or permit guessed filter IDs.
 
 ## What is checked
 
 Before invocation, the script verifies recorded initialization, reference hash,
 resource-group ownership/inventory, local azd project/model/SQL bindings, active
 agent name/version, directory object-to-client-ID mapping and model deployment
-metadata. It requires SQL public access Disabled and exactly the recorded,
+metadata. The selected session must explicitly reference that same agent
+version; an older session is not silently reused after redeployment.
+It requires SQL public access Disabled and exactly the recorded,
 approved SQL private endpoint, subnet and NIC. Public/unknown IPs are rejected.
 
 After each successful invocation, the same cloud context is read again. A

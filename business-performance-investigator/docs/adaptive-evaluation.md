@@ -79,7 +79,17 @@ optional AdventureWorks SQLite oracle is also reused.
 
 ## Tools and authoritative facts
 
-Exactly one function call is accepted per model turn:
+By default, exactly one function call is accepted per model turn.
+`AdaptiveLimits(max_tool_calls_per_response=2)` explicitly permits up to two
+independent analytical calls, executed **serially**, never in parallel. The
+hosted service selects this bounded compatibility mode after a real DeepSeek
+response returned two calls despite `parallel_tool_calls=False`.
+All calls, IDs, arguments and the whole turn's data-request cost are validated
+before any data request. Filters cannot depend on IDs first discovered in the
+same turn. `finish` must be alone. No call is silently discarded and the total
+data budget is unchanged. The default local replay/evaluation mode remains one.
+
+Available tools:
 
 | Tool | Model-supplied arguments | Data requests |
 |---|---|---:|

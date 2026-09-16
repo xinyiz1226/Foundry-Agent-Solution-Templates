@@ -70,6 +70,10 @@ rollback are separately reported control overhead, not hidden inside those ten
 data requests. Query/connect timeouts are configured at 15 seconds each.
 Model transport timeout is 30 seconds with no SDK retries. Budgets stop further
 dispatch; they are not a process-kill guarantee or a monetary spending cap.
+The hosted adaptive path explicitly permits at most two independent analytical
+calls per model response, with whole-batch argument/budget validation followed
+by serial execution. The local library default remains one. Finish must be
+alone, and filters must reference IDs from earlier replies.
 
 Every exit attempts rollback and closes both cursor and connection, including
 setup failures. Cleanup failure prevents reporting successful completion.

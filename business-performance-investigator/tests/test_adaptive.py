@@ -40,6 +40,54 @@ def response(name="compare", arguments='{"filters":{}}', call_id="call_1", **mes
 
 
 class AdaptiveTests(unittest.TestCase):
+    def test_opted_in_batch_is_validated_then_executed_serially_with_all_replies(self):
+        first = response(reasoning_content="private-continuation")
+        first["choices"][0]["message"]["tool_calls"] += response(
+            "breakdown", '{"dimension":"territory","filters":{},"top_k":5}', "call_2"
+        )["choices"][0]["message"]["tool_calls"]
+        client = BoundaryClient([
+            first,
+            response("breakdown", '{"dimension":"product","filters":{"territory":"10"},"top_k":5}', "call_3"),
+            response("finish", json.dumps({"result_ids": ["r1", "r2", "r3"],
+                     "evidence_ids": [f"q{i}" for i in range(1, 11)], "stop_reason": "complete"}), "call_4"),
+        ])
+        report = run_adaptive(investigator(), BASELINE, CURRENT, "Investigate North", client, "deepseek",
+                              limits=AdaptiveLimits(max_tool_calls_per_response=2))
+        self.assertEqual(report["status"], "ok")
+        self.assertEqual(report["execution"]["data_requests"], 10)
+        self.assertEqual(report["execution"]["model_calls"], 3)
+        messages = client.requests[1]["messages"]
+        self.assertEqual([item["tool_call_id"] for item in messages if item["role"] == "tool"], ["call_1", "call_2"])
+        self.assertEqual(messages[-3]["reasoning_content"], "private-continuation")
+        self.assertNotIn("private-continuation", json.dumps(report))
+        self.assertFalse(client.requests[0]["parallel_tool_calls"])
+
+    def test_batch_rejects_all_calls_before_data_on_invalid_args_or_budget(self):
+        for scenario in ("bad-second", "duplicate-id", "mixed-finish", "over-budget", "unseen-id", "over-count"):
+            first = response()
+            second = response("breakdown", '{"dimension":"territory","filters":{},"top_k":5}', "call_2")
+            if scenario == "bad-second":
+                second = response("breakdown", '{"sql":"unsafe"}', "call_2")
+            if scenario == "duplicate-id":
+                second["choices"][0]["message"]["tool_calls"][0]["id"] = "call_1"
+            if scenario == "mixed-finish":
+                second = response("finish", '{"result_ids":[],"evidence_ids":[],"stop_reason":"insufficient_evidence"}', "call_2")
+            if scenario == "unseen-id":
+                first = response("breakdown", '{"dimension":"territory","filters":{},"top_k":5}')
+                second = response("compare", '{"filters":{"territory":"10"}}', "call_2")
+            first["choices"][0]["message"]["tool_calls"] += second["choices"][0]["message"]["tool_calls"]
+            if scenario == "over-count":
+                first["choices"][0]["message"]["tool_calls"] += response(call_id="call_3")["choices"][0]["message"]["tool_calls"]
+            engine = investigator(limits=Limits(max_requests=5 if scenario == "over-budget" else 10))
+            report = run_adaptive(engine, BASELINE, CURRENT, "Compare", BoundaryClient([first]), "deepseek",
+                                  limits=AdaptiveLimits(max_tool_calls_per_response=2))
+            with self.subTest(scenario=scenario):
+                self.assertNotEqual(report["status"], "ok")
+                self.assertEqual(report["stop_reason"],
+                                 "data_request_limit" if scenario == "over-budget" else "invalid_model_response")
+                self.assertEqual(report["execution"]["data_requests"], 0)
+                self.assertEqual(report["facts"], [])
+
     def test_invalid_model_response_has_bounded_diagnostics_without_private_content(self):
         malformed = response(reasoning_content="private-secret")
         malformed["choices"][0]["message"]["tool_calls"] *= 2

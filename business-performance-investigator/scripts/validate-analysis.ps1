@@ -43,7 +43,7 @@ if ($PrepareOnly) {
 }
 
 function Get-BpiAnalysisCloudContext {
-    param([hashtable]$Config, [hashtable]$State)
+    param([hashtable]$Config, [hashtable]$State, [string]$SelectedSessionId)
     Get-BpiGroup $Config $State | Out-Null
     Assert-BpiInventory $State (Get-BpiResources $Config)
     $model = Get-BpiModelConfiguration $Config
@@ -88,6 +88,13 @@ function Get-BpiAnalysisCloudContext {
         $agent.version -isnot [string] -or $agent.version -cnotmatch '^[1-9][0-9]{0,10}$' -or
         (Get-BpiAgentPrincipalId $agent) -ine $State.agentPrincipalId) {
         throw 'Active analytical agent name/version/identity does not match the experiment.'
+    }
+    $session = Invoke-BpiNative azd @('ai', 'agent', 'sessions', 'show', $SelectedSessionId,
+        '--agent-name', 'business-investigator', '-e', $Config.environmentName, '--output', 'json') -Json
+    if ($session.agent_session_id -cne $SelectedSessionId -or $session.status -cnotin @('active', 'idle') -or
+        $session.version_indicator.type -cne 'version_ref' -or
+        $session.version_indicator.agent_version -cne $agent.version) {
+        throw 'Selected session does not reference the current verified agent version.'
     }
     $principal = Invoke-BpiNative az @('ad', 'sp', 'show', '--id', $State.agentPrincipalId,
         '--query', '{id:id,appId:appId}', '--output', 'json') -Json
@@ -145,6 +152,8 @@ function Get-BpiAnalysisCloudContext {
         model = $Config.modelName
         model_version = $modelVersion
         agent_version = $agent.version
+        agent_session_id = $session.agent_session_id
+        session_version = $session.version_indicator.agent_version
         private_endpoint_id = $endpoint.id
         private_endpoint_subnet_id = $subnetId
         public_network_access = $server.publicNetworkAccess
@@ -203,7 +212,7 @@ try {
     }
     $stage = 'cloud_preconditions'
     $report | ConvertTo-Json -Depth 60 | Set-Content -LiteralPath $reportPath -Encoding utf8
-    $context = Get-BpiAnalysisCloudContext $config $state
+    $context = Get-BpiAnalysisCloudContext $config $state $SessionId
     $contextJson = $context | ConvertTo-Json -Depth 10 -Compress
     $contextPath = Join-Path $attempt 'context.json'
     $contextJson | Set-Content -LiteralPath $contextPath -Encoding utf8
@@ -238,7 +247,7 @@ try {
         if ((Get-FileHash -LiteralPath $statePath -Algorithm SHA256).Hash -cne $stateHash) {
             throw 'Ownership state changed during validation; no state update is allowed.'
         }
-        $current = Get-BpiAnalysisCloudContext $config $state
+        $current = Get-BpiAnalysisCloudContext $config $state $SessionId
         if (($current | ConvertTo-Json -Depth 10 -Compress) -cne $contextJson) {
             throw 'Agent version, identity, model or SQL network context changed during validation.'
         }
