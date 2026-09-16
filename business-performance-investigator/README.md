@@ -9,6 +9,11 @@ adaptive investigation remains incomplete: the latest run completed comparison
 and territory discovery, then rejected an invalid filter before product
 drilldown.**
 
+The local follow-up now constrains filters to discovered string IDs and allows
+one budgeted correction in the hosted path. Its
+[offline correction behavior](docs/adaptive-evaluation.md#optional-single-filter-correction)
+is covered locally; it has not changed the failed live acceptance outcome.
+
 Cloud experiments are disposable and require verified resource teardown and
 revocation of their exact temporary model permissions. Soft-deleted Foundry
 accounts are retained without purge; actual billed cost remains unknown.

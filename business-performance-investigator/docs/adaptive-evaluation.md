@@ -107,6 +107,48 @@ before drilling into it. If the desired territory is outside the caller's
 top-k ceiling, the model must finish with insufficient evidence rather than
 invent or retrieve an undiscovered ID.
 
+The tool schema is rebuilt before each model call. A discovered dimension
+uses a sorted string `enum` of IDs actually displayed in earlier replies;
+undiscovered dimensions are omitted from the filter properties entirely.
+Initially only `{}` is allowed. IDs are not inferred from names, coerced from
+numbers, or taken from undisplayed groups. Schema constraints supplement, not
+replace, server-side validation; provider support still needs live verification.
+
+### Optional single filter correction
+
+`AdaptiveLimits(max_filter_corrections=1)` permits **one rejected filter batch
+per entire run** to receive structured correction feedback. The library and
+offline CLI default is `0` (fail immediately); the hosted service explicitly
+selects `1`. Only filter value type errors (`filter_id_type`) and unknown,
+empty or over-length string IDs (`unknown_filter_id`) are correctable.
+Invalid tool/argument shapes, SQL-like extra fields, duplicate call IDs,
+malformed JSON, invalid breakdown dimensions/top-k and invalid finish
+references remain terminal, even if another call in that batch has a
+correctable filter.
+
+Every call is validated against pre-turn discoveries and the combined request
+cost is checked before correction or data dispatch. A rejected batch executes
+**zero data requests**, including its valid companions. Each call receives a
+matching tool reply: the invalid call's category or `batch_rejected` for a
+valid companion. The model must resubmit intended calls with fresh call IDs.
+No application-side ID substitution, guessed SQL, or hidden SDK retry occurs.
+Feedback obeys the tool-summary cap and stays in the bounded private
+continuation with the original assistant message.
+
+The correction turn consumes the original model-call, time, token and context
+budgets; none are reset or increased. If the model makes another filter error,
+execution stops with `invalid_model_response`. Exhaustion can stop the run
+before another model call even after feedback has been queued.
+`execution.filter_corrections` counts batches with feedback queued, not
+successful corrections. `corrections` records only the 1-based model-call
+number, 0-based tool index and recognized reason for rejected filter calls
+(at most two records). It never includes raw arguments, values or reasoning.
+
+The local regression suite includes a scripted official AdventureWorks
+Northwest correction, its product drilldown and the `-30090.9900` sales-change
+reconciliation. This is **offline boundary replay**, not a recovered real
+DeepSeek run; the recorded cloud acceptance remains failed.
+
 Tool responses contain bounded deterministic summaries: top-k segments,
 reconciled `other` totals, and result/evidence IDs. Full group evidence and SQL
 query plans are retained in the returned report, **not sent to the model**.
@@ -141,6 +183,8 @@ available.
 | Limit | Default |
 |---|---:|
 | Model calls, including finish | 6 |
+| Tool calls per response | 1 (hosted: 2, serial) |
+| Correctable filter batches per run | 0 (hosted: 1) |
 | Completion tokens per call | 1,024 |
 | Total conservative token reservation | 100,000 |
 | Serialized context characters, including tools | 24,000 |
@@ -186,7 +230,7 @@ Expected terminal outcomes:
   or `inconsistent_evidence`.
 
 Duplicate JSON keys, NaN/infinities (including overflowed numbers),
-malformed/unknown/multiple calls, duplicate or stale call IDs, stale result
+malformed/unknown/over-limit calls, duplicate or stale call IDs, stale result
 or evidence IDs, invalid finish reasons, refusals, incomplete completions,
 and unsupported legacy calls are rejected. On failure/exhaustion, `facts`
 is empty; completed tool `results` and captured `evidence` remain available

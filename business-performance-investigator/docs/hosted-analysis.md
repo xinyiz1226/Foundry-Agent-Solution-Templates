@@ -76,6 +76,14 @@ The hosted adaptive path explicitly permits at most two independent analytical
 calls per model response, with whole-batch argument/budget validation followed
 by serial execution. The local library default remains one. Finish must be
 alone, and filters must reference IDs from earlier replies.
+Filter properties are dynamically restricted to those previously displayed
+string IDs. The hosted path explicitly opts into one structured filter
+correction per run (`max_filter_corrections=1`); the local library default is
+zero. A rejected batch performs no queries and all its calls get error replies.
+Correction consumes the existing six-call/ten-query/time/token budgets;
+malformed calls, invalid finish references and repeated filter errors still
+stop execution. See [correction semantics](adaptive-evaluation.md#optional-single-filter-correction).
+This follow-up is locally verified only, not deployed or proven with DeepSeek.
 
 Every exit attempts rollback and closes both cursor and connection, including
 setup failures. Cleanup failure prevents reporting successful completion.

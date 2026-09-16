@@ -274,7 +274,8 @@ class AnalysisAgent:
                         runner = run_adaptive
                     report = runner(investigator, self.policy.baseline, self.policy.current, question,
                                     client=self.client, model=self.settings.model,
-                                    limits=AdaptiveLimits(max_seconds=120, max_top_k=5, max_tool_calls_per_response=2))
+                                    limits=AdaptiveLimits(max_seconds=120, max_top_k=5, max_tool_calls_per_response=2,
+                                                          max_filter_corrections=1))
             report["security"] = dict(session.security)
             report["approved_sample_policy"] = {
                 "source_sha256": self.policy.source_sha256,

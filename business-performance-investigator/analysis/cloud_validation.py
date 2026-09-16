@@ -21,7 +21,8 @@ from .queries import plan_query
 
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 DATA_LIMITS = Limits(max_seconds=120)
-MODEL_LIMITS = AdaptiveLimits(max_seconds=120, max_top_k=5, max_tool_calls_per_response=2)
+MODEL_LIMITS = AdaptiveLimits(max_seconds=120, max_top_k=5, max_tool_calls_per_response=2,
+                             max_filter_corrections=1)
 
 
 class ValidationFailure(ValueError):
@@ -157,6 +158,24 @@ def validate_run(report, *, mode, source, policy, context):
             model_calls = execution["model_calls"]
             _require(type(model_calls) is int and 2 <= model_calls <= MODEL_LIMITS.max_model_calls, "model_calls")
             _same(execution["model_inference_requests"], model_calls, "model_calls")
+            correction_count = execution["filter_corrections"]
+            _require(type(correction_count) is int and 0 <= correction_count <= MODEL_LIMITS.max_filter_corrections,
+                     "filter_corrections")
+            corrections = report["corrections"]
+            _require(isinstance(corrections, list) and
+                     len(corrections) <= correction_count * MODEL_LIMITS.max_tool_calls_per_response, "corrections")
+            correction_turns, correction_keys = set(), set()
+            for correction in corrections:
+                _require(isinstance(correction, dict) and set(correction) == {"model_call", "tool_index", "reason"},
+                         "correction_shape")
+                turn, index = correction["model_call"], correction["tool_index"]
+                _require(type(turn) is int and 1 <= turn < model_calls, "correction_turn")
+                _require(type(index) is int and 0 <= index < MODEL_LIMITS.max_tool_calls_per_response, "correction_index")
+                _require(correction["reason"] in ("filter_id_type", "unknown_filter_id"), "correction_reason")
+                _require((turn, index) not in correction_keys, "duplicate_correction")
+                correction_turns.add(turn)
+                correction_keys.add((turn, index))
+            _same(len(correction_turns), correction_count, "filter_corrections")
             results = report["results"]
             _require(isinstance(results, list) and 1 <= len(results) <= 5, "results")
             _require([item["result_id"] for item in results] == [f"r{i + 1}" for i in range(len(results))], "result_ids")
@@ -228,7 +247,8 @@ def failure_receipt(report):
                ("failed", "error", "exhausted", "insufficient_data", "ok") else "unrecognized",
                "accepted_as_success": False}
     if report.get("stop_reason") in ("invalid_model_response", "model_error", "data_error",
-                                    "time_limit", "token_limit", "data_request_limit", "insufficient_evidence"):
+                                    "time_limit", "token_limit", "data_request_limit", "insufficient_evidence",
+                                    "model_call_limit", "context_limit", "tool_summary_limit"):
         receipt["stop_reason"] = report["stop_reason"]
     execution = report.get("execution")
     if isinstance(execution, dict):
@@ -236,12 +256,25 @@ def failure_receipt(report):
             key: execution[key] for key in ("model_calls", "model_inference_requests", "data_requests")
             if type(execution.get(key)) is int and 0 <= execution[key] <= 50
         }
+        if type(execution.get("filter_corrections")) is int and 0 <= execution["filter_corrections"] <= 1:
+            receipt["reported_counters"]["filter_corrections"] = execution["filter_corrections"]
         usage = execution.get("token_usage")
         if isinstance(usage, dict):
             receipt["reported_token_usage"] = {
                 key: usage[key] for key in ("prompt_tokens", "completion_tokens", "total_tokens")
                 if type(usage.get(key)) is int and 0 <= usage[key] <= 1000000
             }
+    corrections = report.get("corrections")
+    if isinstance(corrections, list) and len(corrections) <= 2 and all(
+        isinstance(item, dict)
+        and type(item.get("model_call")) is int and 1 <= item["model_call"] <= MODEL_LIMITS.max_model_calls
+        and type(item.get("tool_index")) is int and 0 <= item["tool_index"] < MODEL_LIMITS.max_tool_calls_per_response
+        and item.get("reason") in ("filter_id_type", "unknown_filter_id")
+        for item in corrections
+    ):
+        receipt["reported_corrections"] = [
+            {key: item[key] for key in ("model_call", "tool_index", "reason")} for item in corrections
+        ]
     diagnostic = report.get("diagnostics")
     if isinstance(diagnostic, dict):
         safe = {key: diagnostic[key] for key in ("choice_count", "tool_call_count")

@@ -15,7 +15,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / "agent")]
 
 from analysis import CsvSalesSource, Investigator, Limits, run_baseline
 from analysis.adaptive import AdaptiveLimits, run_adaptive
-from analysis.cloud_validation import ValidationFailure, parse_response, validate_run
+from analysis.cloud_validation import ValidationFailure, failure_receipt, parse_response, validate_run
 from analysis.hosted import HostedPolicy, render_analysis_result
 from analysis.model_client import ReplayClient
 from test_business_analysis import BASELINE, CURRENT, COVERAGE
@@ -31,7 +31,7 @@ CONTEXT = {
 }
 
 
-def fixture(official=False):
+def fixture(official=False, correction=False):
     if official:
         policy = HostedPolicy.load(ROOT / "analysis" / "hosted-policy.json")
         path = ROOT / ".artifacts" / "adventureworks" / "internet_sales.csv"
@@ -53,13 +53,18 @@ def fixture(official=False):
 
     steps = json.loads((ROOT / "evaluation" / "replays" /
                        ("northwest.json" if official else "synthetic-north.json")).read_text())["steps"]
+    if correction:
+        invalid = copy.deepcopy(steps[2])
+        invalid["arguments"]["filters"]["territory"] = 10
+        steps.insert(2, invalid)
     class ModelBoundary(ReplayClient):
         execution_kind = "inference"  # A doubled transport, not a real inference claim.
 
     fixed = run_baseline(engine(), policy.baseline, policy.current)
     adaptive = run_adaptive(engine(), policy.baseline, policy.current, "Investigate the changes.",
                             ModelBoundary(steps), CONTEXT["model"],
-                            limits=AdaptiveLimits(max_seconds=120, max_top_k=5, max_tool_calls_per_response=2))
+                            limits=AdaptiveLimits(max_seconds=120, max_top_k=5, max_tool_calls_per_response=2,
+                                                  max_filter_corrections=1))
     for report in (fixed, adaptive):
         permissions = {k: v for k, v in security_record().items()
                        if k.endswith(("_select", "_insert", "_update", "_delete", "_alter", "_table", "_view", "_control"))}
@@ -82,6 +87,66 @@ def fixture(official=False):
 
 
 class EvidenceValidationTests(unittest.TestCase):
+    def test_failure_receipt_preserves_only_bounded_correction_metadata(self):
+        receipt = failure_receipt({
+            "status": "exhausted", "stop_reason": "model_call_limit",
+            "execution": {"model_calls": 6, "filter_corrections": 1},
+            "corrections": [{"model_call": 2, "tool_index": 0, "reason": "filter_id_type",
+                             "arguments": "private-value", "reasoning_content": "private-reasoning"}],
+        })
+        self.assertEqual(receipt["stop_reason"], "model_call_limit")
+        self.assertEqual(receipt["reported_counters"]["filter_corrections"], 1)
+        self.assertEqual(receipt["reported_corrections"],
+                         [{"model_call": 2, "tool_index": 0, "reason": "filter_id_type"}])
+        self.assertNotIn("private", json.dumps(receipt))
+        for records in (
+            [{"model_call": 2, "tool_index": 0, "reason": "private-reason"}],
+            [{"model_call": True, "tool_index": 0, "reason": "filter_id_type"}],
+            [{"model_call": 2, "tool_index": 2, "reason": "filter_id_type"}],
+            [{"model_call": 2, "tool_index": 0, "reason": "filter_id_type"}] * 3,
+            "private-content",
+        ):
+            safe = failure_receipt({"status": "error", "corrections": records})
+            self.assertNotIn("reported_corrections", safe)
+            self.assertNotIn("private", json.dumps(safe))
+
+    @unittest.skipUnless((ROOT / ".artifacts" / "adventureworks" / "internet_sales.csv").exists(),
+                         "Pinned public AdventureWorks sample has not been prepared.")
+    def test_official_northwest_correction_replay_reconciles_before_acceptance(self):
+        policy, source, _, report = fixture(official=True, correction=True)
+        checked = validate_run(report, mode="adaptive", source=source, policy=policy, context=CONTEXT)
+        self.assertEqual(checked["status"], "passed")
+        self.assertEqual(checked["reference_checked_requests"], 10)
+        self.assertEqual(checked["model_inference_requests"], 5)  # Doubled transport, not paid inference.
+        products = report["facts"][2]
+        self.assertEqual(products["scope"]["dimension"], "product")
+        self.assertEqual(products["scope"]["filters"], {"territory": "1"})
+        self.assertEqual(products["values"]["total_change"], "-30090.9900")
+        self.assertEqual(report["execution"]["filter_corrections"], 1)
+
+    def test_corrected_run_validates_but_forged_correction_accounting_is_rejected(self):
+        policy, source, _, report = fixture(correction=True)
+        result = validate_run(report, mode="adaptive", source=source, policy=policy, context=CONTEXT)
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["model_inference_requests"], 5)
+        self.assertEqual(result["reference_checked_requests"], 10)
+        self.assertEqual(report["execution"]["filter_corrections"], 1)
+        self.assertEqual(report["corrections"], [{"model_call": 3, "tool_index": 0, "reason": "filter_id_type"}])
+        for key, value in (
+            ("filter_corrections", 0), ("filter_corrections", 2), ("filter_corrections", True),
+            ("corrections", []),
+            ("corrections", [{"model_call": 5, "tool_index": 0, "reason": "filter_id_type"}]),
+            ("corrections", [{"model_call": 3, "tool_index": 2, "reason": "filter_id_type"}]),
+            ("corrections", [{"model_call": 3, "tool_index": 0, "reason": "private-raw-argument"}]),
+            ("corrections", report["corrections"] * 2),
+            ("corrections", [{**report["corrections"][0], "raw_arguments": "private"}]),
+        ):
+            with self.subTest(key=key, value=value):
+                forged = copy.deepcopy(report)
+                (forged["execution"] if key == "filter_corrections" else forged)[key] = value
+                with self.assertRaises(ValidationFailure):
+                    validate_run(forged, mode="adaptive", source=source, policy=policy, context=CONTEXT)
+
     def test_known_usage_is_checked_without_inventing_a_price(self):
         policy, source, baseline, report = fixture()
         calls = report["execution"]["model_calls"]

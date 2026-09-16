@@ -23,8 +23,11 @@ class AdaptiveLimits:
     max_seconds: float = 60
     max_model_seconds: float = 30
     max_tool_calls_per_response: int = 1
+    max_filter_corrections: int = 0
 
     def __post_init__(self):
+        if type(self.max_filter_corrections) is not int or self.max_filter_corrections not in (0, 1):
+            raise ValueError("max_filter_corrections must be 0 or 1.")
         bounds = {
             "max_tool_calls_per_response": 2,
             "max_model_calls": 50, "max_completion_tokens": 8192, "max_total_tokens": 1000000,
@@ -69,6 +72,7 @@ CONTRACT_REASONS = {
     "Unknown stop reason.": "stop_reason",
     "Completion needs a selected comparison.": "missing_comparison",
     "Invalid filters.": "filter_shape",
+    "Filter IDs must be strings.": "filter_id_type",
     "Filters must use IDs exposed in this investigation.": "unknown_filter_id",
     "Invalid breakdown.": "breakdown_shape",
     "Malformed usage.": "usage_shape",
@@ -102,10 +106,10 @@ def _tool(name, properties, required):
     }}
 
 
-def _tools(limits):
+def _tools(limits, known_ids):
     filters = {"type": "object", "properties": {
-        key: {"type": "string", "minLength": 1, "maxLength": 128}
-        for key in ("territory", "product")
+        key: {"type": "string", "minLength": 1, "maxLength": 128, "enum": sorted(ids)}
+        for key, ids in known_ids.items() if ids
     }, "additionalProperties": False}
     return [
         _tool("compare", {"filters": filters}, ["filters"]),
@@ -198,6 +202,10 @@ def _parse_response(completion, seen, limits):
     return parsed, assistant
 
 
+class FilterArgumentError(ValueError):
+    """A structurally valid tool call with a correctable filter value."""
+
+
 def _validate_args(name, args, known_ids, results, limits):
     if name == "finish":
         for key in ("result_ids", "evidence_ids"):
@@ -219,14 +227,16 @@ def _validate_args(name, args, known_ids, results, limits):
     filters = args["filters"]
     if not isinstance(filters, dict) or set(filters) - {"territory", "product"}:
         raise ValueError("Invalid filters.")
-    for key, value in filters.items():
-        if not isinstance(value, str) or not value or len(value) > 128 or value not in known_ids[key]:
-            raise ValueError("Filters must use IDs exposed in this investigation.")
     if name == "breakdown" and (
         args["dimension"] not in ("territory", "product")
         or type(args["top_k"]) is not int or not 1 <= args["top_k"] <= limits.max_top_k
     ):
         raise ValueError("Invalid breakdown.")
+    for key, value in filters.items():
+        if not isinstance(value, str):
+            raise FilterArgumentError("Filter IDs must be strings.")
+        if not value or len(value) > 128 or value not in known_ids[key]:
+            raise FilterArgumentError("Filters must use IDs exposed in this investigation.")
     return None
 
 
@@ -297,11 +307,11 @@ def run_adaptive(investigator: Investigator, baseline: Period, current: Period,
     results, facts = [], []
     status, stop_reason = "exhausted", "model_call_limit"
     calls = 0
+    filter_corrections, corrections = 0, []
     seen = set()
     known_ids = {"territory": set(), "product": set()}
     usages, reserved_tokens = [], 0
     first_data_at = None
-    tools = _tools(limits)
     source_identity = (investigator.source.dataset_id, investigator.source.sha256, investigator.source.mode)
 
     def remaining_seconds():
@@ -315,6 +325,7 @@ def run_adaptive(investigator: Investigator, baseline: Period, current: Period,
         if remaining <= 0:
             stop_reason = "time_limit"
             break
+        tools = _tools(limits, known_ids)
         context = _json({"messages": messages, "tools": tools})
         if len(context) > limits.max_context_chars:
             stop_reason = "context_limit"
@@ -349,10 +360,18 @@ def run_adaptive(investigator: Investigator, baseline: Period, current: Period,
                 stop_reason = "time_limit"
                 break
             batch, assistant = _parse_response(completion, seen, limits)
-            for name, args, call_id in batch:
-                selected = _validate_args(name, args, known_ids, results, limits)
+            filter_errors = {}
+            for index, (name, args, call_id) in enumerate(batch):
+                try:
+                    selected = _validate_args(name, args, known_ids, results, limits)
+                except FilterArgumentError as error:
+                    filter_errors[index] = error
         except (ValueError, TypeError, AttributeError, RecursionError) as error:
             diagnostics = _contract_diagnostics(completion, error)
+            status, stop_reason = "error", "invalid_model_response"
+            break
+        if filter_errors and filter_corrections >= limits.max_filter_corrections:
+            diagnostics = _contract_diagnostics(completion, next(iter(filter_errors.values())))
             status, stop_reason = "error", "invalid_model_response"
             break
         if batch[0][0] == "finish":
@@ -372,6 +391,24 @@ def run_adaptive(investigator: Investigator, baseline: Period, current: Period,
         if remaining_seconds() <= 0:
             stop_reason = "time_limit"
             break
+        if filter_errors:
+            replies = []
+            for index, (_, _, call_id) in enumerate(batch):
+                reason = CONTRACT_REASONS[str(filter_errors[index])] if index in filter_errors else "batch_rejected"
+                replies.append({"role": "tool", "tool_call_id": call_id, "content": _json({
+                    "status": "error", "code": reason, "data_requests_executed": 0,
+                    "message": "Entire batch rejected. Use only string IDs in the current tool schema; "
+                               "omit filters for discovery. Resubmit all intended calls with fresh call IDs. "
+                               "No further filter correction is available; all original budgets still apply.",
+                })})
+            if any(len(reply["content"]) > limits.max_tool_summary_chars for reply in replies):
+                stop_reason = "tool_summary_limit"
+                break
+            filter_corrections += 1
+            corrections.extend({"model_call": calls, "tool_index": index, "reason": CONTRACT_REASONS[str(error)]}
+                               for index, error in filter_errors.items())
+            messages.extend([assistant, *replies])
+            continue
         if first_data_at is None:
             first_data_at = monotonic()
         replies, failed = [], False
@@ -428,6 +465,7 @@ def run_adaptive(investigator: Investigator, baseline: Period, current: Period,
         "baseline_period": baseline.as_dict(), "current_period": current.as_dict(),
         "coverage": {"period": investigator.coverage.period.as_dict(), "attestation": investigator.coverage.attestation},
         "facts": facts, "results": results, "evidence": list(investigator.evidence),
+        "corrections": corrections,
         "hypotheses": [], "causal_conclusions": [],
         "missing_evidence": [
             "Sales attribution is descriptive, not causal; pricing, availability and demand evidence are absent.",
@@ -438,6 +476,7 @@ def run_adaptive(investigator: Investigator, baseline: Period, current: Period,
             "mode": investigator.source.mode, "client_kind": getattr(client, "execution_kind", "inference"),
             "model": model,
             "data_requests": investigator.requests, "model_calls": calls,
+            "filter_corrections": filter_corrections,
             "model_inference_requests": 0 if getattr(client, "execution_kind", None) == "replay" else calls,
             "sql_queries_executed": sum(item["sql_executed"] for item in investigator.evidence),
             "elapsed_seconds": round(monotonic() - started, 6),

@@ -40,6 +40,163 @@ def response(name="compare", arguments='{"filters":{}}', call_id="call_1", **mes
 
 
 class AdaptiveTests(unittest.TestCase):
+    def test_one_filter_correction_finishes_without_querying_the_rejected_batch(self):
+        discovery = response()
+        discovery["choices"][0]["message"]["tool_calls"] += response(
+            "breakdown", '{"dimension":"territory","filters":{},"top_k":5}', "call_2"
+        )["choices"][0]["message"]["tool_calls"]
+        invalid = response("breakdown", '{"dimension":"product","filters":{"territory":10},"top_k":5}',
+                           "call_3", reasoning_content="private-correction")
+        client = BoundaryClient([
+            discovery, invalid,
+            response("breakdown", '{"dimension":"product","filters":{"territory":"10"},"top_k":5}', "call_4"),
+            response("finish", json.dumps({"result_ids": ["r1", "r2", "r3"],
+                     "evidence_ids": [f"q{i}" for i in range(1, 11)], "stop_reason": "complete"}), "call_5"),
+        ])
+        for completion in (discovery, invalid):
+            completion["usage"] = {"prompt_tokens": 100, "completion_tokens": 20, "total_tokens": 120}
+        report = run_adaptive(investigator(), BASELINE, CURRENT, "Investigate North", client, "deepseek",
+                              limits=AdaptiveLimits(max_tool_calls_per_response=2, max_filter_corrections=1))
+        self.assertEqual(report["status"], "ok")
+        self.assertEqual(report["execution"]["data_requests"], 10)
+        self.assertEqual(report["execution"]["model_calls"], 4)
+        self.assertEqual(report["execution"]["filter_corrections"], 1)
+        self.assertEqual(report["corrections"], [
+            {"model_call": 2, "tool_index": 0, "reason": "filter_id_type"},
+        ])
+        messages = client.requests[2]["messages"]
+        self.assertEqual(messages[-1]["tool_call_id"], "call_3")
+        feedback = json.loads(messages[-1]["content"])
+        self.assertEqual(feedback["status"], "error")
+        self.assertEqual(feedback["code"], "filter_id_type")
+        self.assertEqual(feedback["data_requests_executed"], 0)
+        self.assertEqual(messages[-2]["reasoning_content"], "private-correction")
+        self.assertNotIn("private-correction", json.dumps(report))
+        self.assertEqual(report["results"][-1]["scope"]["filters"], {"territory": "10"})
+        self.assertEqual(report["execution"]["usage_by_call"][1]["total_tokens"], 120)
+
+    def test_filter_schema_only_exposes_string_ids_from_previous_tool_replies(self):
+        client = BoundaryClient([
+            response("breakdown", '{"dimension":"territory","filters":{},"top_k":1}'),
+            response("breakdown", '{"dimension":"product","filters":{"territory":"10"},"top_k":1}', "call_2"),
+            response("finish", '{"result_ids":[],"evidence_ids":[],"stop_reason":"insufficient_evidence"}', "call_3"),
+        ])
+        report = run_adaptive(investigator(), BASELINE, CURRENT, "Investigate North", client, "deepseek")
+        self.assertEqual(report["status"], "insufficient_data")
+        for index, expected in enumerate(({}, {"territory": ["10"]},
+                                          {"territory": ["10"], "product": ["1"]})):
+            for tool in client.requests[index]["tools"][:2]:
+                filters = tool["function"]["parameters"]["properties"]["filters"]
+                self.assertFalse(filters["additionalProperties"])
+                self.assertEqual(set(filters["properties"]), set(expected))
+                for dimension, ids in expected.items():
+                    self.assertEqual(filters["properties"][dimension]["type"], "string")
+                    self.assertEqual(filters["properties"][dimension]["enum"], ids)
+
+    def test_filter_correction_is_once_per_run_and_does_not_coerce_names_or_numbers(self):
+        for value, reason in ((10, "filter_id_type"), (None, "filter_id_type"),
+                              (["10"], "filter_id_type"), ("North-private", "unknown_filter_id"),
+                              ("999", "unknown_filter_id")):
+            with self.subTest(value=value):
+                client = BoundaryClient([
+                    response("breakdown", '{"dimension":"territory","filters":{},"top_k":1}'),
+                    response("compare", json.dumps({"filters": {"territory": value}}), "call_2"),
+                    response("compare", json.dumps({"filters": {"territory": value}}), "call_3"),
+                ])
+                report = run_adaptive(investigator(), BASELINE, CURRENT, "Compare", client, "deepseek",
+                                      limits=AdaptiveLimits(max_filter_corrections=1))
+                self.assertEqual(report["stop_reason"], "invalid_model_response")
+                self.assertEqual(report["diagnostics"]["reason"], reason)
+                self.assertEqual(report["execution"]["model_calls"], 3)
+                self.assertEqual(report["execution"]["filter_corrections"], 1)
+                self.assertEqual(report["execution"]["data_requests"], 4)
+                self.assertEqual(report["facts"], [])
+                self.assertNotIn("North-private", json.dumps(report))
+
+    def test_filter_correction_rejects_whole_batch_and_never_recovers_other_contract_errors(self):
+        for scenario in ("valid-companion", "invalid-companion", "duplicate", "mixed-finish", "same-turn-id"):
+            with self.subTest(scenario=scenario):
+                invalid = response("compare", '{"filters":{"territory":"private-unknown"}}', "call_1")
+                companion = response("compare", '{"filters":{}}', "call_2")
+                if scenario == "invalid-companion":
+                    companion = response("breakdown", '{"dimension":"sql","filters":{},"top_k":5}', "call_2")
+                if scenario == "duplicate":
+                    companion = response(call_id="call_1")
+                if scenario == "mixed-finish":
+                    companion = response("finish", '{"result_ids":[],"evidence_ids":[],"stop_reason":"insufficient_evidence"}', "call_2")
+                if scenario == "same-turn-id":
+                    invalid = response("compare", '{"filters":{"territory":"10"}}')
+                    companion = response("breakdown", '{"dimension":"territory","filters":{},"top_k":5}', "call_2")
+                invalid["choices"][0]["message"]["tool_calls"] += companion["choices"][0]["message"]["tool_calls"]
+                client = BoundaryClient([
+                    invalid,
+                    response("finish", '{"result_ids":[],"evidence_ids":[],"stop_reason":"insufficient_evidence"}', "call_3"),
+                ])
+                report = run_adaptive(investigator(), BASELINE, CURRENT, "Compare", client, "deepseek",
+                                      limits=AdaptiveLimits(max_filter_corrections=1, max_tool_calls_per_response=2))
+                self.assertEqual(report["execution"]["data_requests"], 0)
+                self.assertEqual(report["facts"], [])
+                recoverable = scenario in ("valid-companion", "same-turn-id")
+                self.assertEqual(len(client.requests), 2 if recoverable else 1)
+                if recoverable:
+                    replies = client.requests[1]["messages"][-2:]
+                    self.assertEqual([reply["tool_call_id"] for reply in replies], ["call_1", "call_2"])
+                    self.assertEqual([json.loads(reply["content"])["code"] for reply in replies],
+                                     ["unknown_filter_id", "batch_rejected"])
+                    filters = client.requests[1]["tools"][0]["function"]["parameters"]["properties"]["filters"]
+                    self.assertEqual(filters["properties"], {})
+                else:
+                    self.assertEqual(report["stop_reason"], "invalid_model_response")
+                    self.assertEqual(report["execution"]["filter_corrections"], 0)
+
+    def test_correction_feedback_obeys_the_tool_summary_size_limit(self):
+        client = BoundaryClient([
+            response("compare", '{"filters":{"territory":"unknown"}}'),
+            response(call_id="call_2"),
+        ])
+        report = run_adaptive(investigator(), BASELINE, CURRENT, "Compare", client, "deepseek",
+                              limits=AdaptiveLimits(max_filter_corrections=1, max_tool_summary_chars=1))
+        self.assertEqual(report["status"], "exhausted")
+        self.assertEqual(report["stop_reason"], "tool_summary_limit")
+        self.assertEqual(len(client.requests), 1)
+        self.assertEqual(report["execution"]["data_requests"], 0)
+        self.assertEqual(report["execution"]["filter_corrections"], 0)
+        self.assertEqual(report["corrections"], [])
+
+    def test_correction_uses_original_model_data_context_and_token_budgets(self):
+        for limits, requests, expected in (
+            (AdaptiveLimits(max_filter_corrections=1, max_model_calls=1), 10, "model_call_limit"),
+            (AdaptiveLimits(max_filter_corrections=1), 1, "data_request_limit"),
+            (AdaptiveLimits(max_filter_corrections=1, max_total_tokens=5000), 10, "token_limit"),
+            (AdaptiveLimits(max_filter_corrections=1, max_context_chars=2200), 10, "context_limit"),
+        ):
+            with self.subTest(reason=expected):
+                client = BoundaryClient([response("compare", '{"filters":{"territory":"unknown"}}'),
+                                         response(call_id="call_2")])
+                report = run_adaptive(investigator(limits=Limits(max_requests=requests)), BASELINE, CURRENT,
+                                      "Compare", client, "deepseek", limits=limits)
+                self.assertEqual(report["status"], "exhausted")
+                self.assertEqual(report["stop_reason"], expected)
+                self.assertEqual(len(client.requests), 1)
+                self.assertEqual(report["execution"]["data_requests"], 0)
+                self.assertEqual(report["facts"], [])
+
+    def test_correction_response_cannot_extend_original_time_budget(self):
+        class SlowCorrection(BoundaryClient):
+            def create(self, **kwargs):
+                result = super().create(**kwargs)
+                if len(self.requests) == 2:
+                    time.sleep(0.04)
+                return result
+        client = SlowCorrection([response("compare", '{"filters":{"territory":"unknown"}}'),
+                                 response(call_id="call_2")])
+        report = run_adaptive(investigator(), BASELINE, CURRENT, "Compare", client, "deepseek",
+                              limits=AdaptiveLimits(max_filter_corrections=1, max_seconds=0.03))
+        self.assertEqual(report["stop_reason"], "time_limit")
+        self.assertEqual(report["execution"]["data_requests"], 0)
+        self.assertEqual(report["execution"]["model_calls"], 2)
+        self.assertLessEqual(client.requests[1]["timeout"], client.requests[0]["timeout"])
+
     def test_opted_in_batch_is_validated_then_executed_serially_with_all_replies(self):
         first = response(reasoning_content="private-continuation")
         first["choices"][0]["message"]["tool_calls"] += response(

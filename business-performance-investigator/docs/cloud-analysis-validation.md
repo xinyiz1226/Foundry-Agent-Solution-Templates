@@ -58,6 +58,23 @@ Original failed acceptance reports remain failed, with their own
 `cleanup: not_run` fields unchanged. A separate local cleanup-verification
 artifact records closure; cleanup success does not promote analytical acceptance.
 
+## Local reliability follow-up (not a new cloud result)
+
+The current source adds dynamic discovered-string-ID schemas and one opt-in
+filter correction in the hosted path. It distinguishes wrong value types from
+unknown string IDs without recording rejected values. Offline replay covers
+the pinned Northwest product drilldown and unchanged request/model budgets.
+No new resources, role assignments or paid inference were used for this fix;
+the live failures above remain failures.
+
+The acceptance policy now expects `max_filter_corrections: 1` and checks the
+correction counter, record shapes, categories, unique tool indices and model
+turn bounds. Failure receipts retain only bounded correction metadata and
+recognized exhaustion reasons. These are consistency checks on runtime
+reports, not independent proof of what the model privately generated.
+Historical reports use older limits and must be interpreted with their
+recorded source version, not relabeled as passing the current policy.
+
 ## Prepare without Azure
 
 From the template folder, with the pinned sample already prepared:
@@ -88,8 +105,8 @@ Prerequisites:
 - A new owned experiment initialized with `-AgentName business-investigator`
   and `-InitializationMode AnalysisSnapshot`.
 - The current analytical service version deployed, including the runtime
-  `security.server` field, shared Top-K ceiling of 5 and explicit two-call
-  serial compatibility mode. Earlier analytical
+  `security.server` field, shared Top-K ceiling of 5, explicit two-call
+  serial compatibility mode and the one-filter-correction policy. Earlier analytical
   builds fail this acceptance contract.
 - The configured Azure CLI/azd context and explicit Chat Completions model.
 - An existing, explicitly approved session ID for this agent and project.
@@ -122,6 +139,9 @@ At most two independent analytical tools may be returned in one model response;
 the runtime validates their combined cost before executing them serially.
 `finish` cannot be combined with another tool. This does not raise the ten-query
 budget or permit guessed filter IDs.
+The hosted loop may queue structured feedback for one rejected filter batch;
+any resulting model call uses the existing six-call budget. This is distinct
+from retrying an entire invocation or enabling transport retries.
 
 ## What is checked
 

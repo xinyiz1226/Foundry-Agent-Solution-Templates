@@ -147,6 +147,7 @@ class HostAgentTests(unittest.TestCase):
         self.assertEqual(call.kwargs["limits"].max_seconds, 120)
         self.assertEqual(call.kwargs["limits"].max_top_k, 5)
         self.assertEqual(call.kwargs["limits"].max_tool_calls_per_response, 2)
+        self.assertEqual(call.kwargs["limits"].max_filter_corrections, 1)
 
     def test_cleanup_failure_cannot_publish_successful_analytical_evidence(self):
         source = CsvSalesSource.from_records([dict(zip(COLUMNS, row)) for row in LINES], dataset_id="test")
