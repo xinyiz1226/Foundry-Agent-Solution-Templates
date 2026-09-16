@@ -1,0 +1,37 @@
+[
+  {
+    "convo_id": 900001,
+    "fixture_provenance": "Original synthetic format fixture for this template; not copied from the ABCD corpus.",
+    "scenario": {
+      "hidden_product": "This value must not enter the normalized document.",
+      "hidden_resolution": "Replacement approved"
+    },
+    "original": [
+      ["customer", "The desk lamp in my order does not switch on. I would like a replacement."],
+      ["agent", "Please try the lamp in another wall socket."],
+      ["customer", "I tried another socket, but the lamp still does not switch on."],
+      ["action", "INTERNAL_METADATA_NOT_DIALOGUE_EVIDENCE"],
+      ["agent", "I have recorded your replacement request. It has not been approved yet."]
+    ],
+    "delexed": [
+      {
+        "speaker": "action",
+        "text": "HIDDEN_LABEL_NOT_DIALOGUE_EVIDENCE",
+        "turn_count": 4,
+        "targets": ["hidden-intent", "take_action", "hidden-action", [], 0],
+        "candidates": []
+      }
+    ]
+  },
+  {
+    "convo_id": 900002,
+    "fixture_provenance": "Original synthetic format fixture for this template; not copied from the ABCD corpus.",
+    "scenario": {},
+    "original": [
+      ["customer", "How can I find the care instructions for this chair?"],
+      ["agent", "The care instructions are in the product guide."],
+      ["customer", "I found the guide. There is no problem with the chair."]
+    ],
+    "delexed": []
+  }
+]

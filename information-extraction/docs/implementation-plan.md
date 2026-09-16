@@ -59,7 +59,7 @@ preservation, explicit execution budgets, or public-exposure limits.
 The [fresh synthetic execution preparation](local-workbench.md#prepare-independent-acceptance-jobs)
 and bounded human Start/limit/Resume/evidence acceptance are complete.
 Move product implementation to configurable flat schemas, UTF-8 input,
-a second-domain meeting sample, durable review and approved export;
+the ABCD customer-support second domain, durable review and approved export;
 track the remaining reconnect/expiry and single-start cloud probes
 separately rather than repeating the completed login or mutation checks.
 Maintainer alignment can proceed in parallel; no upstream PR is implied.
@@ -96,8 +96,15 @@ It is not:
 - A production-certified, multi-tenant data processing service.
 
 Financial reports are the primary reference sample, not the core product.
-A small synthetic customer-meeting-note sample will demonstrate reuse by
-extracting evidence-supported adoption blockers.
+ABCD customer-support conversations are the selected second domain, replacing
+the earlier customer-adoption meeting sample. Extract explicitly stated
+customer issues/requests, products, attempted actions, and outcomes with
+original-turn evidence. These are human role-play conversations with fictional
+scenarios, not production support tickets. The
+[ABCD input-preparation slice](abcd-support-sample.md) provides a bounded local
+importer and an independently authored format fixture; generic support
+extraction and evaluation remain G1 work. Hidden scenario facts and task labels
+must not become source evidence or automatic extraction gold.
 
 The downstream demonstration will use deterministic filtering and aggregation
 across documents, with traceability from each result to its approved records
@@ -164,6 +171,9 @@ review decisions.
 ### Documents and reusable configuration
 
 - Support SEC HTML and UTF-8 plain text through explicit input adapters.
+- Import bounded ABCD-format JSON/gzip subsets as dialogue source blocks for the
+  second domain; preserve speakers, original turn positions and dataset splits.
+  This does not expand the first release into arbitrary JSON ingestion.
 - Normalize inputs into document blocks with stable document identifiers,
   block identifiers, and source locations.
 - Preserve accessible source snapshots for evidence inspection and recovery.
@@ -357,7 +367,11 @@ Work:
   execution, and review contracts.
 - Move financial-report-specific assumptions into adapters and sample profiles.
 - Implement the SEC HTML and plain-text paths.
-- Introduce the synthetic customer-meeting-note sample.
+- Introduce the ABCD customer-support profile and a small, versioned local
+  development/held-out subset. The offline importer and original format fixture
+  are available; shared schema execution, human extraction gold, and approved
+  support queries remain to be implemented. Review dataset redistribution
+  before bundling upstream dialogue text.
 
 Exit criteria:
 

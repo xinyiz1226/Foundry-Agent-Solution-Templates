@@ -33,6 +33,20 @@ application instance, and completed through explicit resume with no real
 model calls. The probe agent was then disabled and its sessions stopped.
 **G0 remains incomplete.**
 
+## Second domain: ABCD customer support
+
+ABCD is the selected second domain alongside financial reports. A
+[bounded offline importer](docs/abcd-support-sample.md) converts local
+ABCD-format conversation subsets into stable source blocks, preserving speakers
+and original turn locations while excluding hidden scenarios, task labels and
+action events from dialogue evidence. An independently authored format fixture
+is included; no upstream conversations are bundled.
+
+This is **input preparation, not support extraction**. Configurable schemas,
+support records in the workbench, review/export and two-domain evaluation
+remain G1/later work. The existing synthetic cloud/local workbench is unchanged;
+the importer creates no Azure resources and makes no model calls.
+
 ## Try the local workbench
 
 The [Streamlit workbench](docs/local-workbench.md) runs against an independent
