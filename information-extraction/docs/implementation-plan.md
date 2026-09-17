@@ -11,7 +11,9 @@ The [R0 resource and feasibility assessment](r0-resource-feasibility.md) records
 working Foundry/CU metadata access and existing model deployments. The supplied
 Fabric Lakehouse is now readable on an Active F4 capacity in the corporate
 tenant; the earlier `UserNotLicensed` result belongs to the Azure test tenant.
-Cross-tenant placement/identity and execution decisions remain; R0 has not passed.
+The user selected same-tenant investigation and a corporate Azure subscription;
+resource inventory and model quota are verified. Dedicated resource/identity/
+network planning and execution approval remain; R0 has not passed.
 
 ## 1. Outcome and scope
 
@@ -162,14 +164,18 @@ documented blockers; R1-R5 have not started.
 
 ### R0 - Confirm adoption path and access
 
-**Status: partial; Fabric target access confirmed on September 17.** See the
+**Status: partial; Fabric access and same-tenant Azure discovery confirmed on September 17.** See the
 [assessment](r0-resource-feasibility.md) for resources, model compatibility and
 quota, the resolved Fabric context mismatch, cost boundaries and remaining steps.
 Existing GPT-5-mini/embedding deployments and CU/Agent metadata access are
-available. The supplied Lakehouse has an Active F4 capacity but is in a different
-tenant from the existing Azure resources; placement and identity/data boundaries
-need explicit agreement. No new analyzer, model call, Fabric job or resource
-was created.
+available in the legacy test tenant. The user selected a same-tenant corporate
+Azure path alongside the existing Fabric F4. The selected subscription has
+Foundry resources and candidate quota; a dedicated account/resource group is
+recommended for planning rather than unapproved use of another test resource.
+East US 2 is the CU region candidate, with GPT-4.1-mini as the initial
+catalog/version-matched model candidate. Specific resources, identity/network
+boundaries and costs still need approval. No new analyzer, model call, Fabric
+job or resource was created.
 
 Use the confirmed general-preparation journey and two lightweight examples;
 confirm expected users, volume/cadence, data classification and a representative

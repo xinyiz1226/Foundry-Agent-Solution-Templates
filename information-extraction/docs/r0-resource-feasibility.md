@@ -1,17 +1,19 @@
 # R0: resource availability and functional feasibility
 
-**Updated September 17, 2026, 06:00 UTC. Fabric metadata access is confirmed;
-R0 still has unresolved identity/execution decisions.**
+**Updated September 17, 2026, 06:24 UTC. Fabric access and a same-tenant Azure
+subscription path are confirmed through metadata; R0 has not passed.**
 The [confirmed journey](agent-user-journey.md) remains the target. This assessment
 separates live metadata access from documented capabilities and work that still
 requires configuration, implementation or a separately authorized paid test.
 Initial resource checks ran at 02:45-02:49 UTC; the user-supplied Fabric target
-was checked at 05:59-06:00 UTC. The earlier failed tenant context is retained
-below as historical evidence, not the current target's status.
+was checked at 05:59-06:00 UTC. The user subsequently selected same-tenant
+investigation and a corporate test subscription, checked at 06:19-06:24 UTC.
+The earlier failed tenant context is retained below as historical evidence,
+not the current target's status.
 
 ## 1. Decision
 
-The Foundry/CU side has a usable starting point: an existing East US Foundry
+The legacy POC has a usable comparison baseline: an existing East US Foundry
 account/project, GPT-5-mini and an embedding deployment, working Entra-authenticated
 CU metadata APIs, and a working Foundry agent-list API. Model capacity alone
 does not justify a larger deployment. Resource reuse now also depends on the
@@ -27,14 +29,21 @@ The earlier **HTTP 401 `UserNotLicensed`** occurred in the separate Azure
 test-subscription tenant. It was reconfirmed at 05:37 UTC; no license was added
 or changed to obtain the later corporate-tenant success.
 
-**Fabric and the existing CU/Foundry resources are in different tenants.**
-Before integration, explicitly choose approved resource placement and identity/
-data-transfer boundaries. Corporate Fabric access does not authorize exporting
-corporate data to the test tenant. Do not silently adopt a cross-tenant execution
-architecture or assume one workspace/managed identity can access both sides.
-No source contents were read or transferred during these checks.
+**The user selected a same-tenant direction for further assessment.** Fabric
+and the legacy POC's CU/Foundry resources remain physically in different tenants;
+no migration has occurred. A user-selected corporate test subscription is
+Enabled, exposes Foundry resources and has candidate model quota. Prefer a
+dedicated POC resource group/account/project there, subject to an approved
+resource, identity, network and cost plan, rather than borrowing another
+team member's test resources without confirmed ownership/use authorization.
+The user has not authorized creating that proposed deployment.
 
-CU extraction is not configured or proven. Account default model bindings are
+Corporate Fabric access does not authorize exporting corporate data to the
+legacy test tenant. Do not silently adopt cross-tenant execution or assume one
+workspace/managed identity can access both sides. No source contents were read
+or transferred during these checks.
+
+CU extraction on that legacy account is not configured or proven. Default model bindings are
 empty, the account managed identity has no matching assignments in the
 account-scope/inherited role-assignment result, and no new analyzer has been
 created or called. Existing deployment availability and analyzer compatibility
@@ -67,7 +76,64 @@ subscription or the caller's visibility.
 
 ## 3. Live availability checks
 
-### Latest: supplied Fabric target, 05:59-06:00 UTC
+### Latest: same-tenant Azure path, 06:19-06:24 UTC
+
+After the user selected same-tenant investigation, ARM listed 158 subscriptions
+visible to the operator in the corporate tenant. The user then chose one
+corporate Foundry-agent test subscription. Resource inventory was restricted
+to that subscription; visibility of the others was not treated as authorization
+to inspect their resources or use their budgets.
+
+| Surface | Observed result | Boundary |
+| --- | --- | --- |
+| Selected subscription | Enabled, in the same tenant as the supplied Fabric Lakehouse. | Tenant alignment is possible without moving Fabric. No resource deployment was approved. |
+| Resource inventory | HTTP 200, 92 matching resources, not truncated: 47 Cognitive Services accounts, 42 account projects, three Machine Learning workspaces. | Existing resources are candidates, not approved shared dependencies. Some account provisioning states are Failed; the count is not a count of working deployments. |
+| Name-based discovery | No matching account/project/resource-group names for the operator's identifier. | A naming heuristic is not ownership evidence or proof that no usable resource exists. No existing account was selected for reuse. |
+| Provider | `Microsoft.CognitiveServices` is Registered. | No registration change is needed on the observed state. |
+| Operator permissions | Subscription-level effective permissions include management `actions: ["*"]`; returned `dataActions` are empty. | Broad management permission is not a Foundry data-plane grant, corporate approval, or a deployment guarantee against Azure Policy/deny assignments. Resource-specific rights remain unverified. |
+| Model catalog | East US 2 lists GPT-4.1-mini `2025-04-14` with Standard/GlobalStandard, GPT-5-mini `2025-08-07` with GlobalStandard, and text-embedding-3-small `1` with Standard/GlobalStandard. | Catalog/SKU presence plus quota is not successful deployment or CU analysis. |
+
+**Region recommendation:** East US 2 is a documented CU region. The current
+[CU region list](https://learn.microsoft.com/en-us/azure/ai-services/content-understanding/language-region-support)
+does not include West Central US (the existing Fabric capacity's region) or
+West US 2 (an additional quota-only probe). Do not choose a CU region solely
+because Foundry accounts or model quota exist there. The proposed same-tenant
+path remains cross-region and needs appropriate data-location/network review;
+it is not a same-region deployment.
+
+East US 2 quota values, interpreted using the API's explicit thousands-of-TPM
+meter descriptions:
+
+| Model / deployment type | Allocated | Limit | Arithmetic headroom |
+| --- | --- | --- | --- |
+| GPT-4.1-mini Standard | 0 | 5,000K TPM | 5,000K TPM |
+| GPT-4.1-mini GlobalStandard | 2,510K TPM | 15,000K TPM | 12,490K TPM |
+| GPT-4.1 GlobalStandard | 1,000K TPM | 3,000K TPM | 2,000K TPM |
+| GPT-5-mini GlobalStandard | 500K TPM | 1,000K TPM | 500K TPM |
+| text-embedding-3-small Standard | 120K TPM | 350K TPM | 230K TPM |
+| text-embedding-3-large Standard | 240K TPM | 350K TPM | 110K TPM |
+
+Use the catalog's exact `usageName` for quota lookup: GPT-4.1-mini uses
+`OpenAI.Standard.gpt4.1-mini` / `OpenAI.GlobalStandard.gpt4.1-mini`, not a
+hyphenated `gpt-4.1-mini` suffix. The initial discovery filter missed these
+meters; the table above uses the corrected catalog-matched query. Do not infer
+zero quota from a mismatched string filter or add repeated regional readings.
+
+For a later approved small pilot, **GPT-4.1-mini `2025-04-14` is the preferred
+first validation candidate**, with text-embedding-3-small where the analyzer
+requires it. Its version agrees between the live catalog and
+[CU's supported-model table](https://learn.microsoft.com/en-us/azure/ai-services/content-understanding/service-limits#supported-generative-models).
+Standard is a candidate deployment type, not a tested throughput or
+data-residency guarantee for the entire solution. GPT-5-mini remains an
+alternative: its live catalog version is `2025-08-07`, while the current CU
+table lists `2025-12-11`. That discrepancy requires validation, not a fabricated
+version selection or an automatic incompatibility claim.
+
+No corporate Foundry data-plane reads, model calls, analyzer configuration,
+resource creation or RBAC mutations were performed. Management-plane discovery
+of a team resource does not authorize its invocation.
+
+### Supplied Fabric target, 05:59-06:00 UTC
 
 | Surface | Observed result | Boundary |
 | --- | --- | --- |
@@ -112,7 +178,7 @@ and [workspace roles](https://learn.microsoft.com/en-us/fabric/fundamentals/role
 are context-specific. The supplied target's later successful reads supersede
 the initial assumption that Fabric target discovery is still blocked.
 
-## 4. Existing models, CU compatibility and quota
+## 4. Legacy test-tenant models, CU compatibility and quota
 
 ### Deployments already available in the primary account
 
@@ -170,10 +236,12 @@ GlobalStandard allocation. Do not add regional readings as independent pools.
 Quota headroom is not actual model/region deployability, a quota grant for this
 project, or a reason to expand the existing pilot deployment.
 
-The response contained GPT-4.1 batch meters but no selected real-time GPT-4.1
-meters. It reported zero limit for selected non-mini GPT-5.4 real-time meters.
-Batch enqueued-token quota cannot substitute for synchronous Agent/CU quota.
-No quota increase or deployment was attempted.
+The earlier test-tenant probe's GPT-4.1 filter used display-model hyphenation
+rather than the exact quota `usageName`. Its missing real-time results do not
+establish absent/zero GPT-4.1 quota; that tenant was not re-probed after selection
+of the corporate path. It reported zero limit for selected non-mini GPT-5.4
+real-time meters. Batch enqueued-token quota cannot substitute for synchronous
+Agent/CU quota. No quota increase or deployment was attempted.
 
 ## 5. Functional feasibility and remaining proofs
 
@@ -312,20 +380,24 @@ submission count is not an exact monetary cap or exactly-once billing guarantee.
 1. **Completed for metadata:** the supplied Fabric workspace/Lakehouse is
    readable in the corporate tenant and attached to an Active F4 capacity.
    Do not acquire another capacity to resolve the unrelated test-tenant error.
-2. Confirm approved placement of CU/Foundry relative to corporate Fabric before
-   granting cross-tenant access or moving any data. Verify Notebook/Pipeline and
-   OneLake permissions for the selected unattended identity and identify
-   administrator/network dependencies. Metadata reads are not write/execute proof.
-3. Review CU model binding and account/worker identity rights. Prefer the
-   existing GPT-5-mini and embedding deployment if their actual custom-analyzer
-   behavior satisfies both domains. Do not alter shared defaults without approval.
+2. **Same-tenant direction selected; discovery completed:** the user-selected
+   corporate test subscription has Foundry resources and candidate model quota.
+   Agree on a dedicated resource plan or explicitly authorized existing account,
+   preserving the legacy test-tenant POC. Do not deploy or borrow team resources
+   merely because they are visible.
+3. Verify Notebook/Pipeline, OneLake, CU-to-model and worker rights for the chosen
+   unattended identity, plus same-tenant/cross-region network and data boundaries.
+   Start the model-validation plan with the catalog-matched GPT-4.1-mini candidate;
+   preserve alternatives if real CU/Agent behavior fails. Do not change shared
+   model defaults without approval. Metadata reads are not write/execute proof.
 4. Agree on durable worker/state ownership and the concrete resource/cost plan,
    reusing existing resources only where isolation and ownership permit.
 5. Obtain separate approval for configuration/resource changes and bounded paid
    proofs: goal-to-schema, both input shapes to unpublished Tables, original
    evidence, deny tests, disconnect/reopen and ambiguous-submission recovery.
 
-**Fabric target discovery/read access is complete. R0 still needs the tenant/
-identity decision, selected execution architecture and an approved resource/cost
-plan. R1-R5 have not started.** Documented feasibility and HTTP 200 metadata
-reads are not end-to-end functional acceptance.
+**Fabric discovery/read access and same-tenant subscription/model-quota discovery
+are complete. R0 still needs a selected account/resource plan, unattended
+identity/network design, execution architecture and cost approval. R1-R5 have
+not started.** Documented feasibility and HTTP 200 metadata reads are not
+end-to-end functional acceptance.

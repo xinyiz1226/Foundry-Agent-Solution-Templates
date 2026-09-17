@@ -10,8 +10,9 @@ for reuse-first delivery, original-evidence and quality gates, versioned
 Lakehouse publication, analytical feedback and enterprise acceptance.
 The [read-only R0 assessment](docs/r0-resource-feasibility.md) confirms existing
 Foundry/CU API access and candidate models, plus the supplied Fabric Lakehouse
-on an Active F4 capacity. Fabric and the current Azure resources are in different
-tenants; identity/data boundaries and execution approval remain unresolved.
+on an Active F4 capacity. A same-tenant corporate Azure subscription and model
+quota have now been checked; a dedicated resource/identity/cost plan and
+execution approval remain outstanding. Legacy Azure resources are unchanged.
 The new Agent/CU/Fabric integration is not implemented. The code and instructions below
 describe the preserved POC baseline, not a deployed Fabric solution.
 
