@@ -4,6 +4,11 @@
 tenant access, deployment, installation, paid analysis or runtime changes.
 These findings inform the [active delivery plan](implementation-plan.md);
 they are not evidence of an operational or enterprise-ready deployment.
+The subsequent [R0 assessment](r0-resource-feasibility.md) records authorized
+live resource/metadata checks, the Fabric licensing blocker, selected API/result
+contracts and bounded capacity-cost scenarios. The unverified-environment
+statements below describe this earlier public-source inspection, not a lack of
+subsequent checks.
 
 ## Pinned reuse candidates
 

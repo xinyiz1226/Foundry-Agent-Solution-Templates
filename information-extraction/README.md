@@ -8,6 +8,9 @@ perform authorized development iterations, then human-validate and publish
 traceable Lakehouse datasets. Start with the [active plan](docs/implementation-plan.md)
 for reuse-first delivery, original-evidence and quality gates, versioned
 Lakehouse publication, analytical feedback and enterprise acceptance.
+The [read-only R0 assessment](docs/r0-resource-feasibility.md) confirms existing
+Foundry/CU API access and candidate models, but Fabric enumeration currently
+fails with `UserNotLicensed`; integration and paid execution remain blocked.
 The new Agent/CU/Fabric integration is not implemented. The code and instructions below
 describe the preserved POC baseline, not a deployed Fabric solution.
 

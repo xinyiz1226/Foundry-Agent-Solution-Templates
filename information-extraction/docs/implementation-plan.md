@@ -1,12 +1,15 @@
 # Foundry Agent + CU + Fabric: data preparation accelerator
 
-**Replanned September 17, 2026. Planning only; integration is not implemented.**
+**Replanned September 17, 2026. Read-only R0 checks recorded; integration is not implemented.**
 This is the active delivery plan. It replaces the architecture and delivery
 order in the [September 14-16 plan](implementation-plan-20260916.md), without
 erasing its implementation evidence or silently marking its G0-G4 gates done.
 The [CU adoption criteria](content-understanding-plan.md) remain applicable.
 The subsequently confirmed [agent journey and example packs](agent-user-journey.md)
 define the user interaction, autonomy boundaries and first-release scope.
+The [R0 resource and feasibility assessment](r0-resource-feasibility.md) records
+working Foundry/CU metadata access and existing model deployments, but Fabric
+enumeration is blocked by `UserNotLicensed`. R0 has not passed.
 
 ## 1. Outcome and scope
 
@@ -152,9 +155,16 @@ Unmet goals remain visible rather than causing relaxed standards.
 ## 5. Delivery sequence and measurable gates
 
 R0-R5 replace the old workbench delivery sequence. They are outcomes, not calendar
-promises. No phase is currently complete; this update only establishes the plan.
+promises. No phase is currently complete. R0 has live read-only evidence and
+documented blockers; R1-R5 have not started.
 
 ### R0 - Confirm adoption path and access
+
+**Status: blocked after authorized read-only checks on September 17.** See the
+[assessment](r0-resource-feasibility.md) for resources, model compatibility and
+quota, Fabric licensing failures, cost boundaries and exact unblock steps.
+Existing GPT-5-mini/embedding deployments and CU/Agent metadata access are
+available; no new analyzer, model call, Fabric job or resource was created.
 
 Use the confirmed general-preparation journey and two lightweight examples;
 confirm expected users, volume/cadence, data classification and a representative
@@ -308,8 +318,11 @@ SKU, region, active hours, volume and retention assumptions. Minimize engineerin
 delay rather than minor resource cost, while preserving explicit approval,
 identity and historical-state boundaries.
 
-This request authorizes **replanning and documentation only**. It does not
-authorize cloning/deploying the entire accelerator, acquiring Fabric capacity,
-changing the tenant, making paid calls, migrating old data or deleting resources.
+The subsequent R0 request authorizes **read-only resource/access and functional
+feasibility checks plus documentation**. It does not authorize deploying the
+entire accelerator, acquiring Fabric capacity, activating a trial, changing
+permissions, making paid calls, executing Fabric jobs, migrating old data or
+deleting resources. A different authentication context requires confirmation
+of the intended Fabric tenant/identity.
 The earlier unconfirmed accelerator-deployment request is not an approved
 resource plan for this new direction.
