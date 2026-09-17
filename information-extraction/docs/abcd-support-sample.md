@@ -3,6 +3,10 @@
 The [CU + Fabric delivery plan](implementation-plan.md) now governs future work.
 The importer, profile and provenance rules below remain reusable assets; a
 support-specific expansion of the standalone workbench is not the next step.
+The [confirmed example pack](agent-user-journey.md#support-twenty-dialogue-rows)
+will place twenty selected train conversations in a Lakehouse text table and
+use separate test conversations for independent acceptance. That initialization
+and the new Foundry Agent workflow are planned, not implemented here.
 
 ABCD customer-support conversations replace the previously proposed
 customer-adoption meeting sample. Financial reports remain the first domain.

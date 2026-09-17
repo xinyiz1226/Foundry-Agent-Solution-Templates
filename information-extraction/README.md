@@ -1,11 +1,14 @@
 # Information extraction: configurable core and workbench preview
 
-**Current direction - September 17, 2026:** a **CU + Fabric data preparation and
-analysis accelerator for data scientists**, not continued expansion of the
-standalone workbench. Start with the [active plan](docs/implementation-plan.md)
+**Current direction - September 17, 2026:** a **Foundry Agent + CU + Fabric data
+preparation accelerator for data scientists**, not continued expansion of the
+standalone workbench. The [confirmed journey and examples](docs/agent-user-journey.md)
+start in a Fabric Notebook: state a goal, let the Agent propose a schema and
+perform authorized development iterations, then human-validate and publish
+traceable Lakehouse datasets. Start with the [active plan](docs/implementation-plan.md)
 for reuse-first delivery, original-evidence and quality gates, versioned
 Lakehouse publication, analytical feedback and enterprise acceptance.
-CU/Fabric integration is not implemented. The code and instructions below
+The new Agent/CU/Fabric integration is not implemented. The code and instructions below
 describe the preserved POC baseline, not a deployed Fabric solution.
 
 This is a **new implementation** of the execution invariants described in

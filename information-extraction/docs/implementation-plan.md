@@ -1,25 +1,32 @@
-# CU + Fabric: data preparation and analysis accelerator
+# Foundry Agent + CU + Fabric: data preparation accelerator
 
 **Replanned September 17, 2026. Planning only; integration is not implemented.**
 This is the active delivery plan. It replaces the architecture and delivery
 order in the [September 14-16 plan](implementation-plan-20260916.md), without
 erasing its implementation evidence or silently marking its G0-G4 gates done.
 The [CU adoption criteria](content-understanding-plan.md) remain applicable.
+The subsequently confirmed [agent journey and example packs](agent-user-journey.md)
+define the user interaction, autonomy boundaries and first-release scope.
 
 ## 1. Outcome and scope
 
 Build an enterprise-oriented reference solution for **data scientists** who
 need to turn unstructured material into quality-assessed, traceable datasets
-and use them in analysis. CU + Fabric is the intended foundation, subject to
-capability, quality and tenant feasibility checks. The repository is a
-distribution channel, not a reason to require a hosted or autonomous agent.
+and use them in analysis. A Foundry Agent inspects authorized samples, proposes
+schemas, diagnoses development failures and selects bounded configuration
+iterations through controlled tools. CU supplies extraction; Fabric supplies
+data and repeated execution. This Agent role is now explicitly selected for
+the user journey, not added merely to fit the repository. Hosting remains
+subject to capability, recovery and tenant feasibility checks.
 
 The target journey is:
 
 ```text
-Select source material and extraction profile
-  -> inspect samples and confirm a version
-  -> evaluate against human-confirmed expected answers
+Select Lakehouse Files or Table ID/text columns in a Fabric Notebook
+  -> state a goal; Agent inspects samples and proposes a schema
+  -> user confirms structure and grants bounded development iteration
+  -> Agent trials, diagnoses, revises descriptions and compares drafts
+  -> user selects a draft; independent human-gold acceptance
   -> run bounded batch/incremental extraction with CU
   -> validate, review and publish a versioned Lakehouse dataset
   -> analyze the structured tables using SQL/notebooks
@@ -33,12 +40,18 @@ not its implementation. No Databricks, Unity Catalog, Lakeflow or Genie Code
 dependency is introduced. Fabric is an explicit platform dependency, not an
 optional export destination in the new direction.
 
-**Recommended first deliverable:** a reproducible dataset release, quality
-report and executable analysis notebook/SQL example. A suggested lead example
-is support-conversation issue/outcome analysis, with financial HTML/text as a
-second-domain reuse check. The user has selected both domains but has **not**
-confirmed which should lead or whether a dashboard/report should be the primary
-deliverable. Confirm that at R0; do not silently turn the suggestion into scope.
+**Confirmed first deliverable:** a reproducible dataset release, quality report
+and Notebook/SQL analysis examples. General data preparation leads; neither
+industry becomes the primary application. Use Microsoft FY2024/FY2025 statement
+excerpts in Files and twenty ABCD train conversations in a Table, with separate
+human-confirmed acceptance cases. Exact sample/profile rules are maintained in
+the [journey](agent-user-journey.md#3-example-packs).
+
+Existing Lakehouse data is the only normal input entry; no upload UI. Fabric
+Notebook is the main interface, not a new standalone chat application.
+Natural-language schema generation and bounded autonomous development iteration
+are first-release requirements. Pipeline can be explicitly scheduled to produce
+candidates; selecting configurations and publishing datasets remain human acts.
 
 Inputs remain financial HTML/UTF-8 text and bounded ABCD conversations.
 PDF, images, OCR, audio/video, arbitrary connectors, automatic entity resolution,
@@ -103,7 +116,10 @@ physical placement are R1 design outputs rather than an invented committed API.
 
 The current approved-only consumer boundary remains. Do not substitute automatic
 schema checks or a confidence threshold for approval without an explicit policy
-change. Zero records, missing results and reviewed no-record documents must be
+change. Explicit scope-bound batch approval is permitted alongside record
+correction/exclusion; log actor, scope and inspection basis. It cannot bypass
+structure/evidence gates or be labeled as per-record manual verification.
+Zero records, missing results and reviewed no-record documents must be
 distinguished; do not make a failed or unreviewed input disappear from coverage.
 
 Original text/HTML/ABCD evidence is a hard gate. CU Markdown spans are derived
@@ -125,6 +141,14 @@ cross-table transactions or exactly-once inference. Define retention of released
 data and artifacts so a named release remains reproducible for its promised
 retention period. Corrections and schema changes create explicit new versions.
 
+The [agent control contract](agent-user-journey.md#d-authorize-bounded-autonomous-development-iteration)
+is enforced outside the LLM. Autonomous tools operate on development material
+only and can revise descriptions/instructions, not field structure, evaluation
+rules, permissions or release state. No arbitrary generated code execution.
+Persist grant expiry/limits, drafts and tool operations in a durable execution
+owner independent of the Notebook kernel; a saved conversation is insufficient.
+Unmet goals remain visible rather than causing relaxed standards.
+
 ## 5. Delivery sequence and measurable gates
 
 R0-R5 replace the old workbench delivery sequence. They are outcomes, not calendar
@@ -132,25 +156,32 @@ promises. No phase is currently complete; this update only establishes the plan.
 
 ### R0 - Confirm adoption path and access
 
-Confirm lead scenario, consumer deliverable, expected users, volume/cadence,
-data classification and a representative enterprise access/network boundary.
+Use the confirmed general-preparation journey and two lightweight examples;
+confirm expected users, volume/cadence, data classification and a representative
+enterprise access/network boundary.
 Verify Fabric tenant/capacity/workspace availability, administrator dependencies,
 CU region/model quota, identities and approximate costs through authorized checks.
 An Azure subscription alone is not evidence of Fabric access.
 
 Pin both official reuse candidates, identify the smallest usable deployment,
-and document reuse/adapt/build decisions. Evaluate native Fabric execution first;
-select additional compute or the old hosted runtime only for a demonstrated gap.
+and document reuse/adapt/build decisions. Validate actual Foundry Agent tool
+dispatch and Fabric job/result/identity support. Compare a durable worker with
+a prompt agent against a hosted execution design; notebook-resident dispatch
+alone does not meet the confirmed disconnect requirement. Do not predetermine
+the old hosted runtime or duplicate Fabric's batch execution.
 
 **Exit:** one agreed scenario-to-output journey, supported resource/identity
 matrix, selected runtime/state ownership, cost assumptions and exact deployment
 scope ready for approval. If access is unavailable, document the blocker rather
 than provision a substitute platform or represent local mocks as Fabric success.
 
-### R1 - Prove one CU-to-table path and original evidence
+### R1 - Prove the Agent, controlled tools and CU-to-table path
 
-Adapt the smallest official sample path. Run one bounded case through CU,
-persist its operation/result, map original evidence and materialize candidate
+Adapt the smallest official sample path and connect an actual Foundry Agent,
+not just a direct model call labeled as an agent. Demonstrate a goal-to-schema
+proposal with human confirmation and externally enforced tool/grant boundaries.
+Run bounded Files and Table-text cases through CU, persist their operations/
+results, map original evidence and materialize candidate
 Lakehouse tables. Query via a verified Fabric notebook/SQL surface; merely
 copying JSON to Files does not pass. Initially keep the output unpublished.
 
@@ -161,10 +192,18 @@ or assuming workspace identity is available to arbitrary notebook code.
 
 **Exit:** data and original-source mapping are inspectable; reopen/poll/replay
 does not repeat completed paid work or duplicate candidate rows. Errors and
-unknown outcomes remain explicit. This proves integration only, not extraction
-quality, production scale, or a default switch.
+unknown outcomes remain explicit. Authorized execution survives Notebook
+disconnect and the same run is discoverable after reopening. Deny out-of-scope
+data, arbitrary code and unapproved mutation tools. This proves integration
+only, not extraction quality, production scale, or a default switch.
 
 ### R2 - Pass the two-domain quality gate
+
+Implement bounded Agent-led development iteration: frozen schema structure/
+scoring, draft description changes, comparable development trials, visible
+stops and candidate recommendations. Users may explore without gold, but that
+is not measured quality or a publication path. Isolate independent acceptance
+inputs, labels and diagnostics from the tuning Agent and its tools.
 
 Freeze approximately ten real-source cases, about five per domain, with
 human-confirmed gold and comparison rules. Keep the existing
@@ -174,33 +213,36 @@ counterexamples and no record/field regression per domain versus Responses.
 Use equal visible source content, assess HTML parsing separately and count
 failures/missing records in denominators.
 
-**Exit:** a reproducible report with per-domain field/record/evidence results,
-sample sizes, latency and known/unknown cost. Any tuning makes those cases
+**Exit:** observable agent-selected development revisions and a reproducible
+report with per-domain field/record/evidence results, sample sizes, latency and
+known/unknown cost. Any tuning makes those cases
 development data; use fresh cases for independent revalidation. Failures or
 inconclusive outcomes block default adoption, not merely trigger UI work.
 The ten cases do not establish general accuracy or enterprise scale.
 
 ### R3 - Publish and demonstrate the analytical feedback loop
 
-Implement minimal explicit approval/correction/exclusion/missed-record handling,
-coverage and versioned publication. Provide a reusable SQL/notebook analysis
+Implement explicit scoped batch approval, record correction/exclusion/
+missed-record handling, coverage and versioned publication. Provide a reusable SQL/notebook analysis
 over released tables. Use a second profile to show configuration-based reuse
 without domain branches in the execution engine.
 
-In the suggested support example, inspect products/issues with explicitly
+In the support example, inspect coverage, missing fields and explicitly
 unresolved or pending outcomes and reported attempted actions. Keep unknown
 outcomes separate; do not infer causal treatment effectiveness from dialogue
 sequences. ABCD is role-play data, not proof of real business impact.
 
 **Exit:** select a release, run the analysis, drill to source evidence, record
 a correction or configuration proposal, re-evaluate as applicable and publish
-a new release without changing the old one. A dashboard is optional unless
-selected at R0; Power BI is not silently added as a licensing requirement.
+a new release without changing the old one. No dashboard is required;
+Power BI is not silently added as a licensing requirement.
 
 ### R4 - Make incremental operation and enterprise controls verifiable
 
-Automate bounded new/changed-input processing and operational status. Demonstrate
-unchanged-input replay, schema-version change, partial batch failure, restart,
+Allow users to enable bounded scheduled new/changed-input processing with a
+frozen accepted configuration; it produces candidates, never automatic
+publications. Demonstrate unchanged-input replay, schema-version change,
+partial batch failure, restart,
 quota/rate limiting, ambiguous submission and failed publication. Test at a
 representative, explicitly agreed workload beyond the ten quality cases.
 
@@ -246,14 +288,16 @@ design can proceed in parallel once scope is agreed. A new UI, generic connector
 framework, multiple orchestration engines, and broad file-format support are
 not critical-path work.
 
-Schema generation and feedback proposals should reuse supported CU experiences
-first. Build an extra interface only where it blocks this journey. Full visual
-parity with Agent Bricks and automated tuning remain later work.
+Natural-language schema proposals and controlled Agent-led development iteration
+are now in R1/R2, reusing suitable Foundry/CU capabilities through verified tools.
+Full visual parity, autonomous schema-structure changes, arbitrary code execution
+and unbounded tuning are not first-release work.
 
 ## 7. Cost and authorization
 
 Budget Fabric capacity/active duration, OneLake storage, CU parsing and
-contextualization, connected model usage, and any selected Azure compute/storage/
+contextualization, Agent reasoning/schema-generation and extraction model usage,
+durable execution hosting, and any selected Azure compute/storage/
 network/monitoring. Power BI consumption licensing depends on the chosen route.
 Verify existing capacity and trial eligibility; do not assume either is available
 or that pausing capacity eliminates storage or every other charge.

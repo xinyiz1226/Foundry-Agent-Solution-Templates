@@ -6,6 +6,10 @@
 > assessment and quality/adoption gate, not a commitment to extend Streamlit or
 > retain the existing runtime. The quality comparison precedes default adoption;
 > a separately authorized unpublished Fabric integration probe may precede it.
+> The later [confirmed Agent journey](agent-user-journey.md) adds bounded
+> development iteration and Notebook-first interaction. It does not weaken
+> this adoption gate: independent acceptance remains inaccessible to tuning
+> tools, and using acceptance failures for improvement requires fresh cases.
 
 **Agreed September 16, 2026. Status: planning only.** The user approved recording
 this plan, not implementation, deployment, or a paid experiment. No CU analyzer,
