@@ -1,24 +1,38 @@
 # R0: resource availability and functional feasibility
 
-**Checked September 17, 2026, 02:45-02:49 UTC. R0 is blocked, not passed.**
+**Updated September 17, 2026, 06:00 UTC. Fabric metadata access is confirmed;
+R0 still has unresolved identity/execution decisions.**
 The [confirmed journey](agent-user-journey.md) remains the target. This assessment
 separates live metadata access from documented capabilities and work that still
 requires configuration, implementation or a separately authorized paid test.
-The focused public-source API and pricing follow-up was completed the same day.
+Initial resource checks ran at 02:45-02:49 UTC; the user-supplied Fabric target
+was checked at 05:59-06:00 UTC. The earlier failed tenant context is retained
+below as historical evidence, not the current target's status.
 
 ## 1. Decision
 
 The Foundry/CU side has a usable starting point: an existing East US Foundry
 account/project, GPT-5-mini and an embedding deployment, working Entra-authenticated
-CU metadata APIs, and a working Foundry agent-list API. A new Foundry account or
-larger model deployment is **not justified by the current evidence**.
+CU metadata APIs, and a working Foundry agent-list API. Model capacity alone
+does not justify a larger deployment. Resource reuse now also depends on the
+tenant-placement decision described below.
 
-The immediate blocker is Fabric. Token acquisition succeeded, but both Fabric
-workspace and capacity enumeration returned **HTTP 401 `UserNotLicensed`** in
-the selected Azure subscription's tenant/operator context. This does not prove
-the user lacks a license in every tenant, or that no organization-wide capacity
-exists. Do not buy a capacity merely to work around an unidentified user/tenant
-licensing problem.
+**The Fabric metadata-access blocker is resolved for the supplied target.**
+Using the existing operator's corporate-tenant authentication, the selected
+workspace and Lakehouse GETs both returned HTTP 200. The workspace's capacity
+matched an **Active F4 in West Central US**. No new capacity or trial is needed
+merely to establish the presence of a usable Fabric starting point.
+
+The earlier **HTTP 401 `UserNotLicensed`** occurred in the separate Azure
+test-subscription tenant. It was reconfirmed at 05:37 UTC; no license was added
+or changed to obtain the later corporate-tenant success.
+
+**Fabric and the existing CU/Foundry resources are in different tenants.**
+Before integration, explicitly choose approved resource placement and identity/
+data-transfer boundaries. Corporate Fabric access does not authorize exporting
+corporate data to the test tenant. Do not silently adopt a cross-tenant execution
+architecture or assume one workspace/managed identity can access both sides.
+No source contents were read or transferred during these checks.
 
 CU extraction is not configured or proven. Account default model bindings are
 empty, the account managed identity has no matching assignments in the
@@ -53,6 +67,22 @@ subscription or the caller's visibility.
 
 ## 3. Live availability checks
 
+### Latest: supplied Fabric target, 05:59-06:00 UTC
+
+| Surface | Observed result | Boundary |
+| --- | --- | --- |
+| Authentication | A Fabric token was acquired for the corporate tenant from existing operator authentication. | No interactive login or default Azure subscription change was needed. |
+| Selected workspace | GET returned HTTP 200 and a capacity association. | The user-supplied target is readable; write/execute permissions were not tested. |
+| Selected Lakehouse | GET returned HTTP 200, type Lakehouse, with Files/Tables paths and default schema `dbo`. | Paths are metadata, not evidence of readable source files, populated tables or write access. |
+| SQL analytics endpoint | Reported provisioning status `Success`. | No SQL connection or query was executed. |
+| Associated capacity | The visible-capacity list contained the workspace's matching capacity: F4, Active, West Central US. | No purchase is implied. Workload headroom, performance, reservation/contract price and authorization to use shared capacity remain unverified. |
+| Tenant placement | Fabric target and existing CU/Foundry have different tenant contexts. | Agree on supported identities and permitted data movement, or approved same-tenant resource placement, before implementation. |
+
+The supplied workspace/Lakehouse names, IDs and capacity details are retained
+privately rather than embedded in the portable template.
+
+### Initial: Azure test-subscription context, 02:45-02:49 UTC
+
 | Surface | Observed result | What it establishes / does not establish |
 | --- | --- | --- |
 | Azure operator | Subscription is Enabled; account and signed-in-user metadata are readable. | Azure access works in the selected tenant. This does not establish Fabric licensing or an unattended worker identity. |
@@ -77,9 +107,10 @@ of an already deployed accelerator to reuse; do not duplicate that initiative.
 Fabric list endpoints are visibility-scoped, not tenant inventory:
 [workspaces](https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/list-workspaces)
 and [capacities](https://learn.microsoft.com/en-us/rest/api/fabric/core/capacities/list-capacities).
-Resolve [Fabric licensing](https://learn.microsoft.com/en-us/fabric/enterprise/licenses)
+[Fabric licensing](https://learn.microsoft.com/en-us/fabric/enterprise/licenses)
 and [workspace roles](https://learn.microsoft.com/en-us/fabric/fundamentals/roles-workspaces)
-in the intended Fabric tenant before repeating these reads.
+are context-specific. The supplied target's later successful reads supersede
+the initial assumption that Fabric target discovery is still blocked.
 
 ## 4. Existing models, CU compatibility and quota
 
@@ -149,10 +180,10 @@ No quota increase or deployment was attempted.
 | Requirement | Assessment | Required evidence before claiming success |
 | --- | --- | --- |
 | Goal -> inspected samples -> proposed schema | Documented Agent/function-calling capability; existing model is a candidate. | Real agent response and allowlisted bounded sampling; human schema confirmation; denial of unauthorized data/tools. |
-| HTML/TXT Files and stable-ID/text Table inputs | CU digital input support and Fabric data surfaces are documented. | Selected licensed Fabric workspace; bounded source reads, preservation of source/version/turn identity, successful CU calls. |
+| HTML/TXT Files and stable-ID/text Table inputs | CU digital input support is documented; the selected Lakehouse exposes Files/Tables paths in metadata. | Authorized bounded source reads, preservation of source/version/turn identity, successful CU calls and table writes. |
 | Description-only autonomous iteration | Application-enforced control logic is implementable, not a native CU safety guarantee. | Frozen schema/scoring, grant limits/expiry, best comparable draft, visible stops and independent held-out isolation. |
 | Continue after Notebook disconnect | Notebook-only function dispatch is insufficient. | Durable execution owner; disconnect/reopen and worker restart tests; same run identity and safe remote-operation recovery. |
-| Notebook/Pipeline jobs | Documented workload APIs exist; target tenant remains blocked. | Exact item/job type, parameters, noninteractive identity, submission/status/result path and connection support. |
+| Notebook/Pipeline jobs | Documented workload APIs exist; selected workspace metadata is accessible. | Exact item/job type, parameters, execution permissions, noninteractive identity, submission/status/result path and connection support. |
 | Candidate Delta Tables and SQL analysis | Use Spark or another supported writer; Lakehouse SQL analytics is read-only over table data. | Actual managed-table creation/query and input/output reconciliation. JSON copied into Files is insufficient. |
 | Human approval and reproducible release | Requires explicit application policy, manifest and consumer-selection behavior. | Scope-bound approval, coverage, evidence gates, partial-write/replay tests and stable release references. |
 | Scheduled candidate production | Feasible design, not verified execution. | Schedule authorization, frozen configuration, unattended identity, incremental/retry behavior; no automatic publication. |
@@ -262,8 +293,10 @@ in this follow-up; do not substitute the older DeepSeek pilot bill or remembered
 model prices.
 
 A complete CU/Fabric pilot and monthly estimate is **not yet a deployment quote**:
-the Fabric tenant/capacity, active hours, worker host, source billing units and
-model-token workload have not been validated. Price capacity plus OneLake,
+an existing Active F4 in West Central US is now identified, but its contract/
+allocation cost, workload headroom, active hours, worker host, source billing
+units and model-token workload have not been validated. The earlier East US/
+West US 2 scenarios are not a regional quote for this capacity. Price capacity plus OneLake,
 CU service processing plus connected model tokens, Agent reasoning, worker/state,
 and any network/monitoring components separately. Retained POC costs are a
 baseline, not new integration usage.
@@ -276,13 +309,13 @@ submission count is not an exact monetary cap or exactly-once billing guarantee.
 
 ## 7. Unblock R0, then authorize R1
 
-1. Confirm the intended Fabric identity/tenant and an existing capacity-backed
-   workspace/Lakehouse. Resolve the observed licensing error through the
-   appropriate administrator or user licensing path; do not activate a trial or
-   buy capacity without a separate decision.
-2. Repeat read-only workspace/capacity/item checks in that authorized context.
-   Verify Notebook/Pipeline and OneLake permissions for the selected unattended
-   identity and identify any administrator/network dependencies.
+1. **Completed for metadata:** the supplied Fabric workspace/Lakehouse is
+   readable in the corporate tenant and attached to an Active F4 capacity.
+   Do not acquire another capacity to resolve the unrelated test-tenant error.
+2. Confirm approved placement of CU/Foundry relative to corporate Fabric before
+   granting cross-tenant access or moving any data. Verify Notebook/Pipeline and
+   OneLake permissions for the selected unattended identity and identify
+   administrator/network dependencies. Metadata reads are not write/execute proof.
 3. Review CU model binding and account/worker identity rights. Prefer the
    existing GPT-5-mini and embedding deployment if their actual custom-analyzer
    behavior satisfies both domains. Do not alter shared defaults without approval.
@@ -292,6 +325,7 @@ submission count is not an exact monetary cap or exactly-once billing guarantee.
    proofs: goal-to-schema, both input shapes to unpublished Tables, original
    evidence, deny tests, disconnect/reopen and ambiguous-submission recovery.
 
-**R0 remains blocked by Fabric access and unverified execution/identity choices.
-R1-R5 have not started.** Documented feasibility and HTTP 200 metadata reads are
-not end-to-end functional acceptance.
+**Fabric target discovery/read access is complete. R0 still needs the tenant/
+identity decision, selected execution architecture and an approved resource/cost
+plan. R1-R5 have not started.** Documented feasibility and HTTP 200 metadata
+reads are not end-to-end functional acceptance.

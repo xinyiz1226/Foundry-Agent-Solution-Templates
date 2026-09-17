@@ -8,8 +8,10 @@ The [CU adoption criteria](content-understanding-plan.md) remain applicable.
 The subsequently confirmed [agent journey and example packs](agent-user-journey.md)
 define the user interaction, autonomy boundaries and first-release scope.
 The [R0 resource and feasibility assessment](r0-resource-feasibility.md) records
-working Foundry/CU metadata access and existing model deployments, but Fabric
-enumeration is blocked by `UserNotLicensed`. R0 has not passed.
+working Foundry/CU metadata access and existing model deployments. The supplied
+Fabric Lakehouse is now readable on an Active F4 capacity in the corporate
+tenant; the earlier `UserNotLicensed` result belongs to the Azure test tenant.
+Cross-tenant placement/identity and execution decisions remain; R0 has not passed.
 
 ## 1. Outcome and scope
 
@@ -160,11 +162,14 @@ documented blockers; R1-R5 have not started.
 
 ### R0 - Confirm adoption path and access
 
-**Status: blocked after authorized read-only checks on September 17.** See the
+**Status: partial; Fabric target access confirmed on September 17.** See the
 [assessment](r0-resource-feasibility.md) for resources, model compatibility and
-quota, Fabric licensing failures, cost boundaries and exact unblock steps.
+quota, the resolved Fabric context mismatch, cost boundaries and remaining steps.
 Existing GPT-5-mini/embedding deployments and CU/Agent metadata access are
-available; no new analyzer, model call, Fabric job or resource was created.
+available. The supplied Lakehouse has an Active F4 capacity but is in a different
+tenant from the existing Azure resources; placement and identity/data boundaries
+need explicit agreement. No new analyzer, model call, Fabric job or resource
+was created.
 
 Use the confirmed general-preparation journey and two lightweight examples;
 confirm expected users, volume/cadence, data classification and a representative
