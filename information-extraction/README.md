@@ -1,9 +1,18 @@
 # Information extraction: configurable core and workbench preview
 
+**Current direction - September 17, 2026:** a **CU + Fabric data preparation and
+analysis accelerator for data scientists**, not continued expansion of the
+standalone workbench. Start with the [active plan](docs/implementation-plan.md)
+for reuse-first delivery, original-evidence and quality gates, versioned
+Lakehouse publication, analytical feedback and enterprise acceptance.
+CU/Fabric integration is not implemented. The code and instructions below
+describe the preserved POC baseline, not a deployed Fabric solution.
+
 This is a **new implementation** of the execution invariants described in
 the [migration inventory](docs/migration-inventory.md), not a copy of DataFlowMVP
 or a drop-in replacement for its hosted SDK interface. It is one step toward the
-[implementation plan](docs/implementation-plan.md). **G0 is not complete.**
+[historical workbench plan](docs/implementation-plan-20260916.md).
+**Historical G0 is not complete; it is not the new delivery sequence.**
 
 The core uses an injected storage and model interface. Transactional SQLite
 is the standard-library local implementation; an optional **Azure Blob ledger**
@@ -31,7 +40,7 @@ Foundry resilient tasks Preview. A [bounded hosted smoke](docs/hosted-smoke-resu
 reached an attempt limit, restored committed state in a replacement
 application instance, and completed through explicit resume with no real
 model calls. The probe agent was then disabled and its sessions stopped.
-**G0 remains incomplete.**
+**Historical G0 remains incomplete.**
 
 ## Second domain: ABCD customer support
 
@@ -62,12 +71,11 @@ sources. It is not an ABCD corpus accuracy benchmark. All candidates remain
 Pending; review/export, held-out evaluation, SEC HTML parsing and full G1 remain
 open. The existing synthetic cloud/local workbench is unchanged.
 
-**Agreed next direction, not implemented:** evaluate Content Understanding as
-the default parsing/extraction foundation, while the template focuses on the
-end-to-end workflow. The [CU plan and adoption gate](docs/content-understanding-plan.md)
-require original-source evidence and a small real financial/ABCD comparison
-before changing the default. No CU deployment or paid experiment is authorized
-by that documentation-only decision.
+The [CU adoption gate](docs/content-understanding-plan.md) still requires
+original-source evidence and a small real financial/ABCD comparison before
+changing the default. The [current CU + Fabric plan](docs/implementation-plan.md)
+adds reuse-first integration, published analytical tables and enterprise
+acceptance; no deployment or paid experiment is authorized by that plan.
 
 ## Try configurable extraction locally
 

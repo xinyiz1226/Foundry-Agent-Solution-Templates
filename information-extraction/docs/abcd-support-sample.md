@@ -1,5 +1,9 @@
 # ABCD: second-domain input preparation
 
+The [CU + Fabric delivery plan](implementation-plan.md) now governs future work.
+The importer, profile and provenance rules below remain reusable assets; a
+support-specific expansion of the standalone workbench is not the next step.
+
 ABCD customer-support conversations replace the previously proposed
 customer-adoption meeting sample. Financial reports remain the first domain.
 The purpose is to demonstrate reusable, evidence-linked extraction, not to

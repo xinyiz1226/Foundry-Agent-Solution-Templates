@@ -1,5 +1,12 @@
 # Content Understanding: agreed direction and validation gate
 
+> **Direction updated September 17:** the
+> [CU + Fabric delivery plan](implementation-plan.md) now governs target
+> architecture and execution order. This document remains the CU capability
+> assessment and quality/adoption gate, not a commitment to extend Streamlit or
+> retain the existing runtime. The quality comparison precedes default adoption;
+> a separately authorized unpublished Fabric integration probe may precede it.
+
 **Agreed September 16, 2026. Status: planning only.** The user approved recording
 this plan, not implementation, deployment, or a paid experiment. No CU analyzer,
 model deployment, analysis result, or quality measurement is claimed here.
