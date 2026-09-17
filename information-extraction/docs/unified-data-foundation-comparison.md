@@ -9,6 +9,10 @@ This is an advisory comparison with our
 [confirmed preparation journey](agent-user-journey.md), not approval to deploy
 either solution or a change to the [active plan](implementation-plan.md).
 Our Agent/CU/Fabric integration remains planned, not implemented.
+The subsequent [native-capability assessment](native-data-preparation-gap-assessment.md)
+finds substantial additional overlap in Fabric AI Functions and CU Studio.
+The absence of a workflow from this one accelerator is not a sufficient reason
+to build another preparation module.
 
 ## Verdict
 
